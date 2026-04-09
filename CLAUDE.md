@@ -4,17 +4,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What is AetherProxy
 
-AetherProxy is a self-hostable censorship-circumvention platform. It wraps [sing-box](https://github.com/SagerNet/sing-box) (the universal proxy engine) with a Go API server, Next.js admin panel, multi-node management, subscription generation, and a Flutter Android client. Primary protocols: VLESS + Reality + uTLS and Hysteria2.
+AetherProxy is a self-hostable censorship-circumvention platform. It wraps [sing-box](https://github.com/SagerNet/sing-box) v1.13.4 with a Go API server, Next.js admin panel, multi-node management, subscription generation, and a Flutter Android client. Primary protocols: VLESS + Reality + uTLS and Hysteria2.
 
 ## Commands
 
 ### Backend (Go)
 ```bash
 make backend-build    # go build -trimpath -o ../bin/aetherproxy .
-make backend-dev      # hot-reload with air (requires: go install github.com/air-verse/air@latest)
+make backend-dev      # hot-reload with cosmtrek/air (go install github.com/air-verse/air@latest)
 make backend-test     # go test -race ./...
 make backend-lint     # golangci-lint run ./...
 ```
+
+> `make backend-dev` requires `cosmtrek/air`, not the R-language `air` tool. If `which air` points to the wrong one, install: `go install github.com/air-verse/air@latest` and ensure `$(go env GOPATH)/bin` is in `$PATH`. As a fallback: `cd backend && go run .`
 
 Run a single Go test:
 ```bash
@@ -28,11 +30,10 @@ make frontend-build   # next build
 make frontend-lint    # eslint
 ```
 
-### Combined
+### Obfuscation plugins
 ```bash
-make build            # backend + frontend production build
-make test             # all tests
-make lint             # all linters (Go + JS + Flutter pre-commit hooks via lefthook)
+make plugin-build     # compile built-in plugins as optional .so files into plugins/
+make plugin-test      # go test -race ./core/plugin/h2disguise/... ./core/plugin/wscdn/... ./core/plugin/grpcobfs/...
 ```
 
 ### Docker / Deploy
@@ -64,6 +65,7 @@ Client → Caddy (TLS termination)
 | Handlers | `api/apiHandler.go` | Route registration and HTTP dispatch |
 | Services | `service/` | All business logic (see below) |
 | sing-box wrapper | `core/` | Process management, protocol registration, traffic stats |
+| Obfuscation plugins | `core/plugin/` | OutboundPlugin interface + built-in DPI-evasion plugins |
 | Subscriptions | `sub/` | Base64 / Clash YAML / sing-box JSON / QR code generation |
 | Database | `database/` | GORM models, SQLite (default) or PostgreSQL |
 | Background jobs | `cronjob/` | Stats collection, health checks, WAL checkpoint |
@@ -71,6 +73,7 @@ Client → Caddy (TLS termination)
 
 **Key service files:**
 - `service/config.go` — generates sing-box JSON config and hot-reloads it
+- `service/outbounds.go` — CRUD for outbounds; calls `plugin.ApplyAll()` on every outbound JSON before it reaches sing-box (both batch startup and live hot-add paths)
 - `service/node.go` — SSH deploy to remote nodes, 30-second health checks, failover
 - `service/evasion.go` — scrapes Javid for censorship events, auto-switches protocols
 
@@ -78,17 +81,33 @@ Client → Caddy (TLS termination)
 
 App Router layout with a protected `(admin)` route group. Key directories:
 - `app/(admin)/` — dashboard (WebSocket live stats), nodes, users, subscriptions, routing, analytics, plugins
-- `components/ui/` — shadcn/ui components
-- `lib/api.ts` — typed fetch wrapper for all backend endpoints
+- `components/ui/` — Base UI components (not standard shadcn — uses `@base-ui-components/react`, see existing components before adding new ones)
+- `lib/api.ts` — typed fetch wrapper for all backend endpoints; uses `credentials: "include"` for JWT cookie
 - `i18n/` + `messages/` — EN and FA/Farsi RTL via next-intl
 
 ### Plugin system (`backend/core/plugin/`)
 
-Outbound plugins are compiled Go `.so` files implementing the `OutboundPlugin` interface. A reference implementation is in `core/plugin/sample/`.
+The `OutboundPlugin` interface (`plugin.go`) allows transforming sing-box outbound JSON before it is applied. `ApplyAll()` is called in `service/outbounds.go` on every outbound.
+
+**Three built-in DPI-evasion plugins** are registered statically in `app/app.go::Init()`:
+
+| Plugin | Package | What it does |
+|--------|---------|-------------|
+| `h2disguise` | `core/plugin/h2disguise` | Injects HTTP/2 transport with browser UA headers |
+| `wscdn` | `core/plugin/wscdn` | Routes over WebSocket through a Cloudflare Workers relay |
+| `grpcobfs` | `core/plugin/grpcobfs` | Injects gRPC transport mimicking Google API service names |
+
+All three default to `enabled: false`. **Only one transport plugin should be enabled at a time** — they all write to the same `transport` field. They skip Hysteria2/QUIC outbound types automatically.
+
+The `wscdn` plugin requires the companion Cloudflare Worker in `deploy/cloudflare-worker/` (Workers Paid plan for TCP socket API). The plugin only rewrites the outbound's `server` field at runtime — the database retains the original origin address.
+
+Each built-in plugin also ships a `so/main.go` wrapper (build tag `plugin`) for optional standalone `.so` compilation. Third-party `.so` plugins are scanned from `AETHER_PLUGINS_DIR` at startup via `app.loadPlugins()`.
+
+**Restart safety:** `registerBuiltinPlugins()` is called in `Init()` (once), not `Start()`, because `RestartApp()` calls `Start()` again and `RegisterPlugin` panics on duplicate names.
 
 ### Database
 
-GORM AutoMigrate (idempotent) runs on every startup. Driver is selected by whether `AETHER_DB_DSN` is set (PostgreSQL) or not (SQLite in `AETHER_DB_FOLDER`).
+GORM AutoMigrate (idempotent) runs on every startup. Driver is selected by whether `AETHER_DB_DSN` is set (PostgreSQL) or not (SQLite in `AETHER_DB_FOLDER`). Default credentials on first run: `admin` / `admin`. Login form fields are `user` and `pass` (not `username`/`password`).
 
 ## Environment variables
 
@@ -102,7 +121,8 @@ GORM AutoMigrate (idempotent) runs on every startup. Driver is selected by wheth
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
 | `AETHER_LOG_LEVEL` | `info` | `debug`/`info`/`warn`/`error` |
 | `AETHER_DEBUG` | — | `true` enables verbose GORM logging |
-| `NEXT_PUBLIC_API_URL` | `http://localhost:2095` | Frontend → backend URL |
+| `AETHER_PLUGINS_DIR` | `<bin-dir>/plugins` | Directory scanned for third-party `.so` plugins |
+| `NEXT_PUBLIC_API_URL` | `http://localhost:2095` | Frontend → backend URL (embedded at build time) |
 
 ## Go workspace
 

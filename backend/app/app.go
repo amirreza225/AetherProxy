@@ -2,9 +2,16 @@ package app
 
 import (
 	"log"
+	"os"
+	"path/filepath"
+	"strings"
 
 	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/core"
+	coreplugin "github.com/aetherproxy/backend/core/plugin"
+	"github.com/aetherproxy/backend/core/plugin/grpcobfs"
+	"github.com/aetherproxy/backend/core/plugin/h2disguise"
+	"github.com/aetherproxy/backend/core/plugin/wscdn"
 	"github.com/aetherproxy/backend/cronjob"
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/logger"
@@ -50,6 +57,8 @@ func (a *APP) Init() error {
 
 	a.configService = service.NewConfigService(a.core)
 
+	a.registerBuiltinPlugins()
+
 	return nil
 }
 
@@ -78,6 +87,8 @@ func (a *APP) Start() error {
 	if err != nil {
 		return err
 	}
+
+	a.loadPlugins()
 
 	err = a.configService.StartCore()
 	if err != nil {
@@ -122,6 +133,32 @@ func (a *APP) initLog() {
 		logger.InitLogger(logging.ERROR)
 	default:
 		log.Fatal("unknown log level:", config.GetLogLevel())
+	}
+}
+
+func (a *APP) registerBuiltinPlugins() {
+	coreplugin.RegisterPlugin(h2disguise.Plugin)
+	coreplugin.RegisterPlugin(wscdn.Plugin)
+	coreplugin.RegisterPlugin(grpcobfs.Plugin)
+}
+
+func (a *APP) loadPlugins() {
+	dir := config.GetPluginsDir()
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		logger.Info("plugins dir not found or empty, skipping:", dir)
+		return
+	}
+	for _, e := range entries {
+		if e.IsDir() || !strings.HasSuffix(e.Name(), ".so") {
+			continue
+		}
+		path := filepath.Join(dir, e.Name())
+		if err := coreplugin.LoadPlugin(path); err != nil {
+			logger.Warning("failed to load plugin:", path, err)
+		} else {
+			logger.Info("loaded plugin:", path)
+		}
 	}
 }
 

@@ -1,0 +1,23 @@
+name = "aetherproxy-ws-relay"
+main = "ws-relay-worker.js"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Environment variables (override via `wrangler secret put <KEY>`):
+#   ORIGIN_SERVER   — "host:port" of the actual proxy server, e.g. "203.0.113.10:443"
+#   SECRET_HEADER   — shared secret expected in X-Relay-Secret request header
+#   ALLOWED_ORIGINS — comma-separated list of allowed origin hosts (anti-abuse allowlist)
+#
+# Sensitive values should always be set as secrets, not in [vars]:
+#   wrangler secret put ORIGIN_SERVER
+#   wrangler secret put SECRET_HEADER
+#   wrangler secret put ALLOWED_ORIGINS
+#
+# Deploy:
+#   wrangler deploy
+
+[vars]
+# Leave empty here; set real values via `wrangler secret put`
+ORIGIN_SERVER   = ""
+SECRET_HEADER   = ""
+ALLOWED_ORIGINS = ""

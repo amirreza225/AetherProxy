@@ -1,5 +1,6 @@
 .PHONY: help build dev test lint backend-build backend-dev backend-test backend-lint \
-        frontend-dev frontend-build frontend-lint deploy-up deploy-down
+        frontend-dev frontend-build frontend-lint deploy-up deploy-down \
+        plugin-build plugin-test
 
 GOBIN := $(shell which go 2>/dev/null || echo /usr/local/go/bin/go)
 NPM   := npm
@@ -47,3 +48,28 @@ deploy-up: ## Start all services via docker compose
 
 deploy-down: ## Stop all services
 	docker compose -f deploy/docker-compose.yml down
+
+# ── Obfuscation plugins ───────────────────────────────────────────────────────
+# Plugins must be built with the same Go toolchain and module graph as the main
+# binary.  Place the resulting .so files in the directory pointed to by
+# AETHER_PLUGINS_DIR (default: plugins/ next to the binary).
+#
+# NOTE: Go plugins are only supported on Linux and macOS.
+# NOTE: Only one transport plugin (h2disguise, wscdn, grpcobfs) should be
+#       enabled at a time — they all inject into the same transport field.
+
+PLUGIN_TAGS := with_quic,with_grpc,with_utls,with_acme,with_gvisor,with_naive_outbound,with_musl,badlinkname,tfogo_checklinkname0,with_tailscale
+PLUGIN_LDFLAGS := -checklinkname=0
+
+plugin-build: ## Build all obfuscation plugins as .so files into plugins/ (optional, they are also built in statically)
+	@mkdir -p plugins
+	cd backend && $(GOBIN) build -buildmode=plugin -tags "plugin,$(PLUGIN_TAGS)" \
+	    -ldflags "$(PLUGIN_LDFLAGS)" -o ../plugins/h2disguise.so ./core/plugin/h2disguise/so
+	cd backend && $(GOBIN) build -buildmode=plugin -tags "plugin,$(PLUGIN_TAGS)" \
+	    -ldflags "$(PLUGIN_LDFLAGS)" -o ../plugins/wscdn.so ./core/plugin/wscdn/so
+	cd backend && $(GOBIN) build -buildmode=plugin -tags "plugin,$(PLUGIN_TAGS)" \
+	    -ldflags "$(PLUGIN_LDFLAGS)" -o ../plugins/grpcobfs.so ./core/plugin/grpcobfs/so
+	@echo "Plugins built in plugins/"
+
+plugin-test: ## Run unit tests for all obfuscation plugins
+	cd backend && $(GOBIN) test -race ./core/plugin/h2disguise/... ./core/plugin/wscdn/... ./core/plugin/grpcobfs/...

@@ -1,0 +1,35 @@
+# Build outputs
+/bin/
+/plugins/*.so
+
+# Frontend
+frontend/.next/
+frontend/node_modules/
+frontend/.env.local
+
+# Backend
+backend/db/
+backend/tmp/
+
+# Database files
+*.db
+*.db-shm
+*.db-wal
+
+# Environment / secrets
+.env
+.env.local
+.env.*.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Playwright MCP
+/.playwright-mcp

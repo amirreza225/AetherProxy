@@ -110,3 +110,17 @@ func GetSubPort() string {
 func GetDBDSN() string {
 	return os.Getenv("AETHER_DB_DSN")
 }
+
+// GetPluginsDir returns the directory scanned for .so outbound plugin files at startup.
+// Defaults to a "plugins/" directory next to the binary.
+func GetPluginsDir() string {
+	d := os.Getenv("AETHER_PLUGINS_DIR")
+	if d != "" {
+		return d
+	}
+	dir, err := filepath.Abs(filepath.Dir(os.Args[0]))
+	if err != nil {
+		return "plugins"
+	}
+	return filepath.Join(dir, "plugins")
+}
