@@ -2,8 +2,6 @@ import 'dart:ffi';
 import 'dart:io';
 import 'dart:math';
 
-import 'package:ffi/ffi.dart';
-import 'package:grpc/grpc.dart';
 import 'package:aetherproxy/core/model/directories.dart';
 import 'package:aetherproxy/gen/hiddify_core_generated_bindings.dart';
 import 'package:aetherproxy/hiddifycore/core_interface/core_interface.dart';
@@ -13,9 +11,9 @@ import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore_service.pbgrpc.
 import 'package:aetherproxy/hiddifycore/generated/v2/hello/hello.pb.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hello/hello_service.pbgrpc.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
-
+import 'package:ffi/ffi.dart';
+import 'package:grpc/grpc.dart';
 import 'package:loggy/loggy.dart';
-
 import 'package:path/path.dart' as p;
 
 final _logger = Loggy('HiddifyCoreFFI');

@@ -1,8 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:dio/dio.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/haptic/haptic_service.dart';
 import 'package:aetherproxy/core/http_client/http_client_provider.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
@@ -19,12 +17,13 @@ import 'package:aetherproxy/features/profile/notifier/active_profile_notifier.da
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/utils/riverpod_utils.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dio/dio.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profile_notifier.g.dart';
 
-@riverpod
 class AddProfileNotifier extends _$AddProfileNotifier with AppLogger {
   @override
   AsyncValue<Unit?> build() {

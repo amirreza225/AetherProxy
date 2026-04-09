@@ -1,6 +1,5 @@
 import 'dart:async';
 
-import 'package:dio/dio.dart';
 import 'package:aetherproxy/core/haptic/haptic_service.dart';
 import 'package:aetherproxy/core/preferences/general_preferences.dart';
 import 'package:aetherproxy/core/utils/throttler.dart';
@@ -12,11 +11,11 @@ import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:aetherproxy/hiddifycore/init_signal.dart';
 import 'package:aetherproxy/utils/riverpod_utils.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'active_proxy_notifier.g.dart';
 
-@riverpod
 class IpInfoNotifier extends _$IpInfoNotifier with AppLogger {
   @override
   Future<oldipinfo.IpInfo> build() async {

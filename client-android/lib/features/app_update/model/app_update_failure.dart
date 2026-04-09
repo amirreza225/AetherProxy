@@ -1,10 +1,9 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/failures.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'app_update_failure.freezed.dart';
 
-@freezed
 sealed class AppUpdateFailure with _$AppUpdateFailure, Failure {
   const AppUpdateFailure._();
 

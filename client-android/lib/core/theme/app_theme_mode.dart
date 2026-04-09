@@ -1,5 +1,5 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:flutter/material.dart';
 
 enum AppThemeMode {
   system,

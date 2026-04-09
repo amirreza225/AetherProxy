@@ -1,4 +1,3 @@
-import 'package:dio/dio.dart';
 import 'package:aetherproxy/core/http_client/dio_http_client.dart';
 import 'package:aetherproxy/core/http_client/http_client_provider.dart';
 import 'package:aetherproxy/core/model/region.dart';
@@ -6,6 +5,7 @@ import 'package:aetherproxy/core/preferences/general_preferences.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dio/dio.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 enum AutoSelectionResult {

@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/optional_range.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/features/settings/widget/preference_tile.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class TlsTricksPage extends HookConsumerWidget {

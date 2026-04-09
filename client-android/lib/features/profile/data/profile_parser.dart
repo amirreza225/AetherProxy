@@ -1,9 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartx/dartx.dart';
-import 'package:dio/dio.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/db/db.dart';
 import 'package:aetherproxy/core/http_client/dio_http_client.dart';
 import 'package:aetherproxy/features/profile/data/profile_data_mapper.dart';
@@ -12,20 +9,11 @@ import 'package:aetherproxy/features/profile/model/profile_failure.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/singbox/model/singbox_proxy_type.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dartx/dartx.dart';
+import 'package:dio/dio.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:meta/meta.dart';
-
-/// parse profile subscription url and headers for data
-///
-/// ***name parser hierarchy:***
-/// - UserOverride.name
-/// - `profile-title` header
-/// - `content-disposition` header
-/// - url fragment (example: `https://example.com/config#user`) -> name=`user`
-/// - url filename extension (example: `https://example.com/config.json`) -> name=`config`
-/// - if none of these methods return a non-blank string, switch(profileType)
-/// - remote:  fallback to `Remote Profile`
-/// - local: fallback to protocol, extracted from content by protocol()
 
 class ProfileParser {
   static const infiniteTrafficThreshold = 920_233_720_368;

@@ -1,11 +1,5 @@
 import 'dart:convert';
 
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/constants.dart';
 import 'package:aetherproxy/core/model/failures.dart';
@@ -14,6 +8,12 @@ import 'package:aetherproxy/features/profile/details/json_editor.dart';
 import 'package:aetherproxy/features/profile/details/profile_details_notifier.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ProfileDetailsPage extends HookConsumerWidget with PresLogger {

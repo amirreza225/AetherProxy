@@ -4,7 +4,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'generic_list_notifier.g.dart';
 
-@riverpod
 class GenericListNotifier extends _$GenericListNotifier {
   late int? _ruleListOrder;
   late RuleEnum _ruleEnum;

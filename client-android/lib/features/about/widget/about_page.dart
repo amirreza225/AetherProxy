@@ -1,7 +1,3 @@
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:gap/gap.dart';
 import 'package:aetherproxy/core/app_info/app_info_provider.dart';
 import 'package:aetherproxy/core/directories/directories_provider.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
@@ -13,6 +9,10 @@ import 'package:aetherproxy/features/app_update/notifier/app_update_notifier.dar
 import 'package:aetherproxy/features/app_update/notifier/app_update_state.dart';
 import 'package:aetherproxy/gen/assets.gen.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class AboutPage extends HookConsumerWidget {

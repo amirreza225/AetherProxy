@@ -1,9 +1,8 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/singbox/model/singbox_proxy_type.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'proxy_entity.freezed.dart';
 
-@freezed
 class ProxyGroupEntity with _$ProxyGroupEntity {
   const ProxyGroupEntity._();
 

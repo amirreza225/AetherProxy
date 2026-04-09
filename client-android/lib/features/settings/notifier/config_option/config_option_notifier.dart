@@ -1,9 +1,6 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartx/dartx_io.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
 import 'package:aetherproxy/features/connection/data/connection_data_providers.dart';
@@ -13,12 +10,14 @@ import 'package:aetherproxy/features/proxy/active/active_proxy_notifier.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
 import 'package:aetherproxy/utils/platform_utils.dart';
+import 'package:dartx/dartx_io.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:json_path/json_path.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'config_option_notifier.g.dart';
 
-@Riverpod(keepAlive: true)
 class ConfigOptionNotifier extends _$ConfigOptionNotifier with AppLogger {
   @override
   Future<bool> build() async {

@@ -1,9 +1,9 @@
 // ignore_for_file: parameter_assignments
 
-import 'package:dartx/dartx.dart';
 import 'package:aetherproxy/features/log/model/log_entity.dart';
 import 'package:aetherproxy/features/log/model/log_level.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart' as pb;
+import 'package:dartx/dartx.dart';
 import 'package:tint/tint.dart';
 
 abstract class LogParser {

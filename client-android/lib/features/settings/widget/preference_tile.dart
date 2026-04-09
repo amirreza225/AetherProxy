@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
 import 'package:aetherproxy/core/utils/preferences_utils.dart';
 import 'package:aetherproxy/features/settings/notifier/battery_optimization/battery_optimizations_notifier.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ValuePreferenceWidget<T> extends HookConsumerWidget {

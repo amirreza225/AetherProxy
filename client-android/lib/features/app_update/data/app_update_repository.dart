@@ -1,4 +1,3 @@
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/http_client/dio_http_client.dart';
 import 'package:aetherproxy/core/model/constants.dart';
 import 'package:aetherproxy/core/model/environment.dart';
@@ -7,6 +6,7 @@ import 'package:aetherproxy/features/app_update/data/github_release_parser.dart'
 import 'package:aetherproxy/features/app_update/model/app_update_failure.dart';
 import 'package:aetherproxy/features/app_update/model/remote_version_entity.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:fpdart/fpdart.dart';
 
 abstract interface class AppUpdateRepository {
   TaskEither<AppUpdateFailure, RemoteVersionEntity> getLatestVersion({

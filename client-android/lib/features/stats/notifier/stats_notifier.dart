@@ -7,7 +7,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'stats_notifier.g.dart';
 
-@riverpod
 class StatsNotifier extends _$StatsNotifier with AppLogger {
   @override
   Stream<SystemInfo> build() async* {

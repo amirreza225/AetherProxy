@@ -1,7 +1,5 @@
 import 'dart:async';
 
-import 'package:dartx/dartx.dart';
-
 import 'package:aetherproxy/core/haptic/haptic_service.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/preferences/preferences_provider.dart';
@@ -13,6 +11,7 @@ import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:aetherproxy/hiddifycore/init_signal.dart';
 import 'package:aetherproxy/utils/riverpod_utils.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dartx/dartx.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'proxies_overview_notifier.g.dart';

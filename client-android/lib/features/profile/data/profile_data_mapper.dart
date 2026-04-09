@@ -1,8 +1,8 @@
 import 'dart:convert';
 
-import 'package:drift/drift.dart';
 import 'package:aetherproxy/core/db/db.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
+import 'package:drift/drift.dart';
 
 extension ProfileEntityMapper on ProfileEntity {
   ProfileEntriesCompanion toInsertEntry() => map(

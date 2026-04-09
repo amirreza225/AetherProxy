@@ -3,7 +3,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'battery_optimizations_notifier.g.dart';
 
-@riverpod
 class BatteryOptimizationNotifier extends _$BatteryOptimizationNotifier {
   @override
   Future<bool> build() async {

@@ -1,8 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/constants.dart';
 import 'package:aetherproxy/features/profile/add/widgets/free_btns.dart';
@@ -10,6 +5,11 @@ import 'package:aetherproxy/features/profile/add/widgets/widgets.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
 import 'package:aetherproxy/features/profile/notifier/profile_notifier.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class AddProfileModal extends HookConsumerWidget {

@@ -1,6 +1,6 @@
-import 'package:flutter/services.dart';
 import 'package:aetherproxy/core/utils/exception_handler.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:flutter/services.dart';
 import 'package:loggy/loggy.dart';
 
 abstract interface class BatteryOptimizationRepository {

@@ -2,8 +2,8 @@ import 'dart:io';
 
 import 'package:aetherproxy/core/logger/custom_logger.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
-import 'package:loggy/loggy.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:loggy/loggy.dart';
 
 class LoggerController extends LoggyPrinter with InfraLogger {
   LoggerController(this.consolePrinter, this.otherPrinters);
@@ -25,7 +25,7 @@ class LoggerController extends LoggyPrinter with InfraLogger {
   }
 
   static Future<void> postInit(bool debugMode) async {
-    final logLevel = debugMode && false ? LogLevel.all : LogLevel.info;
+    final logLevel = debugMode ? LogLevel.all : LogLevel.info;
     final logToFile = debugMode || (!Platform.isAndroid && !Platform.isIOS);
 
     if (!logToFile || kIsWeb) _instance.removePrinter("app");

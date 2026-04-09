@@ -1,5 +1,3 @@
-import 'package:flutter/foundation.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/utils/exception_handler.dart';
 import 'package:aetherproxy/features/log/data/log_parser.dart';
 import 'package:aetherproxy/features/log/data/log_path_resolver.dart';
@@ -7,6 +5,8 @@ import 'package:aetherproxy/features/log/model/log_entity.dart';
 import 'package:aetherproxy/features/log/model/log_failure.dart';
 import 'package:aetherproxy/hiddifycore/hiddify_core_service.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:flutter/foundation.dart';
+import 'package:fpdart/fpdart.dart';
 
 abstract interface class LogRepository {
   TaskEither<LogFailure, Unit> init();

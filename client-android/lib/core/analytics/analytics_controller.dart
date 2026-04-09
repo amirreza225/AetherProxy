@@ -1,11 +1,10 @@
-import 'package:flutter/foundation.dart';
 import 'package:aetherproxy/core/analytics/analytics_filter.dart';
 import 'package:aetherproxy/core/analytics/analytics_logger.dart';
-
 import 'package:aetherproxy/core/logger/logger_controller.dart';
 import 'package:aetherproxy/core/model/environment.dart';
 import 'package:aetherproxy/core/preferences/preferences_provider.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:flutter/foundation.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'package:shared_preferences/shared_preferences.dart';

@@ -1,10 +1,9 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 part 'profile_details_state.freezed.dart';
 
-@freezed
 class ProfileDetailsState with _$ProfileDetailsState {
   const ProfileDetailsState._();
 

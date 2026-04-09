@@ -1,9 +1,8 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/model/environment.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'app_info_entity.freezed.dart';
 
-@freezed
 class AppInfoEntity with _$AppInfoEntity {
   const AppInfoEntity._();
 

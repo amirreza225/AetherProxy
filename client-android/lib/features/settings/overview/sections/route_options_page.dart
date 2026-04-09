@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/region.dart';
 import 'package:aetherproxy/core/preferences/general_preferences.dart';
@@ -10,6 +8,8 @@ import 'package:aetherproxy/features/settings/data/config_option_repository.dart
 import 'package:aetherproxy/features/settings/widget/preference_tile.dart';
 import 'package:aetherproxy/singbox/model/singbox_config_enum.dart';
 import 'package:aetherproxy/utils/platform_utils.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class RouteOptionsPage extends HookConsumerWidget {

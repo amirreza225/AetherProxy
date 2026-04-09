@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/model/constants.dart';
 import 'package:aetherproxy/core/router/bottom_sheets/widgets/auto_apps_selection_modal.dart';
 import 'package:aetherproxy/core/router/bottom_sheets/widgets/quick_settings_modal.dart';
@@ -6,12 +5,11 @@ import 'package:aetherproxy/core/router/go_router/go_router_notifier.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart';
 import 'package:aetherproxy/features/profile/add/add_profile_modal.dart';
 import 'package:aetherproxy/features/profile/overview/profiles_modal.dart';
-
+import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'bottom_sheets_notifier.g.dart';
 
-@riverpod
 class BottomSheetsNotifier extends _$BottomSheetsNotifier {
   @override
   void build() {}

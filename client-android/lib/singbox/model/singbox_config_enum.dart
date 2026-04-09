@@ -1,10 +1,9 @@
 import 'dart:io';
 
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/utils/platform_utils.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
-@JsonEnum(valueField: 'key')
 enum ServiceMode {
   proxy("proxy"),
   systemProxy("system-proxy"),

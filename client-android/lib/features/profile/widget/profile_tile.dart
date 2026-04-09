@@ -1,9 +1,3 @@
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/rendering.dart';
-import 'package:flutter/services.dart';
-import 'package:gap/gap.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/constants.dart';
 import 'package:aetherproxy/core/model/failures.dart';
@@ -18,8 +12,13 @@ import 'package:aetherproxy/features/profile/notifier/profile_notifier.dart';
 import 'package:aetherproxy/features/profile/overview/profiles_notifier.dart';
 import 'package:aetherproxy/gen/fonts.gen.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:gap/gap.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
-
 import 'package:url_launcher/url_launcher.dart';
 
 class ProfileTile extends HookConsumerWidget {

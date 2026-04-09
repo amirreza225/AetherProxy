@@ -1,9 +1,8 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/preferences/general_preferences.dart';
 import 'package:aetherproxy/core/router/deep_linking/my_app_links.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-// For temporary storage of the link received from AppLinks.
 String newUrlFromAppLink = '';
 
 class RefreshListenable extends ChangeNotifier {

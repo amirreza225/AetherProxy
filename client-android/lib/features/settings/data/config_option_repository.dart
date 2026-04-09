@@ -1,5 +1,3 @@
-import 'package:dartx/dartx.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/model/optional_range.dart';
 import 'package:aetherproxy/core/model/region.dart';
 import 'package:aetherproxy/core/utils/exception_handler.dart';
@@ -12,6 +10,8 @@ import 'package:aetherproxy/singbox/model/singbox_config_enum.dart';
 import 'package:aetherproxy/singbox/model/singbox_config_option.dart';
 import 'package:aetherproxy/singbox/model/singbox_rule.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dartx/dartx.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 

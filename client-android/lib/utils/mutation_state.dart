@@ -1,10 +1,8 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/model/failures.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'mutation_state.freezed.dart';
 
-// TODO: remove
-@freezed
 class MutationState<F extends Failure> with _$MutationState<F> {
   const MutationState._();
 

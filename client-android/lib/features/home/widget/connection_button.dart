@@ -1,7 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:flutter_animate/flutter_animate.dart';
-import 'package:font_awesome_flutter/font_awesome_flutter.dart';
-import 'package:gap/gap.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/failures.dart';
 import 'package:aetherproxy/core/router/bottom_sheets/bottom_sheets_notifier.dart';
@@ -17,9 +13,12 @@ import 'package:aetherproxy/features/settings/data/config_option_repository.dart
 import 'package:aetherproxy/features/settings/notifier/config_option/config_option_notifier.dart';
 import 'package:aetherproxy/gen/assets.gen.dart';
 import 'package:aetherproxy/singbox/model/singbox_config_enum.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_animate/flutter_animate.dart';
+import 'package:font_awesome_flutter/font_awesome_flutter.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
-// TODO: rewrite
 class ConnectionButton extends HookConsumerWidget {
   const ConnectionButton({super.key});
 

@@ -1,10 +1,10 @@
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/utils/preferences_utils.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:aetherproxy/core/localization/translations.dart';
-import 'package:aetherproxy/core/utils/preferences_utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 bool _testExperimentalNotice = false;

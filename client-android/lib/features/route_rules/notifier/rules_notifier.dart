@@ -1,19 +1,18 @@
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartx/dartx_io.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart';
 import 'package:aetherproxy/core/directories/directories_provider.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/config/route_rule.pb.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dartx/dartx_io.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'rules_notifier.g.dart';
 
-@riverpod
 class RulesNotifier extends _$RulesNotifier with AppLogger {
   late File file;
 

@@ -1,6 +1,6 @@
-import 'package:dartx/dartx.dart';
 import 'package:aetherproxy/core/model/environment.dart';
 import 'package:aetherproxy/features/app_update/model/remote_version_entity.dart';
+import 'package:dartx/dartx.dart';
 
 abstract class GithubReleaseParser {
   static RemoteVersionEntity parse(Map<String, dynamic> json) {

@@ -1,4 +1,3 @@
-import 'package:dartx/dartx.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
 import 'package:aetherproxy/core/preferences/general_preferences.dart';
@@ -6,6 +5,7 @@ import 'package:aetherproxy/core/preferences/preferences_provider.dart';
 import 'package:aetherproxy/features/profile/data/profile_data_providers.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:dartx/dartx.dart';
 import 'package:meta/meta.dart';
 import 'package:neat_periodic_task/neat_periodic_task.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';

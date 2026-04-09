@@ -2,7 +2,6 @@ import 'package:aetherproxy/utils/sentry_utils.dart';
 import 'package:loggy/loggy.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 
-// modified version of https://github.com/getsentry/sentry-dart/tree/main/logging
 class SentryLoggyIntegration extends LoggyPrinter implements Integration<SentryOptions> {
   SentryLoggyIntegration({LogLevel minBreadcrumbLevel = LogLevel.info, LogLevel minEventLevel = LogLevel.error})
     : _minBreadcrumbLevel = minBreadcrumbLevel,

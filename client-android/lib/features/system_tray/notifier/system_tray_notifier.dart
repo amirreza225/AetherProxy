@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/constants.dart';
 import 'package:aetherproxy/features/connection/model/connection_status.dart';
@@ -12,13 +11,13 @@ import 'package:aetherproxy/gen/assets.gen.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:aetherproxy/singbox/model/singbox_config_enum.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:tray_manager/tray_manager.dart';
 import 'package:window_manager/window_manager.dart';
 
 part 'system_tray_notifier.g.dart';
 
-@Riverpod(keepAlive: true)
 class SystemTrayNotifier extends _$SystemTrayNotifier with TrayListener, AppLogger {
   bool listenerAdded = false;
   @override

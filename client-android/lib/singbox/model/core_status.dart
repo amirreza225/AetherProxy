@@ -1,11 +1,10 @@
-import 'package:dartx/dartx.dart';
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/features/connection/model/connection_failure.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
+import 'package:dartx/dartx.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'core_status.freezed.dart';
 
-@freezed
 sealed class CoreStatus with _$CoreStatus {
   const CoreStatus._();
 

@@ -1,13 +1,13 @@
 import 'dart:math';
 
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/failures.dart';
 import 'package:aetherproxy/features/proxy/overview/proxies_overview_notifier.dart';
 import 'package:aetherproxy/features/proxy/widget/proxy_tile.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ProxiesOverviewPage extends HookConsumerWidget with PresLogger {

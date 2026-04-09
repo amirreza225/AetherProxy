@@ -4,7 +4,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'reset_tunnel_notifier.g.dart';
 
-@riverpod
 class ResetTunnelNotifier extends _$ResetTunnelNotifier with AppLogger {
   @override
   Future<void> build() async {}
