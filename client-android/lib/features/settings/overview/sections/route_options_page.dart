@@ -1,15 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/model/region.dart';
-import 'package:hiddify/core/preferences/general_preferences.dart';
-import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
-import 'package:hiddify/features/per_app_proxy/model/per_app_proxy_mode.dart';
-import 'package:hiddify/features/per_app_proxy/overview/per_app_proxy_notifier.dart';
-import 'package:hiddify/features/settings/data/config_option_repository.dart';
-import 'package:hiddify/features/settings/widget/preference_tile.dart';
-import 'package:hiddify/singbox/model/singbox_config_enum.dart';
-import 'package:hiddify/utils/platform_utils.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/model/region.dart';
+import 'package:aetherproxy/core/preferences/general_preferences.dart';
+import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
+import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart';
+import 'package:aetherproxy/features/per_app_proxy/overview/per_app_proxy_notifier.dart';
+import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
+import 'package:aetherproxy/features/settings/widget/preference_tile.dart';
+import 'package:aetherproxy/singbox/model/singbox_config_enum.dart';
+import 'package:aetherproxy/utils/platform_utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class RouteOptionsPage extends HookConsumerWidget {

@@ -2,15 +2,15 @@ import 'dart:async';
 
 import 'package:flutter/services.dart';
 import 'package:fpdart/fpdart.dart';
-import 'package:hiddify/core/haptic/haptic_service.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/notification/in_app_notification_controller.dart';
-import 'package:hiddify/features/connection/notifier/connection_notifier.dart';
-import 'package:hiddify/features/profile/data/profile_data_providers.dart';
-import 'package:hiddify/features/profile/data/profile_repository.dart';
-import 'package:hiddify/features/profile/model/profile_entity.dart';
-import 'package:hiddify/features/profile/model/profile_sort_enum.dart';
-import 'package:hiddify/utils/utils.dart';
+import 'package:aetherproxy/core/haptic/haptic_service.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
+import 'package:aetherproxy/features/connection/notifier/connection_notifier.dart';
+import 'package:aetherproxy/features/profile/data/profile_data_providers.dart';
+import 'package:aetherproxy/features/profile/data/profile_repository.dart';
+import 'package:aetherproxy/features/profile/model/profile_entity.dart';
+import 'package:aetherproxy/features/profile/model/profile_sort_enum.dart';
+import 'package:aetherproxy/utils/utils.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profiles_notifier.g.dart';

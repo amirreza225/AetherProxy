@@ -1,6 +1,6 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/model/failures.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/model/failures.dart';
 
 part 'proxy_failure.freezed.dart';
 

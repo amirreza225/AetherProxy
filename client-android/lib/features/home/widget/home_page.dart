@@ -1,15 +1,15 @@
 import 'package:dartx/dartx.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:hiddify/core/app_info/app_info_provider.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/router/bottom_sheets/bottom_sheets_notifier.dart';
-import 'package:hiddify/features/home/widget/connection_button.dart';
-import 'package:hiddify/features/profile/notifier/active_profile_notifier.dart';
-import 'package:hiddify/features/profile/widget/profile_tile.dart';
-import 'package:hiddify/features/proxy/active/active_proxy_card.dart';
-import 'package:hiddify/features/proxy/active/active_proxy_delay_indicator.dart';
-import 'package:hiddify/gen/assets.gen.dart';
+import 'package:aetherproxy/core/app_info/app_info_provider.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/router/bottom_sheets/bottom_sheets_notifier.dart';
+import 'package:aetherproxy/features/home/widget/connection_button.dart';
+import 'package:aetherproxy/features/profile/notifier/active_profile_notifier.dart';
+import 'package:aetherproxy/features/profile/widget/profile_tile.dart';
+import 'package:aetherproxy/features/proxy/active/active_proxy_card.dart';
+import 'package:aetherproxy/features/proxy/active/active_proxy_delay_indicator.dart';
+import 'package:aetherproxy/gen/assets.gen.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:sliver_tools/sliver_tools.dart';
 

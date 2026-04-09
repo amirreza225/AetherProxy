@@ -1,9 +1,9 @@
 import 'package:fpdart/fpdart.dart';
-import 'package:hiddify/core/utils/exception_handler.dart';
-import 'package:hiddify/features/stats/model/stats_failure.dart';
-import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
-import 'package:hiddify/hiddifycore/hiddify_core_service.dart';
-import 'package:hiddify/utils/custom_loggers.dart';
+import 'package:aetherproxy/core/utils/exception_handler.dart';
+import 'package:aetherproxy/features/stats/model/stats_failure.dart';
+import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
+import 'package:aetherproxy/hiddifycore/hiddify_core_service.dart';
+import 'package:aetherproxy/utils/custom_loggers.dart';
 
 abstract interface class StatsRepository {
   Stream<Either<StatsFailure, SystemInfo>> watchStats();

@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/model/failures.dart';
-import 'package:hiddify/core/router/dialog/dialog_notifier.dart';
-import 'package:hiddify/features/profile/notifier/profiles_update_notifier.dart';
-import 'package:hiddify/features/profile/overview/profiles_notifier.dart';
-import 'package:hiddify/features/profile/widget/profile_tile.dart';
-import 'package:hiddify/utils/utils.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/model/failures.dart';
+import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
+import 'package:aetherproxy/features/profile/notifier/profiles_update_notifier.dart';
+import 'package:aetherproxy/features/profile/overview/profiles_notifier.dart';
+import 'package:aetherproxy/features/profile/widget/profile_tile.dart';
+import 'package:aetherproxy/utils/utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ProfilesModal extends HookConsumerWidget {

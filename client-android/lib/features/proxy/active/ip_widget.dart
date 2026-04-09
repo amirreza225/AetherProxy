@@ -1,11 +1,11 @@
 import 'package:circle_flags/circle_flags.dart';
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
-import 'package:hiddify/core/haptic/haptic_service.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/utils/ip_utils.dart';
-import 'package:hiddify/gen/fonts.gen.dart';
-import 'package:hiddify/utils/riverpod_utils.dart';
+import 'package:aetherproxy/core/haptic/haptic_service.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/utils/ip_utils.dart';
+import 'package:aetherproxy/gen/fonts.gen.dart';
+import 'package:aetherproxy/utils/riverpod_utils.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import "package:simple_icons/simple_icons.dart";
 

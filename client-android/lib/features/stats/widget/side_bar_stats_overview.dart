@@ -1,14 +1,14 @@
 import 'package:fluentui_system_icons/fluentui_system_icons.dart';
 import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
-import 'package:hiddify/core/localization/translations.dart';
-import 'package:hiddify/core/model/constants.dart';
-import 'package:hiddify/core/utils/preferences_utils.dart';
-import 'package:hiddify/core/widget/animated_text.dart';
-import 'package:hiddify/features/stats/notifier/stats_notifier.dart';
-import 'package:hiddify/features/stats/widget/stats_card.dart';
-import 'package:hiddify/hiddifycore/generated/v2/hcore/hcore.pb.dart';
-import 'package:hiddify/utils/number_formatters.dart';
+import 'package:aetherproxy/core/localization/translations.dart';
+import 'package:aetherproxy/core/model/constants.dart';
+import 'package:aetherproxy/core/utils/preferences_utils.dart';
+import 'package:aetherproxy/core/widget/animated_text.dart';
+import 'package:aetherproxy/features/stats/notifier/stats_notifier.dart';
+import 'package:aetherproxy/features/stats/widget/stats_card.dart';
+import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
+import 'package:aetherproxy/utils/number_formatters.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 final showAllSidebarStatsProvider = PreferencesNotifier.createAutoDispose("show_all_sidebar_stats", false);
