@@ -84,11 +84,18 @@ func (a *APP) Start() error {
 		logger.Error(err)
 	}
 
+	// Start multi-node health checks
+	service.GetNodeService().StartAllHealthChecks()
+
+	// Start evasion watcher (censorship monitor)
+	service.GetEvasionWatcher().Start()
+
 	return nil
 }
 
 func (a *APP) Stop() {
 	a.cronJob.Stop()
+	service.GetEvasionWatcher().Stop()
 	err := a.subServer.Stop()
 	if err != nil {
 		logger.Warning("stop Sub Server err:", err)

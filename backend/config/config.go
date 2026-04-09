@@ -102,3 +102,11 @@ func GetSubPort() string {
 	}
 	return p
 }
+
+// GetDBDSN returns the full database DSN from AETHER_DB_DSN.
+// When set and starts with "postgres://" or "host=", a PostgreSQL driver is used.
+// When set to a file path, SQLite is used with that path.
+// When empty, the legacy AETHER_DB_FOLDER-derived path is used.
+func GetDBDSN() string {
+	return os.Getenv("AETHER_DB_DSN")
+}

@@ -10,6 +10,7 @@ import (
 	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/database/model"
 
+	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
@@ -33,30 +34,51 @@ func initUser() error {
 	return nil
 }
 
-func OpenDB(dbPath string) error {
+func openSQLite(dbPath string, gormCfg *gorm.Config) error {
 	dir := path.Dir(dbPath)
 	err := os.MkdirAll(dir, 01740)
 	if err != nil {
 		return err
-	}
-
-	var gormLogger logger.Interface
-
-	if config.IsDebug() {
-		gormLogger = logger.Default
-	} else {
-		gormLogger = logger.Discard
-	}
-
-	c := &gorm.Config{
-		Logger: gormLogger,
 	}
 	sep := "?"
 	if strings.Contains(dbPath, "?") {
 		sep = "&"
 	}
 	dsn := dbPath + sep + "_busy_timeout=10000&_journal_mode=WAL"
-	db, err = gorm.Open(sqlite.Open(dsn), c)
+	db, err = gorm.Open(sqlite.Open(dsn), gormCfg)
+	return err
+}
+
+func openPostgres(dsn string, gormCfg *gorm.Config) error {
+	var err error
+	db, err = gorm.Open(postgres.Open(dsn), gormCfg)
+	return err
+}
+
+// OpenDB opens the database. If AETHER_DB_DSN is set it is used as a GORM DSN
+// (supports both SQLite file paths and PostgreSQL connection strings
+// starting with "postgres://" or "host=").
+// For backward-compat the legacy dbPath argument is used when AETHER_DB_DSN is empty.
+func OpenDB(dbPath string) error {
+	var gormLogger logger.Interface
+	if config.IsDebug() {
+		gormLogger = logger.Default
+	} else {
+		gormLogger = logger.Discard
+	}
+	gormCfg := &gorm.Config{Logger: gormLogger}
+
+	// Prefer AETHER_DB_DSN when set
+	dsn := config.GetDBDSN()
+	var err error
+	if dsn != "" && (strings.HasPrefix(dsn, "postgres://") || strings.HasPrefix(dsn, "host=")) {
+		err = openPostgres(dsn, gormCfg)
+	} else if dsn != "" {
+		// Treat as SQLite file path
+		err = openSQLite(dsn, gormCfg)
+	} else {
+		err = openSQLite(dbPath, gormCfg)
+	}
 	if err != nil {
 		return err
 	}
@@ -102,6 +124,8 @@ func InitDB(dbPath string) error {
 		&model.Stats{},
 		&model.Client{},
 		&model.Changes{},
+		&model.Node{},
+		&model.EvasionEvent{},
 	)
 	if err != nil {
 		return err

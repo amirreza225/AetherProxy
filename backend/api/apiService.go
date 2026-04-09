@@ -6,9 +6,12 @@ import (
 	"time"
 
 	"github.com/aetherproxy/backend/database"
+	"github.com/aetherproxy/backend/database/model"
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/service"
 	"github.com/aetherproxy/backend/util"
+	"github.com/aetherproxy/backend/core/plugin"
+	"github.com/aetherproxy/backend/util/common"
 
 	"github.com/gin-gonic/gin"
 )
@@ -26,6 +29,7 @@ type ApiService struct {
 	service.PanelService
 	service.StatsService
 	service.ServerService
+	service.RoutingService
 }
 
 func (a *ApiService) LoadData(c *gin.Context) {
@@ -404,4 +408,179 @@ func (a *ApiService) GetCheckOutbound(c *gin.Context) {
 	link := c.Query("link")
 	result := a.ConfigService.CheckOutbound(tag, link)
 	jsonObj(c, result, nil)
+}
+
+// ── Nodes ─────────────────────────────────────────────────────────────────────
+
+func (a *ApiService) GetNodes(c *gin.Context) {
+	nodes, err := service.GetNodeService().GetAll()
+	jsonObj(c, nodes, err)
+}
+
+func (a *ApiService) CreateNode(c *gin.Context) {
+	var node model.Node
+	if err := c.ShouldBind(&node); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	if err := service.GetNodeService().Create(&node); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	jsonObj(c, node, nil)
+}
+
+func (a *ApiService) UpdateNode(c *gin.Context) {
+	var node model.Node
+	if err := c.ShouldBind(&node); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	if err := service.GetNodeService().Update(&node); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	jsonObj(c, node, nil)
+}
+
+func (a *ApiService) DeleteNode(c *gin.Context) {
+	var req struct {
+		Id uint `form:"id"`
+	}
+	if err := c.ShouldBind(&req); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	err := service.GetNodeService().Delete(req.Id)
+	jsonMsg(c, "", err)
+}
+
+func (a *ApiService) DeployNode(c *gin.Context) {
+	var req struct {
+		Id uint `form:"id"`
+	}
+	if err := c.ShouldBind(&req); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	rawConfig, err := a.ConfigService.GetConfig("")
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	err = service.GetNodeService().DeployConfig(req.Id, *rawConfig)
+	jsonMsg(c, "deploy", err)
+}
+
+// ── Routing ───────────────────────────────────────────────────────────────────
+
+func (a *ApiService) GetRouting(c *gin.Context) {
+	rules, err := a.RoutingService.GetRules()
+	jsonObj(c, rules, err)
+}
+
+func (a *ApiService) SaveRouting(c *gin.Context) {
+	var rules []service.RouteRule
+	if err := c.ShouldBindJSON(&rules); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	err := a.RoutingService.SaveRules(rules)
+	jsonMsg(c, "routing", err)
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+func (a *ApiService) GetAnalytics(c *gin.Context) {
+	limitH, err := strconv.Atoi(c.DefaultQuery("h", "24"))
+	if err != nil || limitH <= 0 {
+		limitH = 24
+	}
+
+	// Aggregate stats per tag and direction over the requested window.
+	db := database.GetDB()
+	cutoff := time.Now().Unix() - int64(limitH)*3600
+
+	type row struct {
+		Tag       string `json:"tag"`
+		Direction bool   `json:"direction"`
+		Total     int64  `json:"total"`
+	}
+	var rows []row
+	err = db.Raw(`SELECT tag, direction, SUM(traffic) AS total
+		FROM stats
+		WHERE resource = 'inbound' AND date_time > ?
+		GROUP BY tag, direction
+		ORDER BY tag, direction`, cutoff).Scan(&rows).Error
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+
+	// Pivot into per-tag up/down map
+	type tagStats struct {
+		Up   int64 `json:"up"`
+		Down int64 `json:"down"`
+	}
+	result := make(map[string]*tagStats)
+	for _, r := range rows {
+		if _, ok := result[r.Tag]; !ok {
+			result[r.Tag] = &tagStats{}
+		}
+		if r.Direction {
+			result[r.Tag].Up = r.Total
+		} else {
+			result[r.Tag].Down = r.Total
+		}
+	}
+
+	// Also include recent evasion events
+	evasionEvents, _ := service.GetRecentEvasionEvents(50)
+
+	jsonObj(c, gin.H{
+		"perProtocol":   result,
+		"evasionEvents": evasionEvents,
+		"windowHours":   limitH,
+	}, nil)
+}
+
+// ── Plugins ───────────────────────────────────────────────────────────────────
+
+func (a *ApiService) GetPlugins(c *gin.Context) {
+	infos := plugin.List()
+	type pluginDTO struct {
+		Name        string          `json:"name"`
+		Description string          `json:"description"`
+		Enabled     bool            `json:"enabled"`
+		Config      json.RawMessage `json:"config"`
+	}
+	result := make([]pluginDTO, 0, len(infos))
+	for _, info := range infos {
+		result = append(result, pluginDTO{
+			Name:        info.Plugin.Name(),
+			Description: info.Plugin.Description(),
+			Enabled:     info.Plugin.Enabled(),
+			Config:      info.Config,
+		})
+	}
+	jsonObj(c, result, nil)
+}
+
+func (a *ApiService) SetPluginEnabled(c *gin.Context) {
+	name := c.Request.FormValue("name")
+	enabled := c.Request.FormValue("enabled") == "true"
+	info := plugin.Get(name)
+	if info == nil {
+		jsonMsg(c, "", common.NewError("plugin not found: ", name))
+		return
+	}
+	info.Plugin.SetEnabled(enabled)
+	jsonMsg(c, "plugin", nil)
+}
+
+func (a *ApiService) SetPluginConfig(c *gin.Context) {
+	name := c.Request.FormValue("name")
+	cfg := json.RawMessage(c.Request.FormValue("config"))
+	err := plugin.SetConfig(name, cfg)
+	jsonMsg(c, "plugin", err)
 }

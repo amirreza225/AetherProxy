@@ -111,3 +111,112 @@ export function subUrl(token: string): string {
     process.env.NEXT_PUBLIC_SUB_URL ?? BASE_URL.replace("2095", "2096");
   return `${subBase}/sub/${token}`;
 }
+
+// ── Nodes ─────────────────────────────────────────────────────────────────────
+
+export interface Node {
+  id: number;
+  name: string;
+  host: string;
+  sshPort: number;
+  sshKeyPath: string;
+  provider: string;
+  status: "online" | "offline" | "unknown";
+  lastPing: number;
+}
+
+export async function getNodes(headers?: HeadersInit) {
+  return apiFetch<Node[]>("/api/nodes", { headers });
+}
+
+export async function createNode(node: Omit<Node, "id" | "status" | "lastPing">) {
+  return apiFetch<Node>("/api/createNode", {
+    method: "POST",
+    body: new URLSearchParams(node as unknown as Record<string, string>),
+  });
+}
+
+export async function updateNode(node: Node) {
+  return apiFetch<Node>("/api/updateNode", {
+    method: "POST",
+    body: new URLSearchParams(node as unknown as Record<string, string>),
+  });
+}
+
+export async function deleteNode(id: number) {
+  return apiFetch("/api/deleteNode", {
+    method: "POST",
+    body: new URLSearchParams({ id: String(id) }),
+  });
+}
+
+export async function deployNode(id: number) {
+  return apiFetch("/api/deployNode", {
+    method: "POST",
+    body: new URLSearchParams({ id: String(id) }),
+  });
+}
+
+// ── Routing ───────────────────────────────────────────────────────────────────
+
+export interface RouteRule {
+  inbound?: string[];
+  network?: string;
+  domain_suffix?: string[];
+  geoip?: string[];
+  outbound?: string;
+  action?: string;
+}
+
+export async function getRouting(headers?: HeadersInit) {
+  return apiFetch<RouteRule[]>("/api/routing", { headers });
+}
+
+export async function saveRouting(rules: RouteRule[]) {
+  return apiFetch("/api/saveRouting", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(rules),
+  });
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+export interface AnalyticsData {
+  perProtocol: Record<string, { up: number; down: number }>;
+  evasionEvents: Array<{
+    id: number;
+    dateTime: number;
+    source: string;
+    protocol: string;
+    port: number;
+    domain: string;
+    detail: string;
+    autoAction: string;
+  }>;
+  windowHours: number;
+}
+
+export async function getAnalytics(hours = 24, headers?: HeadersInit) {
+  return apiFetch<AnalyticsData>(`/api/analytics?h=${hours}`, { headers });
+}
+
+// ── Plugins ───────────────────────────────────────────────────────────────────
+
+export interface PluginInfo {
+  name: string;
+  description: string;
+  enabled: boolean;
+  config: unknown;
+}
+
+export async function getPlugins(headers?: HeadersInit) {
+  return apiFetch<PluginInfo[]>("/api/plugins", { headers });
+}
+
+export async function setPluginEnabled(name: string, enabled: boolean) {
+  return apiFetch("/api/setPluginEnabled", {
+    method: "POST",
+    body: new URLSearchParams({ name, enabled: String(enabled) }),
+  });
+}

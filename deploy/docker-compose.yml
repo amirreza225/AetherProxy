@@ -8,6 +8,9 @@ services:
       AETHER_PORT: "2095"
       AETHER_SUB_PORT: "2096"
       AETHER_DB_FOLDER: /data/db
+      # Set AETHER_DB_DSN to a postgres:// URI to use PostgreSQL instead of SQLite.
+      # Example: AETHER_DB_DSN=postgres://aether:secret@postgres:5432/aether?sslmode=disable
+      AETHER_DB_DSN: "${AETHER_DB_DSN:-}"
       AETHER_JWT_SECRET: "${AETHER_JWT_SECRET}"
       AETHER_ADMIN_ORIGIN: "${AETHER_ADMIN_ORIGIN:-http://localhost:3000}"
       AETHER_LOG_LEVEL: "${AETHER_LOG_LEVEL:-info}"
@@ -16,6 +19,29 @@ services:
     ports:
       - "2095:2095"
       - "2096:2096"
+    networks:
+      - aether_net
+    depends_on:
+      postgres:
+        condition: service_healthy
+        required: false
+
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    profiles:
+      - postgres
+    environment:
+      POSTGRES_DB: "${POSTGRES_DB:-aether}"
+      POSTGRES_USER: "${POSTGRES_USER:-aether}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-aether}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
     networks:
       - aether_net
 
@@ -52,6 +78,7 @@ services:
 
 volumes:
   aether_data:
+  postgres_data:
   caddy_data:
   caddy_config:
 

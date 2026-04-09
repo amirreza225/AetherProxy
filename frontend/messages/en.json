@@ -1,0 +1,115 @@
+{
+  "nav": {
+    "dashboard": "Dashboard",
+    "nodes": "Nodes",
+    "users": "Users",
+    "subscriptions": "Subscriptions",
+    "routing": "Routing",
+    "analytics": "Analytics",
+    "settings": "Settings",
+    "plugins": "Plugins"
+  },
+  "login": {
+    "title": "AetherProxy",
+    "username": "Username",
+    "password": "Password",
+    "signIn": "Sign in",
+    "signingIn": "Signing in…",
+    "connectionFailed": "Connection failed",
+    "invalidCredentials": "Invalid credentials"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "live": "Live",
+    "connecting": "Connecting…",
+    "onlineClients": "Online Clients",
+    "cpuUsage": "CPU Usage",
+    "memory": "Memory"
+  },
+  "nodes": {
+    "title": "Nodes",
+    "add": "Add Node",
+    "name": "Name",
+    "host": "Host",
+    "sshPort": "SSH Port",
+    "provider": "Provider",
+    "status": "Status",
+    "online": "Online",
+    "offline": "Offline",
+    "unknown": "Unknown",
+    "lastPing": "Last Ping",
+    "actions": "Actions",
+    "deploy": "Deploy",
+    "delete": "Delete",
+    "phase1Note": "Phase 1 shows sing-box inbounds. Multi-VPS node management arrives in Phase 2.",
+    "protocol": "Protocol",
+    "port": "Port",
+    "active": "active",
+    "disabled": "disabled"
+  },
+  "users": {
+    "title": "Users",
+    "id": "ID",
+    "username": "Username",
+    "add": "Add User",
+    "edit": "Edit",
+    "delete": "Delete",
+    "loadError": "Failed to load users."
+  },
+  "subscriptions": {
+    "title": "Subscriptions",
+    "generate": "Generate subscription link",
+    "token": "Subscription token",
+    "tokenPlaceholder": "Paste user token here",
+    "generateButton": "Generate"
+  },
+  "routing": {
+    "title": "Routing Rules",
+    "addRule": "Add Rule",
+    "inbound": "Inbound",
+    "network": "Network",
+    "domainSuffix": "Domain Suffix",
+    "geoip": "GeoIP",
+    "outbound": "Outbound",
+    "actions": "Actions",
+    "delete": "Delete",
+    "save": "Save Rules",
+    "saving": "Saving…",
+    "saveSuccess": "Routing rules saved.",
+    "saveError": "Failed to save routing rules."
+  },
+  "analytics": {
+    "title": "Analytics",
+    "range24h": "24h",
+    "range7d": "7d",
+    "range30d": "30d",
+    "perProtocol": "Per-Protocol Traffic",
+    "upload": "Upload",
+    "download": "Download",
+    "noData": "No analytics data available yet.",
+    "loadError": "Failed to load analytics."
+  },
+  "settings": {
+    "title": "Settings",
+    "currentSettings": "Current settings",
+    "loadError": "Failed to load settings."
+  },
+  "plugins": {
+    "title": "Plugins",
+    "noPlugins": "No plugins installed.",
+    "name": "Name",
+    "enabled": "Enabled",
+    "actions": "Actions",
+    "enable": "Enable",
+    "disable": "Disable"
+  },
+  "common": {
+    "loading": "Loading…",
+    "error": "Error",
+    "save": "Save",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "yes": "Yes",
+    "no": "No"
+  }
+}

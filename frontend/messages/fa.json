@@ -1,0 +1,115 @@
+{
+  "nav": {
+    "dashboard": "داشبورد",
+    "nodes": "نودها",
+    "users": "کاربران",
+    "subscriptions": "اشتراک‌ها",
+    "routing": "مسیریابی",
+    "analytics": "آمار",
+    "settings": "تنظیمات",
+    "plugins": "افزونه‌ها"
+  },
+  "login": {
+    "title": "AetherProxy",
+    "username": "نام کاربری",
+    "password": "رمز عبور",
+    "signIn": "ورود",
+    "signingIn": "در حال ورود…",
+    "connectionFailed": "اتصال ناموفق بود",
+    "invalidCredentials": "نام کاربری یا رمز عبور اشتباه است"
+  },
+  "dashboard": {
+    "title": "داشبورد",
+    "live": "زنده",
+    "connecting": "در حال اتصال…",
+    "onlineClients": "کاربران آنلاین",
+    "cpuUsage": "مصرف CPU",
+    "memory": "حافظه"
+  },
+  "nodes": {
+    "title": "نودها",
+    "add": "افزودن نود",
+    "name": "نام",
+    "host": "آدرس سرور",
+    "sshPort": "پورت SSH",
+    "provider": "ارائه‌دهنده",
+    "status": "وضعیت",
+    "online": "آنلاین",
+    "offline": "آفلاین",
+    "unknown": "نامشخص",
+    "lastPing": "آخرین پینگ",
+    "actions": "عملیات",
+    "deploy": "استقرار",
+    "delete": "حذف",
+    "phase1Note": "فاز ۱ فقط inbound های sing-box را نمایش می‌دهد. مدیریت چند نود در فاز ۲ اضافه می‌شود.",
+    "protocol": "پروتکل",
+    "port": "پورت",
+    "active": "فعال",
+    "disabled": "غیرفعال"
+  },
+  "users": {
+    "title": "کاربران",
+    "id": "شناسه",
+    "username": "نام کاربری",
+    "add": "افزودن کاربر",
+    "edit": "ویرایش",
+    "delete": "حذف",
+    "loadError": "خطا در بارگذاری کاربران."
+  },
+  "subscriptions": {
+    "title": "اشتراک‌ها",
+    "generate": "ساخت لینک اشتراک",
+    "token": "توکن اشتراک",
+    "tokenPlaceholder": "توکن کاربر را اینجا وارد کنید",
+    "generateButton": "ساخت"
+  },
+  "routing": {
+    "title": "قوانین مسیریابی",
+    "addRule": "افزودن قانون",
+    "inbound": "ورودی",
+    "network": "شبکه",
+    "domainSuffix": "پسوند دامنه",
+    "geoip": "GeoIP",
+    "outbound": "خروجی",
+    "actions": "عملیات",
+    "delete": "حذف",
+    "save": "ذخیره قوانین",
+    "saving": "در حال ذخیره…",
+    "saveSuccess": "قوانین مسیریابی ذخیره شد.",
+    "saveError": "خطا در ذخیره قوانین مسیریابی."
+  },
+  "analytics": {
+    "title": "آمار",
+    "range24h": "۲۴ ساعت",
+    "range7d": "۷ روز",
+    "range30d": "۳۰ روز",
+    "perProtocol": "ترافیک بر اساس پروتکل",
+    "upload": "آپلود",
+    "download": "دانلود",
+    "noData": "داده‌ای برای نمایش وجود ندارد.",
+    "loadError": "خطا در بارگذاری آمار."
+  },
+  "settings": {
+    "title": "تنظیمات",
+    "currentSettings": "تنظیمات فعلی",
+    "loadError": "خطا در بارگذاری تنظیمات."
+  },
+  "plugins": {
+    "title": "افزونه‌ها",
+    "noPlugins": "هیچ افزونه‌ای نصب نشده است.",
+    "name": "نام",
+    "enabled": "فعال",
+    "actions": "عملیات",
+    "enable": "فعال‌سازی",
+    "disable": "غیرفعال‌سازی"
+  },
+  "common": {
+    "loading": "در حال بارگذاری…",
+    "error": "خطا",
+    "save": "ذخیره",
+    "cancel": "لغو",
+    "confirm": "تأیید",
+    "yes": "بله",
+    "no": "خیر"
+  }
+}

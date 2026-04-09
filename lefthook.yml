@@ -1,0 +1,12 @@
+pre-commit:
+  parallel: true
+  commands:
+    backend-lint:
+      root: "backend/"
+      run: golangci-lint run ./...
+    frontend-lint:
+      root: "frontend/"
+      run: npm run lint
+    android-analyze:
+      root: "client-android/"
+      run: flutter analyze --fatal-infos

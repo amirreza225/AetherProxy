@@ -58,6 +58,20 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 	case "deleteToken":
 		a.ApiService.DeleteToken(c)
 		a.apiv2.ReloadTokens()
+	case "createNode":
+		a.ApiService.CreateNode(c)
+	case "updateNode":
+		a.ApiService.UpdateNode(c)
+	case "deleteNode":
+		a.ApiService.DeleteNode(c)
+	case "deployNode":
+		a.ApiService.DeployNode(c)
+	case "saveRouting":
+		a.ApiService.SaveRouting(c)
+	case "setPluginEnabled":
+		a.ApiService.SetPluginEnabled(c)
+	case "setPluginConfig":
+		a.ApiService.SetPluginConfig(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
@@ -101,6 +115,14 @@ func (a *APIHandler) getHandler(c *gin.Context) {
 		a.ApiService.GetSingboxConfig(c)
 	case "checkOutbound":
 		a.ApiService.GetCheckOutbound(c)
+	case "nodes":
+		a.ApiService.GetNodes(c)
+	case "routing":
+		a.ApiService.GetRouting(c)
+	case "analytics":
+		a.ApiService.GetAnalytics(c)
+	case "plugins":
+		a.ApiService.GetPlugins(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}

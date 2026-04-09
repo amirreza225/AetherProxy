@@ -12,7 +12,10 @@ const navItems = [
   { href: "/nodes", label: "Nodes" },
   { href: "/users", label: "Users" },
   { href: "/subscriptions", label: "Subscriptions" },
+  { href: "/routing", label: "Routing" },
+  { href: "/analytics", label: "Analytics" },
   { href: "/settings", label: "Settings" },
+  { href: "/plugins", label: "Plugins" },
 ];
 
 export function Sidebar() {

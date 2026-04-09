@@ -1,10 +1,22 @@
 "use client";
 
 import useSWR from "swr";
-import { loadPartial } from "@/lib/api";
+import { useState } from "react";
+import { loadPartial, getNodes, createNode, deleteNode, deployNode, type Node } from "@/lib/api";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 interface Inbound {
   tag: string;
@@ -13,56 +25,185 @@ interface Inbound {
   enabled?: boolean;
 }
 
+function NodeStatusBadge({ status }: { status: Node["status"] }) {
+  const variant =
+    status === "online" ? "default" : status === "offline" ? "destructive" : "secondary";
+  return <Badge variant={variant}>{status}</Badge>;
+}
+
+function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ name: "", host: "", sshPort: "22", sshKeyPath: "", provider: "" });
+  const [saving, setSaving] = useState(false);
+
+  async function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      await createNode({ ...form, sshPort: Number(form.sshPort) });
+      onCreated();
+      setOpen(false);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button size="sm">Add Node</Button>
+      </DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Add Remote Node</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <div>
+            <Label htmlFor="name">Name</Label>
+            <Input id="name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
+          </div>
+          <div>
+            <Label htmlFor="host">Host / IP</Label>
+            <Input id="host" value={form.host} onChange={e => setForm(f => ({ ...f, host: e.target.value }))} required />
+          </div>
+          <div>
+            <Label htmlFor="sshPort">SSH Port</Label>
+            <Input id="sshPort" type="number" value={form.sshPort} onChange={e => setForm(f => ({ ...f, sshPort: e.target.value }))} />
+          </div>
+          <div>
+            <Label htmlFor="sshKeyPath">SSH Key Path (on server)</Label>
+            <Input id="sshKeyPath" value={form.sshKeyPath} onChange={e => setForm(f => ({ ...f, sshKeyPath: e.target.value }))} placeholder="/root/.ssh/id_rsa" />
+          </div>
+          <div>
+            <Label htmlFor="provider">Provider</Label>
+            <Input id="provider" value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))} placeholder="e.g. Hetzner, DigitalOcean" />
+          </div>
+          <Button type="submit" disabled={saving} className="w-full">
+            {saving ? "Saving…" : "Add Node"}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 export default function NodesPage() {
-  const { data, isLoading, error } = useSWR("/api/inbounds", () =>
+  const { data: inboundData, isLoading: inboundsLoading, error: inboundsError } = useSWR("/api/inbounds", () =>
     loadPartial(["inbounds"]).then((r) => r.obj as { inbounds?: Inbound[] })
   );
+  const { data: nodesData, isLoading: nodesLoading, error: nodesError, mutate: mutateNodes } = useSWR("/api/nodes", () =>
+    getNodes().then(r => r.obj as Node[])
+  );
 
-  const inbounds = data?.inbounds ?? [];
+  const inbounds = inboundData?.inbounds ?? [];
+  const nodes = nodesData ?? [];
+
+  async function handleDelete(id: number) {
+    if (!confirm("Delete this node?")) return;
+    await deleteNode(id);
+    mutateNodes();
+  }
+
+  async function handleDeploy(id: number) {
+    await deployNode(id);
+    alert("Deploy triggered.");
+  }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Nodes / Inbounds</h1>
-      <p className="text-sm text-muted-foreground">
-        Phase 1 shows sing-box inbounds. Multi-VPS node management arrives in
-        Phase 2.
-      </p>
+      <h1 className="text-2xl font-semibold">Nodes</h1>
 
-      {error && (
-        <p className="text-sm text-destructive">Failed to load inbounds.</p>
-      )}
+      <Tabs defaultValue="remote">
+        <TabsList>
+          <TabsTrigger value="remote">Remote Nodes (Phase 2)</TabsTrigger>
+          <TabsTrigger value="inbounds">Local Inbounds</TabsTrigger>
+        </TabsList>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-        {isLoading
-          ? Array.from({ length: 3 }).map((_, i) => (
-              <Card key={i}>
-                <CardHeader className="pb-2">
-                  <Skeleton className="h-5 w-32" />
-                </CardHeader>
-                <CardContent>
-                  <Skeleton className="h-4 w-20" />
-                </CardContent>
-              </Card>
-            ))
-          : inbounds.map((ib) => (
-              <Card key={ib.tag}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium flex items-center justify-between">
-                    {ib.tag}
-                    <Badge
-                      variant={ib.enabled === false ? "secondary" : "default"}
-                    >
-                      {ib.enabled === false ? "disabled" : "active"}
-                    </Badge>
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-sm text-muted-foreground">
-                  <p>Protocol: {ib.type}</p>
-                  {ib.listen_port && <p>Port: {ib.listen_port}</p>}
-                </CardContent>
-              </Card>
-            ))}
-      </div>
+        <TabsContent value="remote" className="space-y-4 pt-2">
+          <div className="flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Manage remote VPS nodes. AetherProxy health-checks them every 30s.
+            </p>
+            <AddNodeDialog onCreated={() => mutateNodes()} />
+          </div>
+
+          {nodesError && <p className="text-sm text-destructive">Failed to load nodes.</p>}
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {nodesLoading
+              ? Array.from({ length: 2 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /></CardHeader>
+                    <CardContent><Skeleton className="h-4 w-20" /></CardContent>
+                  </Card>
+                ))
+              : nodes.map((node) => (
+                  <Card key={node.id}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium flex items-center justify-between">
+                        {node.name}
+                        <NodeStatusBadge status={node.status} />
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-muted-foreground space-y-1">
+                      <p>{node.host}:{node.sshPort}</p>
+                      {node.provider && <p>Provider: {node.provider}</p>}
+                      {node.lastPing > 0 && (
+                        <p>Last ping: {new Date(node.lastPing * 1000).toLocaleTimeString()}</p>
+                      )}
+                      <div className="flex gap-2 pt-2">
+                        <Button size="sm" variant="outline" onClick={() => handleDeploy(node.id)}>
+                          Deploy
+                        </Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleDelete(node.id)}>
+                          Delete
+                        </Button>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))}
+            {!nodesLoading && nodes.length === 0 && (
+              <p className="text-sm text-muted-foreground col-span-3">
+                No remote nodes yet. Click &quot;Add Node&quot; to register a VPS.
+              </p>
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="inbounds" className="space-y-4 pt-2">
+          <p className="text-sm text-muted-foreground">
+            Local sing-box inbounds on this server.
+          </p>
+
+          {inboundsError && <p className="text-sm text-destructive">Failed to load inbounds.</p>}
+
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {inboundsLoading
+              ? Array.from({ length: 3 }).map((_, i) => (
+                  <Card key={i}>
+                    <CardHeader className="pb-2"><Skeleton className="h-5 w-32" /></CardHeader>
+                    <CardContent><Skeleton className="h-4 w-20" /></CardContent>
+                  </Card>
+                ))
+              : inbounds.map((ib) => (
+                  <Card key={ib.tag}>
+                    <CardHeader className="pb-2">
+                      <CardTitle className="text-sm font-medium flex items-center justify-between">
+                        {ib.tag}
+                        <Badge variant={ib.enabled === false ? "secondary" : "default"}>
+                          {ib.enabled === false ? "disabled" : "active"}
+                        </Badge>
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="text-sm text-muted-foreground">
+                      <p>Protocol: {ib.type}</p>
+                      {ib.listen_port && <p>Port: {ib.listen_port}</p>}
+                    </CardContent>
+                  </Card>
+                ))}
+          </div>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
