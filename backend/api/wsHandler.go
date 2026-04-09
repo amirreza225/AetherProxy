@@ -18,8 +18,17 @@ type StatsWSHandler struct {
 }
 
 type liveStats struct {
-	Onlines interface{} `json:"onlines"`
-	Status  interface{} `json:"status"`
+	Onlines       interface{}        `json:"onlines"`
+	Status        interface{}        `json:"status"`
+	EvasionAlerts []evasionAlertDTO  `json:"evasionAlerts,omitempty"`
+}
+
+type evasionAlertDTO struct {
+	DateTime   int64  `json:"dateTime"`
+	Source     string `json:"source"`
+	Protocol   string `json:"protocol"`
+	AutoAction string `json:"autoAction"`
+	Detail     string `json:"detail"`
 }
 
 // RegisterWSRoutes adds the WebSocket endpoint to the given router group.
@@ -31,6 +40,8 @@ func RegisterWSRoutes(g *gin.RouterGroup) {
 
 // ServeStats streams live stats every 2 seconds over a WebSocket connection.
 // The client must supply a valid JWT via the Authorization header or aether_token cookie.
+// Each message includes online counts, system status, and any new evasion alerts
+// detected since the previous message (for real-time admin panel notifications).
 func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 	if !IsLogin(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
@@ -51,6 +62,9 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 	ticker := time.NewTicker(2 * time.Second)
 	defer ticker.Stop()
 
+	// Track the last evasion event timestamp we have sent so we only push new ones.
+	lastEvasionTS := time.Now().Unix()
+
 	for {
 		select {
 		case <-ctx.Done():
@@ -63,9 +77,16 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 			}
 			status := h.ServerService.GetStatus("")
 
+			// Collect new evasion events since the last tick.
+			newAlerts := getNewEvasionAlerts(lastEvasionTS)
+			if len(newAlerts) > 0 {
+				lastEvasionTS = time.Now().Unix()
+			}
+
 			payload := liveStats{
-				Onlines: onlines,
-				Status:  status,
+				Onlines:       onlines,
+				Status:        status,
+				EvasionAlerts: newAlerts,
 			}
 
 			raw, _ := json.Marshal(payload)
@@ -74,4 +95,23 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 			}
 		}
 	}
+}
+
+// getNewEvasionAlerts returns evasion events stored after sinceTS.
+func getNewEvasionAlerts(sinceTS int64) []evasionAlertDTO {
+	events, err := service.GetEvasionEventsSince(sinceTS)
+	if err != nil || len(events) == 0 {
+		return nil
+	}
+	result := make([]evasionAlertDTO, 0, len(events))
+	for _, e := range events {
+		result = append(result, evasionAlertDTO{
+			DateTime:   e.DateTime,
+			Source:     e.Source,
+			Protocol:   e.Protocol,
+			AutoAction: e.AutoAction,
+			Detail:     e.Detail,
+		})
+	}
+	return result
 }

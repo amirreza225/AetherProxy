@@ -32,6 +32,7 @@ func (s *SubService) GetSubs(subId string) (*string, []string, error) {
 	}
 
 	linksArray := s.LinkService.GetLinks(&client.Links, "all", clientInfo)
+	linksArray = filterOfflineNodes(linksArray)
 	result := strings.Join(linksArray, "\n")
 
 	headers := s.getClientHeaders(client)
@@ -42,6 +43,46 @@ func (s *SubService) GetSubs(subId string) (*string, []string, error) {
 	}
 
 	return &result, headers, nil
+}
+
+// filterOfflineNodes removes any proxy URI whose host matches a node that is
+// currently marked "offline" in the nodes table. This implements the Phase 2
+// failover requirement: unhealthy nodes are excluded from subscription output.
+func filterOfflineNodes(links []string) []string {
+	offlineHosts := getOfflineNodeHosts()
+	if len(offlineHosts) == 0 {
+		return links
+	}
+	result := links[:0:0] // reuse backing array, empty slice
+	for _, link := range links {
+		excluded := false
+		for host := range offlineHosts {
+			if strings.Contains(link, "@"+host+":") || strings.Contains(link, "//"+host+":") {
+				excluded = true
+				break
+			}
+		}
+		if !excluded {
+			result = append(result, link)
+		}
+	}
+	return result
+}
+
+// getOfflineNodeHosts returns a set of host IPs/domains for all offline nodes.
+func getOfflineNodeHosts() map[string]struct{} {
+	db := database.GetDB()
+	var nodes []model.Node
+	if err := db.Where("status = ?", "offline").Find(&nodes).Error; err != nil {
+		return nil
+	}
+	m := make(map[string]struct{}, len(nodes))
+	for _, n := range nodes {
+		if n.Host != "" {
+			m[n.Host] = struct{}{}
+		}
+	}
+	return m
 }
 
 func (j *SubService) getClientBySubId(subId string) (*model.Client, error) {

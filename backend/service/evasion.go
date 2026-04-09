@@ -172,3 +172,12 @@ func GetRecentEvasionEvents(limit int) ([]model.EvasionEvent, error) {
 	err := db.Order("date_time desc").Limit(limit).Find(&events).Error
 	return events, err
 }
+
+// GetEvasionEventsSince returns evasion events with DateTime > sinceTS.
+// Used by the WebSocket handler to stream new alerts to the admin panel in real time.
+func GetEvasionEventsSince(sinceTS int64) ([]model.EvasionEvent, error) {
+	db := database.GetDB()
+	var events []model.EvasionEvent
+	err := db.Where("date_time > ?", sinceTS).Order("date_time asc").Find(&events).Error
+	return events, err
+}

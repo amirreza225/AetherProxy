@@ -112,21 +112,7 @@ func InitDB(dbPath string) error {
 		db.Create(&defaultOutbound)
 	}
 
-	err = db.AutoMigrate(
-		&model.Setting{},
-		&model.Tls{},
-		&model.Inbound{},
-		&model.Outbound{},
-		&model.Service{},
-		&model.Endpoint{},
-		&model.User{},
-		&model.Tokens{},
-		&model.Stats{},
-		&model.Client{},
-		&model.Changes{},
-		&model.Node{},
-		&model.EvasionEvent{},
-	)
+	err = Migrate()
 	if err != nil {
 		return err
 	}

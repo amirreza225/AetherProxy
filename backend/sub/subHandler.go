@@ -4,6 +4,8 @@ import (
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/service"
 
+	qrcode "github.com/skip2/go-qrcode"
+
 	"github.com/gin-gonic/gin"
 )
 
@@ -22,6 +24,7 @@ func NewSubHandler(g *gin.RouterGroup) {
 func (s *SubHandler) initRouter(g *gin.RouterGroup) {
 	g.GET("/:subid", s.subs)
 	g.HEAD("/:subid", s.subHeaders)
+	g.GET("/qr/:subid", s.subQR)
 }
 
 func (s *SubHandler) subs(c *gin.Context) {
@@ -69,6 +72,30 @@ func (s *SubHandler) subHeaders(c *gin.Context) {
 	s.addHeaders(c, headers)
 
 	c.Status(200)
+}
+
+// subQR serves the subscription URL as a QR code PNG image.
+// The QR code encodes the URL a client would use to import the subscription.
+// Example: GET /sub/qr/<subid>
+func (s *SubHandler) subQR(c *gin.Context) {
+	subId := c.Param("subid")
+
+	// Build the subscription URL using the request host
+	scheme := "https"
+	if c.Request.TLS == nil {
+		scheme = "http"
+	}
+	subURL := scheme + "://" + c.Request.Host + "/sub/" + subId
+
+	png, err := qrcode.Encode(subURL, qrcode.Medium, 256)
+	if err != nil {
+		logger.Error("subQR encode:", err)
+		c.String(500, "QR generation failed")
+		return
+	}
+
+	c.Header("Cache-Control", "no-store")
+	c.Data(200, "image/png", png)
 }
 
 func (s *SubHandler) addHeaders(c *gin.Context, headers []string) {
