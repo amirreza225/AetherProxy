@@ -2,10 +2,12 @@ package service
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
+	coreplugin "github.com/aetherproxy/backend/core/plugin"
 	"github.com/aetherproxy/backend/util/common"
 
 	"gorm.io/gorm"
@@ -53,6 +55,10 @@ func (o *OutboundService) GetAllConfig(db *gorm.DB) ([]json.RawMessage, error) {
 		if err != nil {
 			return nil, err
 		}
+		outboundJson, err = coreplugin.ApplyAll(outboundJson)
+		if err != nil {
+			return nil, fmt.Errorf("plugin pipeline for outbound %q: %w", outbound.Tag, err)
+		}
 		outboundsJson = append(outboundsJson, outboundJson)
 	}
 	return outboundsJson, nil
@@ -73,6 +79,10 @@ func (s *OutboundService) Save(tx *gorm.DB, act string, data json.RawMessage) er
 			configData, err := outbound.MarshalJSON()
 			if err != nil {
 				return err
+			}
+			configData, err = coreplugin.ApplyAll(configData)
+			if err != nil {
+				return fmt.Errorf("plugin pipeline for outbound %q: %w", outbound.Tag, err)
 			}
 			if act == "edit" {
 				var oldTag string

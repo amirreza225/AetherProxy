@@ -220,3 +220,10 @@ export async function setPluginEnabled(name: string, enabled: boolean) {
     body: new URLSearchParams({ name, enabled: String(enabled) }),
   });
 }
+
+export async function setPluginConfig(name: string, config: unknown) {
+  return apiFetch("/api/setPluginConfig", {
+    method: "POST",
+    body: new URLSearchParams({ name, config: JSON.stringify(config) }),
+  });
+}
