@@ -107,6 +107,7 @@ func (a *APP) Start() error {
 func (a *APP) Stop() {
 	a.cronJob.Stop()
 	service.GetEvasionWatcher().Stop()
+	service.GetDiscoveryService().Stop()
 	err := a.subServer.Stop()
 	if err != nil {
 		logger.Warning("stop Sub Server err:", err)

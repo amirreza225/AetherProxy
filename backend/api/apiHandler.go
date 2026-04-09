@@ -72,6 +72,12 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 		a.ApiService.SetPluginEnabled(c)
 	case "setPluginConfig":
 		a.ApiService.SetPluginConfig(c)
+	case "discoveryJoin":
+		a.ApiService.DiscoveryJoin(c)
+	case "discoveryLeave":
+		a.ApiService.DiscoveryLeave(c)
+	case "discoveryAddPeer":
+		a.ApiService.DiscoveryAddPeer(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
@@ -123,6 +129,10 @@ func (a *APIHandler) getHandler(c *gin.Context) {
 		a.ApiService.GetAnalytics(c)
 	case "plugins":
 		a.ApiService.GetPlugins(c)
+	case "discoveryStatus":
+		a.ApiService.GetDiscoveryStatus(c)
+	case "discoveryPeers":
+		a.ApiService.GetDiscoveryPeers(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}

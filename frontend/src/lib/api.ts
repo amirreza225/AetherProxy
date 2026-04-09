@@ -227,3 +227,43 @@ export async function setPluginConfig(name: string, config: unknown) {
     body: new URLSearchParams({ name, config: JSON.stringify(config) }),
   });
 }
+
+// ── Decentralized Discovery ───────────────────────────────────────────────────
+
+export interface DiscoveryStatus {
+  running: boolean;
+  memberCount: number;
+}
+
+export interface PeerNode {
+  id: number;
+  name: string;
+  address: string;
+  gossipPort: number;
+  version: string;
+  status: "alive" | "suspect" | "dead" | "left";
+  lastSeen: number;
+}
+
+export async function getDiscoveryStatus(headers?: HeadersInit) {
+  return apiFetch<DiscoveryStatus>("/api/discoveryStatus", { headers });
+}
+
+export async function getDiscoveryPeers(headers?: HeadersInit) {
+  return apiFetch<PeerNode[]>("/api/discoveryPeers", { headers });
+}
+
+export async function discoveryJoin() {
+  return apiFetch("/api/discoveryJoin", { method: "POST", body: "" });
+}
+
+export async function discoveryLeave() {
+  return apiFetch("/api/discoveryLeave", { method: "POST", body: "" });
+}
+
+export async function discoveryAddPeer(addr: string) {
+  return apiFetch("/api/discoveryAddPeer", {
+    method: "POST",
+    body: new URLSearchParams({ addr }),
+  });
+}

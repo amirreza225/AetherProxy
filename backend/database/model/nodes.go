@@ -13,6 +13,18 @@ type Node struct {
 	LastPing int64  `json:"lastPing"`
 }
 
+// PeerNode represents a remote AetherProxy instance discovered via gossip.
+type PeerNode struct {
+	Id          uint   `json:"id"          gorm:"primaryKey;autoIncrement"`
+	Name        string `json:"name"`
+	Address     string `json:"address"`
+	GossipPort  int    `json:"gossipPort"`
+	Version     string `json:"version"`
+	// Status values: "alive" | "suspect" | "dead" | "left"
+	Status      string `json:"status"      gorm:"default:alive"`
+	LastSeen    int64  `json:"lastSeen"`
+}
+
 // EvasionEvent stores a detected censorship/blocking event scraped from external sources.
 type EvasionEvent struct {
 	Id       uint   `json:"id"       gorm:"primaryKey;autoIncrement"`
