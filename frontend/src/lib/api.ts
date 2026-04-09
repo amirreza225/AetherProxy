@@ -28,7 +28,6 @@ async function apiFetch<T>(
   });
 
   if (res.status === 401) {
-    // Let the calling component handle the redirect
     throw new Error("UNAUTHORIZED");
   }
 
@@ -84,7 +83,18 @@ export interface Client {
   totalUp: number;
   autoReset: boolean;
   resetDays: number;
-  inbounds: string[];
+  inbounds: Array<string | number>;
+  links?: Array<Record<string, string>>;
+  config?: Record<string, unknown>;
+}
+
+function normalizeClientPayload(client: Partial<Client>): Record<string, unknown> {
+  return {
+    ...client,
+    inbounds: Array.isArray(client.inbounds) ? client.inbounds : [],
+    links: Array.isArray(client.links) ? client.links : [],
+    config: client.config && typeof client.config === "object" ? client.config : {},
+  };
 }
 
 export async function getClients(headers?: HeadersInit) {
@@ -97,7 +107,7 @@ export async function createClient(client: Omit<Client, "id" | "down" | "up" | "
     body: new URLSearchParams({
       object: "clients",
       action: "new",
-      data: JSON.stringify(client),
+      data: JSON.stringify(normalizeClientPayload(client)),
     }),
   });
 }
@@ -108,7 +118,7 @@ export async function updateClient(client: Client) {
     body: new URLSearchParams({
       object: "clients",
       action: "edit",
-      data: JSON.stringify(client),
+      data: JSON.stringify(normalizeClientPayload(client)),
     }),
   });
 }
