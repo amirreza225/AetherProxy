@@ -50,9 +50,7 @@ function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger asChild>
-        <Button size="sm">Add Node</Button>
-      </DialogTrigger>
+      <DialogTrigger render={<Button size="sm" />}>Add Node</DialogTrigger>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Add Remote Node</DialogTitle>
