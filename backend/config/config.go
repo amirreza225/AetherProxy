@@ -9,6 +9,11 @@ import (
 	"strings"
 )
 
+// BootstrapManifestPubKey is the Ed25519 public key (32 bytes, base64-encoded)
+// used to verify signed bootstrap manifests.
+// Replace with your own key pair before production deployment.
+const BootstrapManifestPubKey = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+
 //go:embed version
 var version string
 
@@ -123,4 +128,42 @@ func GetPluginsDir() string {
 		return "plugins"
 	}
 	return filepath.Join(dir, "plugins")
+}
+
+// GetGossipPort returns the UDP port for the memberlist gossip protocol.
+// Defaults to 7946 (memberlist default).
+func GetGossipPort() int {
+	p := os.Getenv("AETHER_GOSSIP_PORT")
+	if p == "" {
+		return 7946
+	}
+	var port int
+	fmt.Sscanf(p, "%d", &port)
+	if port <= 0 {
+		return 7946
+	}
+	return port
+}
+
+// GetGossipBootstrap returns extra bootstrap peer addresses (host:port) from
+// AETHER_GOSSIP_BOOTSTRAP (comma-separated).
+func GetGossipBootstrap() []string {
+	raw := os.Getenv("AETHER_GOSSIP_BOOTSTRAP")
+	if raw == "" {
+		return nil
+	}
+	var out []string
+	for _, s := range strings.Split(raw, ",") {
+		s = strings.TrimSpace(s)
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
+}
+
+// GetGossipManifestURL returns the URL of the signed bootstrap-node manifest.
+// Defaults to an empty string (disabled).
+func GetGossipManifestURL() string {
+	return os.Getenv("AETHER_GOSSIP_MANIFEST_URL")
 }

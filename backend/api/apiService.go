@@ -584,3 +584,48 @@ func (a *ApiService) SetPluginConfig(c *gin.Context) {
 	err := plugin.SetConfig(name, cfg)
 	jsonMsg(c, "plugin", err)
 }
+
+// ── Decentralized Node Discovery ──────────────────────────────────────────────
+
+func (a *ApiService) GetDiscoveryStatus(c *gin.Context) {
+	svc := service.GetDiscoveryService()
+	running := svc.IsRunning()
+	var memberCount int
+	if running {
+		memberCount = len(svc.GetPeers())
+	}
+	jsonObj(c, gin.H{
+		"running":     running,
+		"memberCount": memberCount,
+	}, nil)
+}
+
+func (a *ApiService) GetDiscoveryPeers(c *gin.Context) {
+	peers, err := service.GetDiscoveryService().GetStoredPeers()
+	jsonObj(c, peers, err)
+}
+
+func (a *ApiService) DiscoveryJoin(c *gin.Context) {
+	svc := service.GetDiscoveryService()
+	if svc.IsRunning() {
+		jsonMsg(c, "discovery", nil)
+		return
+	}
+	err := svc.Start()
+	jsonMsg(c, "discovery", err)
+}
+
+func (a *ApiService) DiscoveryLeave(c *gin.Context) {
+	service.GetDiscoveryService().Stop()
+	jsonMsg(c, "discovery", nil)
+}
+
+func (a *ApiService) DiscoveryAddPeer(c *gin.Context) {
+	addr := c.Request.FormValue("addr")
+	if addr == "" {
+		jsonMsg(c, "", common.NewError("addr is required"))
+		return
+	}
+	err := service.GetDiscoveryService().JoinPeer(addr)
+	jsonMsg(c, "discovery", err)
+}

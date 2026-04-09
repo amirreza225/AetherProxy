@@ -25,5 +25,6 @@ func Migrate() error {
 		&model.Changes{},
 		&model.Node{},
 		&model.EvasionEvent{},
+		&model.PeerNode{},
 	)
 }
