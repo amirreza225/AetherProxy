@@ -53,11 +53,22 @@ func filterOfflineNodes(links []string) []string {
 	if len(offlineHosts) == 0 {
 		return links
 	}
-	result := links[:0:0] // reuse backing array, empty slice
+	// Pre-compute the search strings for each offline host so they are not
+	// re-allocated on every (link × host) iteration.
+	type hostPatterns struct{ atHost, slashHost string }
+	patterns := make([]hostPatterns, 0, len(offlineHosts))
+	for host := range offlineHosts {
+		patterns = append(patterns, hostPatterns{
+			atHost:    "@" + host + ":",
+			slashHost: "//" + host + ":",
+		})
+	}
+
+	result := make([]string, 0, len(links))
 	for _, link := range links {
 		excluded := false
-		for host := range offlineHosts {
-			if strings.Contains(link, "@"+host+":") || strings.Contains(link, "//"+host+":") {
+		for _, p := range patterns {
+			if strings.Contains(link, p.atHost) || strings.Contains(link, p.slashHost) {
 				excluded = true
 				break
 			}
