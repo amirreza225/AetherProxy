@@ -1,0 +1,15 @@
+# Replace PANEL_DOMAIN and API_DOMAIN with your actual domains.
+# If running on a single domain, use the same value for both.
+
+{$PANEL_DOMAIN} {
+    reverse_proxy frontend:3000
+}
+
+{$API_DOMAIN} {
+    # Main API
+    reverse_proxy /api/* backend:2095
+    reverse_proxy /apiv2/* backend:2095
+
+    # Subscription service
+    reverse_proxy /sub/* backend:2096
+}

@@ -1,0 +1,60 @@
+services:
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile.aether
+    restart: unless-stopped
+    environment:
+      AETHER_PORT: "2095"
+      AETHER_SUB_PORT: "2096"
+      AETHER_DB_FOLDER: /data/db
+      AETHER_JWT_SECRET: "${AETHER_JWT_SECRET}"
+      AETHER_ADMIN_ORIGIN: "${AETHER_ADMIN_ORIGIN:-http://localhost:3000}"
+      AETHER_LOG_LEVEL: "${AETHER_LOG_LEVEL:-info}"
+    volumes:
+      - aether_data:/data
+    ports:
+      - "2095:2095"
+      - "2096:2096"
+    networks:
+      - aether_net
+
+  frontend:
+    build:
+      context: ../frontend
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://backend:2095}"
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+    networks:
+      - aether_net
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - backend
+      - frontend
+    networks:
+      - aether_net
+
+volumes:
+  aether_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  aether_net:
+    driver: bridge
