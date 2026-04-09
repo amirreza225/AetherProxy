@@ -77,7 +77,7 @@ export default function AnalyticsPage() {
               <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
                 <XAxis dataKey="tag" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={formatBytes} tick={{ fontSize: 11 }} />
-                <Tooltip formatter={(v: number) => formatBytes(v)} />
+                <Tooltip formatter={(v) => formatBytes(Number(v))} />
                 <Legend />
                 <Bar dataKey="up" name="Upload" fill="#3b82f6" radius={[4, 4, 0, 0]} />
                 <Bar dataKey="down" name="Download" fill="#10b981" radius={[4, 4, 0, 0]} />
