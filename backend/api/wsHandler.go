@@ -3,8 +3,11 @@ package api
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
+	"strings"
 	"time"
 
+	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/service"
 	"github.com/coder/websocket"
@@ -18,9 +21,9 @@ type StatsWSHandler struct {
 }
 
 type liveStats struct {
-	Onlines       interface{}        `json:"onlines"`
-	Status        interface{}        `json:"status"`
-	EvasionAlerts []evasionAlertDTO  `json:"evasionAlerts,omitempty"`
+	Onlines       interface{}       `json:"onlines"`
+	Status        interface{}       `json:"status"`
+	EvasionAlerts []evasionAlertDTO `json:"evasionAlerts,omitempty"`
 }
 
 type evasionAlertDTO struct {
@@ -50,6 +53,7 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 
 	conn, err := websocket.Accept(c.Writer, c.Request, &websocket.AcceptOptions{
 		InsecureSkipVerify: false,
+		OriginPatterns:     wsOriginPatterns(),
 	})
 	if err != nil {
 		logger.Warning("ws/stats: accept error:", err)
@@ -95,6 +99,25 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 			}
 		}
 	}
+}
+
+func wsOriginPatterns() []string {
+	adminOrigin := strings.TrimSpace(config.GetAdminOrigin())
+	if adminOrigin == "" {
+		return nil
+	}
+
+	patterns := make([]string, 0, 3)
+	patterns = append(patterns, adminOrigin)
+
+	if u, err := url.Parse(adminOrigin); err == nil && u.Host != "" {
+		patterns = append(patterns, u.Host)
+		if u.Scheme != "" {
+			patterns = append(patterns, u.Scheme+"://"+u.Host)
+		}
+	}
+
+	return patterns
 }
 
 // getNewEvasionAlerts returns evasion events stored after sinceTS.

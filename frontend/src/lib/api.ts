@@ -59,7 +59,7 @@ export async function getOnlines(headers?: HeadersInit) {
   return apiFetch<unknown[]>("/api/onlines", { headers });
 }
 
-// ── Users ─────────────────────────────────────────────────────────────────────
+// ── Admin users (panel login accounts) ───────────────────────────────────────
 
 export interface User {
   id: number;
@@ -68,6 +68,60 @@ export interface User {
 
 export async function getUsers(headers?: HeadersInit) {
   return apiFetch<User[]>("/api/users", { headers });
+}
+
+// ── Subscription clients (traffic-limited end-users) ──────────────────────────
+
+export interface Client {
+  id: number;
+  enable: boolean;
+  name: string;
+  volume: number;       // bytes; 0 = unlimited
+  expiry: number;       // unix seconds; 0 = never
+  down: number;
+  up: number;
+  totalDown: number;
+  totalUp: number;
+  autoReset: boolean;
+  resetDays: number;
+  inbounds: string[];
+}
+
+export async function getClients(headers?: HeadersInit) {
+  return apiFetch<Client[]>("/api/clients", { headers });
+}
+
+export async function createClient(client: Omit<Client, "id" | "down" | "up" | "totalDown" | "totalUp">) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "clients",
+      action: "new",
+      data: JSON.stringify(client),
+    }),
+  });
+}
+
+export async function updateClient(client: Client) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "clients",
+      action: "edit",
+      data: JSON.stringify(client),
+    }),
+  });
+}
+
+export async function deleteClient(id: number) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "clients",
+      action: "del",
+      data: JSON.stringify(id),
+    }),
+  });
 }
 
 // ── Full config (inbounds, outbounds, clients, …) ────────────────────────────
@@ -90,6 +144,22 @@ export async function loadPartial(
 
 export async function getSettings(headers?: HeadersInit) {
   return apiFetch<Record<string, unknown>>("/api/settings", { headers });
+}
+
+export async function saveSettings(settings: Record<string, unknown>) {
+  const normalized: Record<string, string> = {};
+  for (const [key, value] of Object.entries(settings)) {
+    normalized[key] = value == null ? "" : String(value);
+  }
+
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "settings",
+      action: "edit",
+      data: JSON.stringify(normalized),
+    }),
+  });
 }
 
 // ── Stats ─────────────────────────────────────────────────────────────────────

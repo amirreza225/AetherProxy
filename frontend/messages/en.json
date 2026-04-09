@@ -24,7 +24,11 @@
     "connecting": "Connecting…",
     "onlineClients": "Online Clients",
     "cpuUsage": "CPU Usage",
-    "memory": "Memory"
+    "memory": "Memory",
+    "nodeStatus": "Node Status",
+    "nodesOnline": "{count} online",
+    "nodesOffline": "{count} offline",
+    "trafficHistory": "Traffic (last 30 updates)"
   },
   "nodes": {
     "title": "Nodes",
@@ -51,10 +55,21 @@
     "title": "Users",
     "id": "ID",
     "username": "Username",
+    "clientName": "Name",
     "add": "Add User",
     "edit": "Edit",
     "delete": "Delete",
-    "loadError": "Failed to load users."
+    "loadError": "Failed to load users.",
+    "status": "Status",
+    "trafficQuota": "Traffic Quota",
+    "used": "Used",
+    "expiryDate": "Expiry",
+    "autoReset": "Auto-reset every",
+    "enabled": "Enabled",
+    "active": "Active",
+    "inactive": "Disabled",
+    "unlimited": "Unlimited",
+    "actions": "Actions"
   },
   "subscriptions": {
     "title": "Subscriptions",
@@ -87,18 +102,39 @@
     "upload": "Upload",
     "download": "Download",
     "noData": "No analytics data available yet.",
-    "loadError": "Failed to load analytics."
+    "loadError": "Failed to load analytics.",
+    "censorshipEvents": "Recent Censorship Events",
+    "noEvents": "No evasion events detected yet.",
+    "evasionTime": "Time",
+    "evasionProtocol": "Protocol",
+    "evasionPort": "Port",
+    "evasionDomain": "Domain",
+    "evasionAction": "Action",
+    "evasionDetail": "Detail"
   },
   "settings": {
     "title": "Settings",
     "currentSettings": "Current settings",
-    "loadError": "Failed to load settings."
+    "loadError": "Failed to load settings.",
+    "saveError": "Failed to save settings.",
+    "saveSuccess": "Settings saved.",
+    "save": "Save Settings",
+    "saving": "Saving…",
+    "panelPort": "Panel Port",
+    "singboxPort": "Sing-box Port",
+    "subPort": "Subscription Port",
+    "logLevel": "Log Level",
+    "timeLocation": "Timezone",
+    "trafficAge": "Stats Retention (days)",
+    "maxAge": "Session Lifetime (days)",
+    "subPath": "Subscription Path"
   },
   "plugins": {
     "title": "Plugins",
     "noPlugins": "No plugins installed.",
     "name": "Name",
     "enabled": "Enabled",
+    "disabled": "Disabled",
     "actions": "Actions",
     "enable": "Enable",
     "disable": "Disable"

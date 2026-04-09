@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { useState } from "react";
 import { getRouting, saveRouting, type RouteRule } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -25,6 +26,7 @@ const emptyRule = (): RouteRule => ({
 });
 
 export default function RoutingPage() {
+  const t = useTranslations("routing");
   const { data, isLoading, error, mutate } = useSWR("/api/routing", () =>
     getRouting().then((r) => (r.obj as RouteRule[]) ?? [])
   );
@@ -59,10 +61,10 @@ export default function RoutingPage() {
     setSaveMsg(null);
     try {
       await saveRouting(displayRules);
-      setSaveMsg("Routing rules saved.");
+      setSaveMsg(t("saveSuccess"));
       mutate(displayRules, false);
     } catch {
-      setSaveMsg("Failed to save routing rules.");
+      setSaveMsg(t("saveError"));
     } finally {
       setSaving(false);
     }
@@ -71,34 +73,34 @@ export default function RoutingPage() {
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Routing Rules</h1>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={addRule}>
-            Add Rule
+            {t("addRule")}
           </Button>
           <Button size="sm" onClick={handleSave} disabled={saving}>
-            {saving ? "Saving…" : "Save Rules"}
+            {saving ? t("saving") : t("save")}
           </Button>
         </div>
       </div>
 
       {saveMsg && (
-        <p className={`text-sm ${saveMsg.includes("Failed") ? "text-destructive" : "text-green-600"}`}>
+        <p className={`text-sm ${saveMsg.includes("Failed") || saveMsg.includes("خطا") ? "text-destructive" : "text-green-600"}`}>
           {saveMsg}
         </p>
       )}
-      {error && <p className="text-sm text-destructive">Failed to load routing rules.</p>}
+      {error && <p className="text-sm text-destructive">{t("saveError")}</p>}
 
       <div className="rounded-md border overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Inbound(s)</TableHead>
-              <TableHead>Network</TableHead>
-              <TableHead>Domain Suffix</TableHead>
-              <TableHead>GeoIP</TableHead>
-              <TableHead>Outbound</TableHead>
-              <TableHead>Action</TableHead>
+              <TableHead>{t("inbound")}</TableHead>
+              <TableHead>{t("network")}</TableHead>
+              <TableHead>{t("domainSuffix")}</TableHead>
+              <TableHead>{t("geoip")}</TableHead>
+              <TableHead>{t("outbound")}</TableHead>
+              <TableHead>{t("actions")}</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>

@@ -8,6 +8,7 @@ import {
   setPluginConfig,
   type PluginInfo,
 } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -22,6 +23,8 @@ function PluginCard({
   plugin: PluginInfo;
   onMutate: () => void;
 }) {
+  const t = useTranslations("plugins");
+  const tc = useTranslations("common");
   const [configText, setConfigText] = useState(
     JSON.stringify(plugin.config, null, 2)
   );
@@ -61,7 +64,7 @@ function PluginCard({
         <CardTitle className="text-sm font-medium flex items-center justify-between">
           {plugin.name}
           <Badge variant={plugin.enabled ? "default" : "secondary"}>
-            {plugin.enabled ? "Enabled" : "Disabled"}
+            {plugin.enabled ? t("enabled") : t("disabled")}
           </Badge>
         </CardTitle>
       </CardHeader>
@@ -94,8 +97,8 @@ function PluginCard({
             {toggling
               ? "..."
               : plugin.enabled
-              ? "Disable"
-              : "Enable"}
+              ? t("disable")
+              : t("enable")}
           </Button>
           <Button
             size="sm"
@@ -103,7 +106,7 @@ function PluginCard({
             disabled={saving}
             onClick={handleSaveConfig}
           >
-            {saving ? "Saving…" : "Save config"}
+            {saving ? tc("loading") : tc("save")}
           </Button>
         </div>
       </CardContent>
@@ -112,6 +115,7 @@ function PluginCard({
 }
 
 export default function PluginsPage() {
+  const t = useTranslations("plugins");
   const { data, isLoading, error, mutate } = useSWR("/api/plugins", () =>
     getPlugins().then((r) => (r.obj as PluginInfo[]) ?? [])
   );
@@ -120,7 +124,7 @@ export default function PluginsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Plugins</h1>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
       <p className="text-sm text-muted-foreground">
         AetherProxy outbound plugins extend sing-box with custom obfuscation
         transports. Compile a plugin as a Go shared object (.so) and place it in
@@ -150,7 +154,7 @@ export default function PluginsPage() {
         </div>
       ) : plugins.length === 0 ? (
         <div className="rounded-md border p-8 text-center">
-          <p className="text-muted-foreground text-sm">No plugins installed.</p>
+          <p className="text-muted-foreground text-sm">{t("noPlugins")}</p>
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
@@ -162,3 +166,4 @@ export default function PluginsPage() {
     </div>
   );
 }
+

@@ -58,6 +58,15 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 		if err != nil {
 			return nil, err
 		}
+		if len(client.Inbounds) == 0 {
+			client.Inbounds = json.RawMessage("[]")
+		}
+		if len(client.Links) == 0 {
+			client.Links = json.RawMessage("[]")
+		}
+		if len(client.Config) == 0 {
+			client.Config = json.RawMessage("{}")
+		}
 		err = s.updateLinksWithFixedInbounds(tx, []*model.Client{&client}, hostname)
 		if err != nil {
 			return nil, err
@@ -84,6 +93,17 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 		if err != nil {
 			return nil, err
 		}
+		for _, client := range clients {
+			if len(client.Inbounds) == 0 {
+				client.Inbounds = json.RawMessage("[]")
+			}
+			if len(client.Links) == 0 {
+				client.Links = json.RawMessage("[]")
+			}
+			if len(client.Config) == 0 {
+				client.Config = json.RawMessage("{}")
+			}
+		}
 		err = json.Unmarshal(clients[0].Inbounds, &inboundIds)
 		if err != nil {
 			return nil, err
@@ -101,6 +121,17 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 		err = json.Unmarshal(data, &clients)
 		if err != nil {
 			return nil, err
+		}
+		for _, client := range clients {
+			if len(client.Inbounds) == 0 {
+				client.Inbounds = json.RawMessage("[]")
+			}
+			if len(client.Links) == 0 {
+				client.Links = json.RawMessage("[]")
+			}
+			if len(client.Config) == 0 {
+				client.Config = json.RawMessage("{}")
+			}
 		}
 		for _, client := range clients {
 			changedInboundIds, err := s.findInboundsChanges(tx, client, true)
@@ -175,6 +206,13 @@ func (s *ClientService) updateLinksWithFixedInbounds(tx *gorm.DB, clients []*mod
 	var inbounds []model.Inbound
 	var inboundIds []uint
 
+	if len(clients) == 0 {
+		return nil
+	}
+	if len(clients[0].Inbounds) == 0 {
+		clients[0].Inbounds = json.RawMessage("[]")
+	}
+
 	err = json.Unmarshal(clients[0].Inbounds, &inboundIds)
 	if err != nil {
 		return err
@@ -188,6 +226,9 @@ func (s *ClientService) updateLinksWithFixedInbounds(tx *gorm.DB, clients []*mod
 		}
 	}
 	for index, client := range clients {
+		if len(client.Links) == 0 {
+			client.Links = json.RawMessage("[]")
+		}
 		var clientLinks []map[string]string
 		err = json.Unmarshal(client.Links, &clientLinks)
 		if err != nil {

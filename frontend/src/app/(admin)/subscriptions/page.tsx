@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { subUrl } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
@@ -9,6 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCodeCanvas } from "qrcode.react";
 
 export default function SubscriptionsPage() {
+  const t = useTranslations("subscriptions");
   const [token, setToken] = useState("");
   const [generated, setGenerated] = useState("");
 
@@ -18,24 +20,24 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">Subscriptions</h1>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
 
       <Card className="max-w-lg">
         <CardHeader>
-          <CardTitle className="text-base">Generate subscription link</CardTitle>
+          <CardTitle className="text-base">{t("generate")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-1">
-            <Label htmlFor="token">Subscription token</Label>
+            <Label htmlFor="token">{t("token")}</Label>
             <Input
               id="token"
-              placeholder="Paste user token here"
+              placeholder={t("tokenPlaceholder")}
               value={token}
               onChange={(e) => setToken(e.target.value)}
             />
           </div>
           <Button onClick={handleGenerate} disabled={!token.trim()}>
-            Generate
+            {t("generateButton")}
           </Button>
 
           {generated && (
@@ -53,3 +55,4 @@ export default function SubscriptionsPage() {
     </div>
   );
 }
+

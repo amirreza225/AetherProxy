@@ -3,6 +3,7 @@
 import useSWR from "swr";
 import { useState } from "react";
 import { getAnalytics, type AnalyticsData } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -14,6 +15,8 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
+  LineChart,
+  Line,
 } from "recharts";
 
 function formatBytes(bytes: number): string {
@@ -25,9 +28,9 @@ function formatBytes(bytes: number): string {
 
 const WINDOWS = [24, 168, 720] as const;
 type WindowHours = (typeof WINDOWS)[number];
-const LABELS: Record<WindowHours, string> = { 24: "24h", 168: "7d", 720: "30d" };
 
 export default function AnalyticsPage() {
+  const t = useTranslations("analytics");
   const [windowHours, setWindowHours] = useState<WindowHours>(WINDOWS[0]);
 
   const { data, isLoading, error } = useSWR(
@@ -35,18 +38,32 @@ export default function AnalyticsPage() {
     () => getAnalytics(windowHours).then((r) => r.obj as AnalyticsData)
   );
 
+  const LABELS: Record<WindowHours, string> = {
+    24: t("range24h"),
+    168: t("range7d"),
+    720: t("range30d"),
+  };
+
   const chartData = data
     ? Object.entries(data.perProtocol).map(([tag, stats]) => ({
         tag,
         up: stats.up,
         down: stats.down,
+        total: stats.up + stats.down,
       }))
     : [];
+
+  // Per-protocol as percentage of total for the line chart
+  const totalTraffic = chartData.reduce((s, d) => s + d.total, 0);
+  const lineData = chartData.map((d) => ({
+    tag: d.tag,
+    pct: totalTraffic > 0 ? Math.round((d.total / totalTraffic) * 100) : 0,
+  }));
 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Analytics</h1>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
         <div className="flex gap-1">
           {WINDOWS.map((w) => (
             <Button
@@ -61,52 +78,105 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-      {error && <p className="text-sm text-destructive">Failed to load analytics.</p>}
+      {error && <p className="text-sm text-destructive">{t("loadError")}</p>}
 
+      {/* Volume chart */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Per-Protocol Traffic ({LABELS[windowHours]})</CardTitle>
+          <CardTitle className="text-base">
+            {t("perProtocol")} ({LABELS[windowHours]})
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-48 w-full" />
           ) : chartData.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No analytics data available yet.</p>
+            <p className="text-sm text-muted-foreground">{t("noData")}</p>
           ) : (
             <ResponsiveContainer width="100%" height={220}>
-              <BarChart data={chartData} margin={{ top: 5, right: 10, left: 10, bottom: 5 }}>
+              <BarChart
+                data={chartData}
+                margin={{ top: 5, right: 10, left: 10, bottom: 5 }}
+              >
                 <XAxis dataKey="tag" tick={{ fontSize: 11 }} />
                 <YAxis tickFormatter={formatBytes} tick={{ fontSize: 11 }} />
                 <Tooltip formatter={(v) => formatBytes(Number(v))} />
                 <Legend />
-                <Bar dataKey="up" name="Upload" fill="#3b82f6" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="down" name="Download" fill="#10b981" radius={[4, 4, 0, 0]} />
+                <Bar
+                  dataKey="up"
+                  name={t("upload")}
+                  fill="#3b82f6"
+                  radius={[4, 4, 0, 0]}
+                />
+                <Bar
+                  dataKey="down"
+                  name={t("download")}
+                  fill="#10b981"
+                  radius={[4, 4, 0, 0]}
+                />
               </BarChart>
             </ResponsiveContainer>
           )}
         </CardContent>
       </Card>
 
+      {/* Per-protocol share chart */}
+      {chartData.length > 1 && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">
+              Protocol Share (% of total traffic)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={160}>
+              <LineChart
+                data={lineData}
+                margin={{ top: 4, right: 10, left: 10, bottom: 4 }}
+              >
+                <XAxis dataKey="tag" tick={{ fontSize: 11 }} />
+                <YAxis
+                  unit="%"
+                  domain={[0, 100]}
+                  tick={{ fontSize: 11 }}
+                  width={36}
+                />
+                <Tooltip formatter={(v) => `${v}%`} />
+                <Line
+                  type="monotone"
+                  dataKey="pct"
+                  name="Share"
+                  stroke="#f59e0b"
+                  dot={{ r: 4 }}
+                  strokeWidth={2}
+                />
+              </LineChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Censorship events */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">Recent Censorship Events</CardTitle>
+          <CardTitle className="text-base">{t("censorshipEvents")}</CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading ? (
             <Skeleton className="h-24 w-full" />
           ) : !data || data.evasionEvents.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No evasion events detected yet.</p>
+            <p className="text-sm text-muted-foreground">{t("noEvents")}</p>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b text-left">
-                    <th className="py-1 pr-3">Time</th>
-                    <th className="py-1 pr-3">Protocol</th>
-                    <th className="py-1 pr-3">Port</th>
-                    <th className="py-1 pr-3">Domain</th>
-                    <th className="py-1 pr-3">Action</th>
-                    <th className="py-1">Detail</th>
+                    <th className="py-1 pr-3">{t("evasionTime")}</th>
+                    <th className="py-1 pr-3">{t("evasionProtocol")}</th>
+                    <th className="py-1 pr-3">{t("evasionPort")}</th>
+                    <th className="py-1 pr-3">{t("evasionDomain")}</th>
+                    <th className="py-1 pr-3">{t("evasionAction")}</th>
+                    <th className="py-1">{t("evasionDetail")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -118,7 +188,9 @@ export default function AnalyticsPage() {
                       <td className="py-1 pr-3">{e.protocol}</td>
                       <td className="py-1 pr-3">{e.port || "—"}</td>
                       <td className="py-1 pr-3">{e.domain || "—"}</td>
-                      <td className="py-1 pr-3 text-amber-600">{e.autoAction || "—"}</td>
+                      <td className="py-1 pr-3 text-amber-600">
+                        {e.autoAction || "—"}
+                      </td>
                       <td className="py-1 text-muted-foreground">{e.detail}</td>
                     </tr>
                   ))}

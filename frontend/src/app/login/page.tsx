@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { login } from "@/lib/api";
+import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 
 export default function LoginPage() {
+  const t = useTranslations("login");
   const router = useRouter();
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
@@ -22,16 +24,15 @@ export default function LoginPage() {
     try {
       const res = await login(user, pass);
       if (res.success) {
-        // Store JWT for Authorization header usage in non-cookie scenarios
         if (res.obj?.token) {
           sessionStorage.setItem("aether_token", res.obj.token);
         }
         router.push("/dashboard");
       } else {
-        setError(res.msg || "Invalid credentials");
+        setError(res.msg || t("invalidCredentials"));
       }
     } catch {
-      setError("Connection failed");
+      setError(t("connectionFailed"));
     } finally {
       setLoading(false);
     }
@@ -41,12 +42,12 @@ export default function LoginPage() {
     <div className="min-h-screen flex items-center justify-center bg-background p-4">
       <Card className="w-full max-w-sm">
         <CardHeader>
-          <CardTitle className="text-2xl text-center">AetherProxy</CardTitle>
+          <CardTitle className="text-2xl text-center">{t("title")}</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">
-              <Label htmlFor="user">Username</Label>
+              <Label htmlFor="user">{t("username")}</Label>
               <Input
                 id="user"
                 value={user}
@@ -56,7 +57,7 @@ export default function LoginPage() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="pass">Password</Label>
+              <Label htmlFor="pass">{t("password")}</Label>
               <Input
                 id="pass"
                 type="password"
@@ -70,7 +71,7 @@ export default function LoginPage() {
               <p className="text-sm text-destructive">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={loading}>
-              {loading ? "Signing in…" : "Sign in"}
+              {loading ? t("signingIn") : t("signIn")}
             </Button>
           </form>
         </CardContent>

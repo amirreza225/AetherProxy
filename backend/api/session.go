@@ -87,6 +87,9 @@ func GetLoginUser(c *gin.Context) string {
 		}
 	}
 	if tokenStr == "" {
+		tokenStr = c.Query("token")
+	}
+	if tokenStr == "" {
 		return ""
 	}
 	username, err := validateJWT(tokenStr)

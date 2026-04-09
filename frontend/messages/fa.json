@@ -24,7 +24,11 @@
     "connecting": "در حال اتصال…",
     "onlineClients": "کاربران آنلاین",
     "cpuUsage": "مصرف CPU",
-    "memory": "حافظه"
+    "memory": "حافظه",
+    "nodeStatus": "وضعیت نودها",
+    "nodesOnline": "{count} آنلاین",
+    "nodesOffline": "{count} آفلاین",
+    "trafficHistory": "ترافیک (آخرین ۳۰ به‌روزرسانی)"
   },
   "nodes": {
     "title": "نودها",
@@ -51,10 +55,21 @@
     "title": "کاربران",
     "id": "شناسه",
     "username": "نام کاربری",
+    "clientName": "نام",
     "add": "افزودن کاربر",
     "edit": "ویرایش",
     "delete": "حذف",
-    "loadError": "خطا در بارگذاری کاربران."
+    "loadError": "خطا در بارگذاری کاربران.",
+    "status": "وضعیت",
+    "trafficQuota": "سهمیه ترافیک",
+    "used": "مصرف شده",
+    "expiryDate": "انقضا",
+    "autoReset": "ریست خودکار هر",
+    "enabled": "فعال",
+    "active": "فعال",
+    "inactive": "غیرفعال",
+    "unlimited": "نامحدود",
+    "actions": "عملیات"
   },
   "subscriptions": {
     "title": "اشتراک‌ها",
@@ -87,18 +102,39 @@
     "upload": "آپلود",
     "download": "دانلود",
     "noData": "داده‌ای برای نمایش وجود ندارد.",
-    "loadError": "خطا در بارگذاری آمار."
+    "loadError": "خطا در بارگذاری آمار.",
+    "censorshipEvents": "رویدادهای سانسور اخیر",
+    "noEvents": "هنوز رویداد فرار شناسایی نشده است.",
+    "evasionTime": "زمان",
+    "evasionProtocol": "پروتکل",
+    "evasionPort": "پورت",
+    "evasionDomain": "دامنه",
+    "evasionAction": "اقدام",
+    "evasionDetail": "جزییات"
   },
   "settings": {
     "title": "تنظیمات",
     "currentSettings": "تنظیمات فعلی",
-    "loadError": "خطا در بارگذاری تنظیمات."
+    "loadError": "خطا در بارگذاری تنظیمات.",
+    "saveError": "خطا در ذخیره تنظیمات.",
+    "saveSuccess": "تنظیمات ذخیره شد.",
+    "save": "ذخیره تنظیمات",
+    "saving": "در حال ذخیره…",
+    "panelPort": "پورت پنل",
+    "singboxPort": "پورت Sing-box",
+    "subPort": "پورت اشتراک",
+    "logLevel": "سطح لاگ",
+    "timeLocation": "منطقه زمانی",
+    "trafficAge": "مدت نگهداری آمار (روز)",
+    "maxAge": "مدت نشست (روز)",
+    "subPath": "مسیر اشتراک"
   },
   "plugins": {
     "title": "افزونه‌ها",
     "noPlugins": "هیچ افزونه‌ای نصب نشده است.",
     "name": "نام",
     "enabled": "فعال",
+    "disabled": "غیرفعال",
     "actions": "عملیات",
     "enable": "فعال‌سازی",
     "disable": "غیرفعال‌سازی"
