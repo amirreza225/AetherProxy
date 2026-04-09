@@ -74,7 +74,10 @@ func (w *EvasionWatcher) loop() {
 	}
 }
 
-// scrape fetches blocking event data and stores new EvasionEvents.
+const (
+	// maxResponseBodyBytes caps the response body read from external scraper endpoints.
+	maxResponseBodyBytes = 1 << 20 // 1 MB
+)
 // Currently uses a simple JSON probe endpoint; replace/extend with real
 // Javid Network Watch API when available.
 func (w *EvasionWatcher) scrape() {
@@ -131,7 +134,7 @@ func (w *EvasionWatcher) fetchJavidData() []model.EvasionEvent {
 		return nil
 	}
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20)) // 1 MB limit
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBodyBytes))
 	if err != nil {
 		return nil
 	}

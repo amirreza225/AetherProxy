@@ -24,10 +24,11 @@ function formatBytes(bytes: number): string {
 }
 
 const WINDOWS = [24, 168, 720] as const;
-const LABELS: Record<number, string> = { 24: "24h", 168: "7d", 720: "30d" };
+type WindowHours = (typeof WINDOWS)[number];
+const LABELS: Record<WindowHours, string> = { 24: "24h", 168: "7d", 720: "30d" };
 
 export default function AnalyticsPage() {
-  const [windowHours, setWindowHours] = useState<24 | 168 | 720>(24);
+  const [windowHours, setWindowHours] = useState<WindowHours>(WINDOWS[0]);
 
   const { data, isLoading, error } = useSWR(
     ["/api/analytics", windowHours],

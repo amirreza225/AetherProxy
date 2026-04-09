@@ -45,7 +45,7 @@ func RegisterPlugin(p OutboundPlugin) {
 	defer mu.Unlock()
 	name := p.Name()
 	if _, exists := plugins[name]; exists {
-		panic(fmt.Sprintf("plugin %q already registered", name))
+		panic(fmt.Sprintf("plugin %q already registered; ensure plugin names are unique across all loaded .so files", name))
 	}
 	plugins[name] = &PluginInfo{Plugin: p, Config: p.DefaultConfig()}
 }
