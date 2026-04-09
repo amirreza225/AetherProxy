@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/preferences/actions_at_closing.dart';
 import 'package:aetherproxy/core/router/dialog/widgets/action_at_closing_dialog.dart';
 import 'package:aetherproxy/core/router/dialog/widgets/confirmation_dialog.dart';
@@ -26,12 +25,12 @@ import 'package:aetherproxy/features/common/qr_code_dialog.dart';
 import 'package:aetherproxy/features/common/qr_code_scanner_screen.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
+import 'package:flutter/material.dart';
 import 'package:protobuf/protobuf.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'dialog_notifier.g.dart';
 
-@Riverpod(keepAlive: true)
 class DialogNotifier extends _$DialogNotifier {
   @override
   void build() {}

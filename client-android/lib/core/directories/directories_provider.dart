@@ -1,18 +1,17 @@
 import 'dart:io';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:flutter/services.dart';
 import 'package:aetherproxy/core/model/directories.dart';
 import 'package:aetherproxy/core/model/environment.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
 import 'package:aetherproxy/utils/platform_utils.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/services.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'directories_provider.g.dart';
 
-@Riverpod(keepAlive: true)
 class AppDirectories extends _$AppDirectories with InfraLogger {
   final _methodChannel = const MethodChannel("com.hiddify.app/platform");
 
@@ -39,7 +38,7 @@ class AppDirectories extends _$AppDirectories with InfraLogger {
       final baseDir = await getApplicationSupportDirectory();
       final workingDir = Platform.isAndroid ? await _getAndroidWorkingDirectory() : baseDir;
       final tempDir = await getTemporaryDirectory();
-      dirs = (baseDir: baseDir, workingDir: workingDir!, tempDir: tempDir);
+      dirs = (baseDir: baseDir, workingDir: workingDir, tempDir: tempDir);
     }
 
     if (!dirs.baseDir.existsSync()) {

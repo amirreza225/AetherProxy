@@ -1,11 +1,10 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/failures.dart';
 import 'package:aetherproxy/features/settings/model/config_option_failure.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'profile_failure.freezed.dart';
 
-@freezed
 sealed class ProfileFailure with _$ProfileFailure, Failure {
   const ProfileFailure._();
 

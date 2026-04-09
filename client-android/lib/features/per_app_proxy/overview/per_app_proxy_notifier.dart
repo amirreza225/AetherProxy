@@ -2,9 +2,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:dartx/dartx_io.dart';
-import 'package:file_picker/file_picker.dart';
-import 'package:flutter/services.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/region.dart';
 import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
@@ -18,12 +15,14 @@ import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart
 import 'package:aetherproxy/features/per_app_proxy/model/pkg_flag.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dartx/dartx_io.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import 'package:installed_apps/index.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'per_app_proxy_notifier.g.dart';
 
-@riverpod
 class PerAppProxy extends _$PerAppProxy with AppLogger {
   late final AppProxyMode? _mode;
 

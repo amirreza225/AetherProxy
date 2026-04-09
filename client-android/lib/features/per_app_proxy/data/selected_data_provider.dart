@@ -5,5 +5,4 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'selected_data_provider.g.dart';
 
-@riverpod
 AppProxyDataSource appProxyDataSource(Ref ref) => AppProxyDao(ref.watch(dbProvider));

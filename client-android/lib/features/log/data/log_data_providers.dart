@@ -6,7 +6,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'log_data_providers.g.dart';
 
-@Riverpod(keepAlive: true)
 Future<LogRepository> logRepository(LogRepositoryRef ref) async {
   final repo = LogRepositoryImpl(
     singbox: ref.watch(hiddifyCoreServiceProvider),

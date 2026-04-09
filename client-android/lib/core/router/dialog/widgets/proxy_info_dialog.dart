@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:aetherproxy/utils/platform_utils.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:url_launcher/url_launcher.dart';

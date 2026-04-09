@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
 import 'package:aetherproxy/features/connection/model/connection_status.dart';
@@ -8,6 +6,8 @@ import 'package:aetherproxy/features/proxy/active/active_proxy_notifier.dart';
 import 'package:aetherproxy/features/proxy/active/ip_widget.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ActiveProxyFooter extends ConsumerWidget with InfraLogger {

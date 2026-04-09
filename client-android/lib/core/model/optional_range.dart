@@ -1,11 +1,10 @@
+import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:dart_mappable/dart_mappable.dart';
 import 'package:dartx/dartx.dart';
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:aetherproxy/core/localization/translations.dart';
 
 part 'optional_range.mapper.dart';
 
-@MappableClass()
 class OptionalRange with OptionalRangeMappable {
   const OptionalRange({this.min, this.max});
 

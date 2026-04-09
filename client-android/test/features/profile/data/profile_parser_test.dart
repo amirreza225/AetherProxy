@@ -1,6 +1,6 @@
-import 'package:flutter_test/flutter_test.dart';
 import 'package:aetherproxy/features/profile/data/profile_parser.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
+import 'package:flutter_test/flutter_test.dart';
 import 'package:uuid/uuid.dart';
 
 void main() {

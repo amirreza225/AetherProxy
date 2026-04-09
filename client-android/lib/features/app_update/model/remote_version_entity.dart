@@ -1,9 +1,8 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/model/environment.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'remote_version_entity.freezed.dart';
 
-@Freezed()
 class RemoteVersionEntity with _$RemoteVersionEntity {
   const RemoteVersionEntity._();
 

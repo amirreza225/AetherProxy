@@ -1,10 +1,9 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/features/connection/model/connection_failure.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'connection_status.freezed.dart';
 
-@freezed
 sealed class ConnectionStatus with _$ConnectionStatus {
   const ConnectionStatus._();
 

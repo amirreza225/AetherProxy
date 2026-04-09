@@ -2,7 +2,6 @@ import 'package:dart_mappable/dart_mappable.dart';
 
 part 'ip_info_entity.mapper.dart';
 
-@MappableClass()
 class IpInfo with IpInfoMappable {
   const IpInfo({
     required this.ip,

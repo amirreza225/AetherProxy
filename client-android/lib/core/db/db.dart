@@ -1,15 +1,14 @@
-import 'package:drift/drift.dart';
-import 'package:drift_flutter/drift_flutter.dart';
 import 'package:aetherproxy/core/db/converters/duration_converter.dart';
 import 'package:aetherproxy/core/db/db.steps.dart';
 import 'package:aetherproxy/core/directories/directories_provider.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart';
 import 'package:aetherproxy/features/profile/model/profile_entity.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:drift/drift.dart';
+import 'package:drift_flutter/drift_flutter.dart';
 
 part 'db.g.dart';
 
-@DriftDatabase(tables: [ProfileEntries, AppProxyEntries])
 class Db extends _$Db with InfraLogger {
   Db([QueryExecutor? executor]) : super(executor ?? _openConnection());
 

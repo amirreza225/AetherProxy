@@ -1,10 +1,9 @@
-import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/failures.dart';
+import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'config_option_failure.freezed.dart';
 
-@freezed
 sealed class ConfigOptionFailure with _$ConfigOptionFailure, Failure {
   const ConfigOptionFailure._();
 

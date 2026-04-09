@@ -1,8 +1,7 @@
-import 'package:flutter/material.dart';
-
-import 'package:flutter/services.dart';
 import 'package:aetherproxy/bootstrap.dart';
 import 'package:aetherproxy/core/model/environment.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 Future<void> main() async {
   final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();

@@ -1,4 +1,3 @@
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/model/directories.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
 import 'package:aetherproxy/core/utils/exception_handler.dart';
@@ -9,9 +8,10 @@ import 'package:aetherproxy/features/profile/model/profile_entity.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/features/settings/notifier/warp_option/warp_option_notifier.dart';
 import 'package:aetherproxy/hiddifycore/hiddify_core_service.dart';
-import 'package:aetherproxy/singbox/model/singbox_config_option.dart';
 import 'package:aetherproxy/singbox/model/core_status.dart';
+import 'package:aetherproxy/singbox/model/singbox_config_option.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:meta/meta.dart';
 

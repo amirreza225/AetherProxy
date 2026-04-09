@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'per_app_proxy_backup.freezed.dart';
 part 'per_app_proxy_backup.g.dart';
 
-@freezed
 abstract class PerAppProxyBackup with _$PerAppProxyBackup {
   const factory PerAppProxyBackup({
     @Default(PerAppProxyBackupMode()) PerAppProxyBackupMode include,

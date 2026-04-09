@@ -1,10 +1,10 @@
-import 'package:fluentui_system_icons/fluentui_system_icons.dart';
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/widget/shimmer_skeleton.dart';
 import 'package:aetherproxy/features/proxy/active/active_proxy_notifier.dart';
 import 'package:aetherproxy/features/proxy/active/ip_widget.dart';
 import 'package:aetherproxy/features/stats/widget/stats_card.dart';
+import 'package:fluentui_system_icons/fluentui_system_icons.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ConnectionStatsCard extends HookConsumerWidget {

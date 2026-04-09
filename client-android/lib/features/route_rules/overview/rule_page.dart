@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
 import 'package:aetherproxy/features/route_rules/notifier/rule_notifier.dart';
@@ -12,6 +10,8 @@ import 'package:aetherproxy/features/route_rules/widget/setting_radio.dart';
 import 'package:aetherproxy/features/route_rules/widget/setting_text.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/config/route_rule.pb.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:protobuf/protobuf.dart';
 import 'package:recase/recase.dart';

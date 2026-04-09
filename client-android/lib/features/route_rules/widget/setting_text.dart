@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class SettingText extends ConsumerWidget {

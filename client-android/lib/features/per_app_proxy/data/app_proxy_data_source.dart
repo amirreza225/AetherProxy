@@ -1,9 +1,9 @@
-import 'package:drift/drift.dart';
 import 'package:aetherproxy/core/db/db.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_backup.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/pkg_flag.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:drift/drift.dart';
 
 part 'app_proxy_data_source.g.dart';
 

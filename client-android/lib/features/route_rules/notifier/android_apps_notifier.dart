@@ -1,16 +1,14 @@
 // ignore: unused_import
-import 'package:dio/dio.dart';
-// ignore: depend_on_referenced_packages
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:aetherproxy/features/route_rules/notifier/rule_notifier.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dio/dio.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:installed_apps/app_info.dart';
 import 'package:installed_apps/installed_apps.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'android_apps_notifier.g.dart';
 
-@riverpod
 Future<List<AppInfo>> apps(Ref ref) async {
   if (!PlatformUtils.isAndroid) return [];
   return await InstalledApps.getInstalledApps(false, true);

@@ -1,7 +1,7 @@
 library json_editor_flutter;
 
-import 'dart:convert';
 import 'dart:async';
+import 'dart:convert';
 import 'dart:math';
 import 'dart:ui';
 

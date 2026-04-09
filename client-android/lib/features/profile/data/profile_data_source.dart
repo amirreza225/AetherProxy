@@ -1,8 +1,8 @@
-import 'package:drift/drift.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/db/db.dart';
 import 'package:aetherproxy/features/profile/model/profile_sort_enum.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:drift/drift.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:loggy/loggy.dart';
 
 part 'profile_data_source.g.dart';

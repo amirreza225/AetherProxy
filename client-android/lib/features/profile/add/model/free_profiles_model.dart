@@ -5,7 +5,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'free_profiles_model.freezed.dart';
 part 'free_profiles_model.g.dart';
 
-@freezed
 class FreeProfilesModel with _$FreeProfilesModel {
   const factory FreeProfilesModel({required List<FreeProfile> profiles}) = _FreeProfilesModel;
 

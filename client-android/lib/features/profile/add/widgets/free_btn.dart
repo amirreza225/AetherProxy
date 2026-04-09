@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:aetherproxy/core/localization/locale_preferences.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/features/common/custom_text_scroll.dart';
 import 'package:aetherproxy/features/profile/add/model/free_profiles_model.dart';
+import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class FreeBtn extends ConsumerWidget {

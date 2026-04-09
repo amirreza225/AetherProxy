@@ -1,12 +1,11 @@
-import 'package:flutter/material.dart';
-import 'package:go_router/go_router.dart';
 import 'package:aetherproxy/core/router/go_router/refresh_listenable.dart';
 import 'package:aetherproxy/core/router/go_router/routing_config_notifier.dart';
+import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'go_router_notifier.g.dart';
 
-// if 'stateful shell route' navigators not registered, this navigator key can be used for showing dialog or bottom sheet...
 final rootNavKey = GlobalKey<NavigatorState>(debugLabel: 'rootNav');
 
 @Riverpod(keepAlive: true)

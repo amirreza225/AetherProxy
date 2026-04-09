@@ -1,10 +1,10 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
 import 'package:aetherproxy/features/connection/notifier/connection_notifier.dart';
 import 'package:aetherproxy/features/profile/notifier/active_profile_notifier.dart';
 import 'package:aetherproxy/features/settings/notifier/config_option/config_option_notifier.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class ConnectionWrapper extends StatefulHookConsumerWidget {

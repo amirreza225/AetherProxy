@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 import 'package:aetherproxy/core/app_info/app_info_provider.dart';
 import 'package:aetherproxy/core/localization/locale_preferences.dart';
 import 'package:aetherproxy/core/model/constants.dart';
@@ -10,6 +9,7 @@ import 'package:aetherproxy/features/app_update/model/app_update_failure.dart';
 import 'package:aetherproxy/features/app_update/model/remote_version_entity.dart';
 import 'package:aetherproxy/features/app_update/notifier/app_update_state.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:flutter/foundation.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:upgrader/upgrader.dart';

@@ -3,7 +3,6 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'singbox_stats.freezed.dart';
 part 'singbox_stats.g.dart';
 
-@freezed
 class SingboxStats with _$SingboxStats {
   const SingboxStats._();
 

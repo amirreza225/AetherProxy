@@ -7,7 +7,6 @@ export 'package:aetherproxy/gen/translations.g.dart';
 
 part 'translations.g.dart';
 
-@Riverpod(keepAlive: true)
 Future<Translations> translations(Ref ref) async {
   return await ref.watch(localePreferencesProvider).build();
 }

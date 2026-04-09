@@ -1,10 +1,10 @@
 import 'dart:io';
 import 'dart:ui';
 
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/preferences/general_preferences.dart';
 import 'package:aetherproxy/features/connection/notifier/connection_notifier.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:screen_retriever/screen_retriever.dart';
 import 'package:tray_manager/tray_manager.dart';

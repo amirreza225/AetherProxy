@@ -1,10 +1,4 @@
 import 'package:accessibility_tools/accessibility_tools.dart';
-import 'package:dynamic_color/dynamic_color.dart';
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
-import 'package:flutter_hooks/flutter_hooks.dart';
-import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:aetherproxy/core/directories/directories_provider.dart';
 import 'package:aetherproxy/core/localization/locale_extensions.dart';
 import 'package:aetherproxy/core/localization/locale_preferences.dart';
@@ -24,6 +18,12 @@ import 'package:aetherproxy/features/system_tray/notifier/system_tray_notifier.d
 import 'package:aetherproxy/features/window/widget/window_wrapper.dart';
 import 'package:aetherproxy/hiddifycore/hiddify_core_service_provider.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dynamic_color/dynamic_color.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_hooks/flutter_hooks.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:toastification/toastification.dart';
 import 'package:upgrader/upgrader.dart';

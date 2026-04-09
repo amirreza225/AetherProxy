@@ -1,4 +1,3 @@
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/analytics/analytics_controller.dart';
 import 'package:aetherproxy/core/localization/locale_extensions.dart';
 import 'package:aetherproxy/core/localization/locale_preferences.dart';
@@ -7,6 +6,7 @@ import 'package:aetherproxy/core/preferences/general_preferences.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
 import 'package:aetherproxy/core/theme/app_theme_mode.dart';
 import 'package:aetherproxy/core/theme/theme_preferences.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 class LocalePrefTile extends ConsumerWidget {

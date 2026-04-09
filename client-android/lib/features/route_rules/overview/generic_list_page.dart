@@ -1,9 +1,9 @@
-import 'package:flutter/material.dart';
-import 'package:gap/gap.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/router/dialog/dialog_notifier.dart';
 import 'package:aetherproxy/features/route_rules/notifier/generic_list_notifier.dart';
 import 'package:aetherproxy/features/route_rules/notifier/rule_notifier.dart';
+import 'package:flutter/material.dart';
+import 'package:gap/gap.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:text_scroll/text_scroll.dart';
 

@@ -1,5 +1,3 @@
-import 'package:dartx/dartx.dart';
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/haptic/haptic_service.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/preferences/general_preferences.dart';
@@ -10,6 +8,8 @@ import 'package:aetherproxy/features/log/model/log_level.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/features/settings/widget/preference_tile.dart';
 import 'package:aetherproxy/utils/utils.dart';
+import 'package:dartx/dartx.dart';
+import 'package:flutter/material.dart';
 import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:humanizer/humanizer.dart';
 

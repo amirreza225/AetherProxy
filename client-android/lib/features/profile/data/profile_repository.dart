@@ -1,9 +1,4 @@
-import 'package:dio/dio.dart';
-import 'package:drift/drift.dart';
-import 'package:flutter/foundation.dart';
-import 'package:fpdart/fpdart.dart';
 import 'package:aetherproxy/core/db/db.dart';
-
 import 'package:aetherproxy/core/utils/exception_handler.dart';
 import 'package:aetherproxy/features/profile/data/profile_data_mapper.dart';
 import 'package:aetherproxy/features/profile/data/profile_data_source.dart';
@@ -15,6 +10,10 @@ import 'package:aetherproxy/features/profile/model/profile_sort_enum.dart';
 import 'package:aetherproxy/features/settings/data/config_option_repository.dart';
 import 'package:aetherproxy/hiddifycore/hiddify_core_service.dart';
 import 'package:aetherproxy/utils/custom_loggers.dart';
+import 'package:dio/dio.dart';
+import 'package:drift/drift.dart';
+import 'package:flutter/foundation.dart';
+import 'package:fpdart/fpdart.dart';
 import 'package:uuid/uuid.dart';
 
 abstract interface class ProfileRepository {

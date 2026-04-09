@@ -1,16 +1,15 @@
 import 'dart:convert';
 import 'dart:io';
 
+import 'package:aetherproxy/utils/custom_loggers.dart';
 import 'package:dio/dio.dart';
 import 'package:dio/io.dart';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
 
-import 'package:aetherproxy/utils/custom_loggers.dart';
-
 class DioHttpClient with InfraLogger {
   final Map<String, Dio> _dio = {};
   DioHttpClient({required Duration timeout, required this.userAgent, required bool debug}) {
-    for (var mode in ["proxy", "direct", "both"]) {
+    for (final mode in ["proxy", "direct", "both"]) {
       _dio[mode] = Dio(
         BaseOptions(
           connectTimeout: timeout,

@@ -4,7 +4,6 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'active_breakpoint_notifier.g.dart';
 
-@Riverpod(keepAlive: true)
 class ActiveBreakpointNotifier extends _$ActiveBreakpointNotifier {
   @override
   Breakpoints? build() {

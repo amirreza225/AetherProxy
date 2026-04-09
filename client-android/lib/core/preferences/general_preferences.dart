@@ -1,15 +1,14 @@
-import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:aetherproxy/core/app_info/app_info_provider.dart';
 import 'package:aetherproxy/core/model/environment.dart';
 import 'package:aetherproxy/core/model/region.dart';
 import 'package:aetherproxy/core/preferences/actions_at_closing.dart';
-
 import 'package:aetherproxy/core/preferences/preferences_provider.dart';
 import 'package:aetherproxy/core/utils/preferences_utils.dart';
 import 'package:aetherproxy/features/per_app_proxy/model/per_app_proxy_mode.dart';
 import 'package:aetherproxy/features/window/notifier/window_notifier.dart';
 import 'package:aetherproxy/utils/platform_utils.dart';
+import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'general_preferences.g.dart';

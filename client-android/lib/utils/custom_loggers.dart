@@ -1,8 +1,5 @@
 import 'package:loggy/loggy.dart';
 
-/// application layer logger
-///
-/// used in notifiers and controllers
 mixin AppLogger implements LoggyType {
   @override
   Loggy<AppLogger> get loggy => Loggy<AppLogger>('$runtimeType');
