@@ -11,8 +11,9 @@ import (
 
 // BootstrapManifestPubKey is the Ed25519 public key (32 bytes, base64-encoded)
 // used to verify signed bootstrap manifests.
-// Replace with your own key pair before production deployment.
-const BootstrapManifestPubKey = "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU="
+// When empty (the default), manifest signature verification is skipped.
+// Set AETHER_GOSSIP_MANIFEST_PUBKEY in production to enforce verification.
+const BootstrapManifestPubKey = ""
 
 //go:embed version
 var version string
@@ -166,4 +167,14 @@ func GetGossipBootstrap() []string {
 // Defaults to an empty string (disabled).
 func GetGossipManifestURL() string {
 	return os.Getenv("AETHER_GOSSIP_MANIFEST_URL")
+}
+
+// GetGossipManifestPubKey returns the base64-encoded Ed25519 public key used
+// to verify signed bootstrap manifests. Falls back to BootstrapManifestPubKey.
+// When empty, manifest signature verification is skipped.
+func GetGossipManifestPubKey() string {
+	if k := os.Getenv("AETHER_GOSSIP_MANIFEST_PUBKEY"); k != "" {
+		return k
+	}
+	return BootstrapManifestPubKey
 }

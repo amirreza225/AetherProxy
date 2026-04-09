@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"sync"
 	"time"
 
@@ -240,7 +241,7 @@ func (d *DiscoveryService) fetchSignedManifest(url string) ([]string, error) {
 	}
 
 	// Verify signature when a public key is configured.
-	if pubKeyB64 := config.BootstrapManifestPubKey; pubKeyB64 != "" {
+	if pubKeyB64 := config.GetGossipManifestPubKey(); pubKeyB64 != "" {
 		if err := verifyManifest(body, manifest.Signature, pubKeyB64); err != nil {
 			return nil, fmt.Errorf("manifest signature invalid: %w", err)
 		}
@@ -356,9 +357,15 @@ func parseNodeMeta(n *memberlist.Node) aetherNodeMeta {
 	return meta
 }
 
-// buildNodeName returns a human-readable name for this node.
+// buildNodeName returns a human-readable, cluster-unique name for this node.
+// It combines the AetherProxy version with the OS hostname so that multiple
+// instances running the same version can still be distinguished.
 func buildNodeName() string {
-	return fmt.Sprintf("aether-%s", config.GetVersion())
+	host, err := os.Hostname()
+	if err != nil || host == "" {
+		host = "node"
+	}
+	return fmt.Sprintf("aether-%s-%s", config.GetVersion(), host)
 }
 
 // ── memberlist delegates ───────────────────────────────────────────────────────
