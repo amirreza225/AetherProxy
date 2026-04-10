@@ -201,8 +201,17 @@ function VlessSection({ form, setForm, generatingKeys, onGenerateKeys }: {
           <Input readOnly value={form.public_key} className="font-mono text-xs bg-muted" />
         </Field>
       )}
-      <Field label="Short IDs" hint="comma-separated hex strings, e.g. abc123">
-        <Input value={form.short_ids} placeholder="abc123" onChange={(e) => setForm((f) => ({ ...f, short_ids: e.target.value }))} />
+      <Field label="Short IDs" hint="hex only (0-9 a-f), comma-separated">
+        <div className="flex gap-2">
+          <Input value={form.short_ids} placeholder="a1b2c3d4 (hex only)" className="font-mono text-xs"
+            onChange={(e) => setForm((f) => ({ ...f, short_ids: e.target.value }))} />
+          <Button type="button" variant="outline" size="sm" className="shrink-0"
+            onClick={() => {
+              const hex = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+                .map((b) => b.toString(16).padStart(2, "0")).join("");
+              setForm((f) => ({ ...f, short_ids: hex }));
+            }}>Gen</Button>
+        </div>
       </Field>
       <SectionHead>uTLS Fingerprint</SectionHead>
       <Field label="Browser to mimic">
@@ -403,6 +412,8 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
 
       if (preset === "vless-reality") {
         const shortIds = vless.short_ids.split(",").map((s) => s.trim()).filter(Boolean);
+        const invalidId = shortIds.find((s) => !/^[0-9a-fA-F]+$/.test(s));
+        if (invalidId) { setError(`Short ID "${invalidId}" is not valid hex (use 0-9 and a-f only)`); setSaving(false); return; }
         const tlsServer = {
           enabled: true,
           server_name: vless.server_name,
