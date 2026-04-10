@@ -75,8 +75,15 @@ func SetLoginUser(c *gin.Context, userName string, maxAge int) error {
 }
 
 // GetLoginUser extracts the authenticated username from the JWT.
-// It checks the Authorization: Bearer header first, then the aether_token cookie.
+// It checks the Authorization: Bearer header first, then the aether_token cookie,
+// then a token query param, and finally a value set by the APIv2 token middleware.
 func GetLoginUser(c *gin.Context) string {
+	// Check username set by APIv2 token middleware first.
+	if v, ok := c.Get("_aether_v2_username"); ok {
+		if username, ok := v.(string); ok && username != "" {
+			return username
+		}
+	}
 	tokenStr := ""
 	if h := c.GetHeader("Authorization"); strings.HasPrefix(h, "Bearer ") {
 		tokenStr = strings.TrimPrefix(h, "Bearer ")

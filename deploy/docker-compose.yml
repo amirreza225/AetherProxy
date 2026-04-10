@@ -52,6 +52,7 @@ services:
     restart: unless-stopped
     environment:
       NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://backend:2095}"
+      NEXT_PUBLIC_SUB_URL: "${NEXT_PUBLIC_SUB_URL:-}"
     ports:
       - "3000:3000"
     depends_on:
@@ -62,6 +63,9 @@ services:
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
+    environment:
+      PANEL_DOMAIN: "${PANEL_DOMAIN:-localhost}"
+      API_DOMAIN: "${API_DOMAIN:-localhost}"
     ports:
       - "80:80"
       - "443:443"

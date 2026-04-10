@@ -53,6 +53,32 @@ func (a *APIv2Handler) postHandler(c *gin.Context) {
 		a.ApiService.SubConvert(c)
 	case "importdb":
 		a.ApiService.ImportDb(c)
+	case "addToken":
+		a.ApiService.AddToken(c)
+		a.ReloadTokens()
+	case "deleteToken":
+		a.ApiService.DeleteToken(c)
+		a.ReloadTokens()
+	case "createNode":
+		a.ApiService.CreateNode(c)
+	case "updateNode":
+		a.ApiService.UpdateNode(c)
+	case "deleteNode":
+		a.ApiService.DeleteNode(c)
+	case "deployNode":
+		a.ApiService.DeployNode(c)
+	case "saveRouting":
+		a.ApiService.SaveRouting(c)
+	case "setPluginEnabled":
+		a.ApiService.SetPluginEnabled(c)
+	case "setPluginConfig":
+		a.ApiService.SetPluginConfig(c)
+	case "discoveryJoin":
+		a.ApiService.DiscoveryJoin(c)
+	case "discoveryLeave":
+		a.ApiService.DiscoveryLeave(c)
+	case "discoveryAddPeer":
+		a.ApiService.DiscoveryAddPeer(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
@@ -90,10 +116,28 @@ func (a *APIv2Handler) getHandler(c *gin.Context) {
 		a.ApiService.GetDb(c)
 	case "checkOutbound":
 		a.ApiService.GetCheckOutbound(c)
+	case "tokens":
+		a.ApiService.GetTokens(c)
+	case "singbox-config":
+		a.ApiService.GetSingboxConfig(c)
+	case "nodes":
+		a.ApiService.GetNodes(c)
+	case "routing":
+		a.ApiService.GetRouting(c)
+	case "analytics":
+		a.ApiService.GetAnalytics(c)
+	case "plugins":
+		a.ApiService.GetPlugins(c)
+	case "discoveryStatus":
+		a.ApiService.GetDiscoveryStatus(c)
+	case "discoveryPeers":
+		a.ApiService.GetDiscoveryPeers(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
 }
+
+const v2UsernameKey = "_aether_v2_username"
 
 func (a *APIv2Handler) findUsername(c *gin.Context) string {
 	token := c.Request.Header.Get("Token")
@@ -112,6 +156,7 @@ func (a *APIv2Handler) findUsername(c *gin.Context) string {
 func (a *APIv2Handler) checkToken(c *gin.Context) {
 	username := a.findUsername(c)
 	if username != "" {
+		c.Set(v2UsernameKey, username)
 		c.Next()
 		return
 	}

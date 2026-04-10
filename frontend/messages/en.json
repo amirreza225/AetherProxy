@@ -198,7 +198,14 @@
     "timeLocation": "Timezone",
     "trafficAge": "Stats Retention (days)",
     "maxAge": "Session Lifetime (days)",
-    "subPath": "Subscription Path"
+    "subPath": "Subscription Path",
+    "changePassword": "Change Password",
+    "oldPassword": "Current password",
+    "newUsername": "New username (leave blank to keep current)",
+    "newPassword": "New password",
+    "changePasswordSave": "Update credentials",
+    "changePasswordSuccess": "Credentials updated successfully.",
+    "changePasswordError": "Failed to update credentials."
   },
   "plugins": {
     "title": "Plugins",

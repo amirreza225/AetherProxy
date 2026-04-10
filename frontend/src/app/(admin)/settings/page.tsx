@@ -2,7 +2,7 @@
 
 import useSWR from "swr";
 import { useState, useEffect } from "react";
-import { getSettings, saveSettings } from "@/lib/api";
+import { getSettings, saveSettings, changePass } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -32,6 +32,11 @@ export default function SettingsPage() {
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Change password form state
+  const [passForm, setPassForm] = useState({ oldPass: "", newUsername: "", newPass: "" });
+  const [passSaving, setPassSaving] = useState(false);
+  const [passMsg, setPassMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
   // Sync fetched data into form once loaded
   useEffect(() => {
     if (data) setForm(data);
@@ -53,6 +58,25 @@ export default function SettingsPage() {
       setMsg({ ok: false, text: t("saveError") });
     } finally {
       setSaving(false);
+    }
+  }
+
+  async function handleChangePass(e: React.FormEvent) {
+    e.preventDefault();
+    setPassSaving(true);
+    setPassMsg(null);
+    try {
+      const res = await changePass("1", passForm.oldPass, passForm.newUsername, passForm.newPass);
+      if (res.success) {
+        setPassMsg({ ok: true, text: t("changePasswordSuccess") });
+        setPassForm({ oldPass: "", newUsername: "", newPass: "" });
+      } else {
+        setPassMsg({ ok: false, text: res.msg || t("changePasswordError") });
+      }
+    } catch {
+      setPassMsg({ ok: false, text: t("changePasswordError") });
+    } finally {
+      setPassSaving(false);
     }
   }
 
@@ -112,6 +136,55 @@ export default function SettingsPage() {
               </div>
             </form>
           )}
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-base">{t("changePassword")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <form onSubmit={handleChangePass} className="space-y-3">
+            <div>
+              <Label htmlFor="oldPass">{t("oldPassword")}</Label>
+              <Input
+                id="oldPass"
+                type="password"
+                value={passForm.oldPass}
+                onChange={(e) => setPassForm((f) => ({ ...f, oldPass: e.target.value }))}
+                required
+              />
+            </div>
+            <div>
+              <Label htmlFor="newUsername">{t("newUsername")}</Label>
+              <Input
+                id="newUsername"
+                type="text"
+                value={passForm.newUsername}
+                onChange={(e) => setPassForm((f) => ({ ...f, newUsername: e.target.value }))}
+              />
+            </div>
+            <div>
+              <Label htmlFor="newPass">{t("newPassword")}</Label>
+              <Input
+                id="newPass"
+                type="password"
+                value={passForm.newPass}
+                onChange={(e) => setPassForm((f) => ({ ...f, newPass: e.target.value }))}
+                required
+              />
+            </div>
+            {passMsg && (
+              <p className={`text-sm ${passMsg.ok ? "text-green-600" : "text-destructive"}`}>
+                {passMsg.text}
+              </p>
+            )}
+            <div className="flex justify-end pt-1">
+              <Button type="submit" disabled={passSaving}>
+                {passSaving ? t("saving") : t("changePasswordSave")}
+              </Button>
+            </div>
+          </form>
         </CardContent>
       </Card>
     </div>
