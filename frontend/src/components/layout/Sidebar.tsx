@@ -21,6 +21,7 @@ import {
 const navItems = [
   { href: "/dashboard", key: "dashboard" },
   { href: "/nodes", key: "nodes" },
+  { href: "/inbounds", key: "inbounds" },
   { href: "/users", key: "users" },
   { href: "/subscriptions", key: "subscriptions" },
   { href: "/routing", key: "routing" },

@@ -24,6 +24,7 @@ export function proxy(request: NextRequest) {
   const isAdminRoute =
     pathname.startsWith("/dashboard") ||
     pathname.startsWith("/nodes") ||
+    pathname.startsWith("/inbounds") ||
     pathname.startsWith("/users") ||
     pathname.startsWith("/subscriptions") ||
     pathname.startsWith("/routing") ||

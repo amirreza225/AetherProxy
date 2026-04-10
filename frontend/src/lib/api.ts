@@ -139,6 +139,9 @@ export interface Client {
   inbounds: Array<string | number>;
   links?: Array<Record<string, string>>;
   config?: Record<string, unknown>;
+  desc?: string;
+  group?: string;
+  delayStart?: boolean;
 }
 
 function normalizeClientPayload(client: Partial<Client>): Record<string, unknown> {
@@ -196,6 +199,58 @@ export async function changePass(
     method: "POST",
     body: new URLSearchParams({ oldPass, newUsername, newPass }),
   });
+}
+
+// ── Inbounds ──────────────────────────────────────────────────────────────────
+
+export interface Inbound {
+  id: number;
+  type: string;
+  tag: string;
+  tls_id?: number;
+  listen?: string;
+  listen_port?: number;
+  users?: string[];
+  [key: string]: unknown;
+}
+
+export async function getInbounds(headers?: HeadersInit) {
+  const res = await apiFetch<{ inbounds: Inbound[] }>("/api/inbounds", { headers });
+  const obj = res.obj as unknown;
+  if (obj && typeof obj === "object" && Array.isArray((obj as { inbounds?: Inbound[] }).inbounds)) {
+    return (obj as { inbounds: Inbound[] }).inbounds;
+  }
+  return [] as Inbound[];
+}
+
+export async function saveInbound(action: "new" | "edit", data: Omit<Inbound, "users">) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "inbounds",
+      action,
+      data: JSON.stringify(data),
+    }),
+  });
+}
+
+export async function deleteInbound(tag: string) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "inbounds",
+      action: "del",
+      data: JSON.stringify(tag),
+    }),
+  });
+}
+
+/** Build the subscription URL for a client by name. */
+export function clientSubUrl(clientName: string): string {
+  const configuredSubBase = process.env.NEXT_PUBLIC_SUB_URL?.trim();
+  const subBase = (configuredSubBase ? configuredSubBase.replace(/\/$/, "") : "")
+    || (BASE_URL.includes(":2095") ? BASE_URL.replace(":2095", ":2096") : BASE_URL);
+  return `${subBase}/sub/${encodeURIComponent(clientName)}`;
 }
 
 // ── Full config (inbounds, outbounds, clients, …) ────────────────────────────

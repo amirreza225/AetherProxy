@@ -4,10 +4,13 @@ import useSWR from "swr";
 import { useState } from "react";
 import {
   getClients,
+  getInbounds,
   createClient,
   updateClient,
   deleteClient,
+  clientSubUrl,
   type Client,
+  type Inbound,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import {
@@ -43,6 +46,20 @@ function formatExpiry(unix: number): string {
   return new Date(unix * 1000).toLocaleDateString();
 }
 
+function CopyButton({ value, label, copiedLabel }: { value: string; label: string; copiedLabel: string }) {
+  const [copied, setCopied] = useState(false);
+  async function handleCopy() {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }
+  return (
+    <Button size="sm" variant="outline" onClick={handleCopy}>
+      {copied ? copiedLabel : label}
+    </Button>
+  );
+}
+
 const emptyForm = (): Omit<Client, "id" | "down" | "up" | "totalDown" | "totalUp"> => ({
   enable: true,
   name: "",
@@ -51,14 +68,19 @@ const emptyForm = (): Omit<Client, "id" | "down" | "up" | "totalDown" | "totalUp
   autoReset: false,
   resetDays: 30,
   inbounds: [],
+  desc: "",
+  group: "",
+  delayStart: false,
 });
 
 function ClientDialog({
   initialData,
+  inboundList,
   onSaved,
   trigger,
 }: {
   initialData?: Client;
+  inboundList: Inbound[];
   onSaved: () => void;
   trigger: React.ReactElement;
 }) {
@@ -75,11 +97,24 @@ function ClientDialog({
           autoReset: initialData.autoReset,
           resetDays: initialData.resetDays,
           inbounds: initialData.inbounds,
+          desc: initialData.desc ?? "",
+          group: initialData.group ?? "",
+          delayStart: initialData.delayStart ?? false,
         }
       : emptyForm()
   );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleInbound(id: number) {
+    setForm((f) => {
+      const current = f.inbounds as number[];
+      if (current.includes(id)) {
+        return { ...f, inbounds: current.filter((x) => x !== id) };
+      }
+      return { ...f, inbounds: [...current, id] };
+    });
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -113,7 +148,7 @@ function ClientDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger render={trigger} />
-      <DialogContent>
+      <DialogContent className="max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{initialData ? t("edit") : t("add")}</DialogTitle>
         </DialogHeader>
@@ -126,6 +161,47 @@ function ClientDialog({
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
               required
             />
+          </div>
+          <div>
+            <Label htmlFor="cdesc">{t("desc")}</Label>
+            <Input
+              id="cdesc"
+              value={form.desc ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, desc: e.target.value }))}
+              placeholder="Optional description"
+            />
+          </div>
+          <div>
+            <Label htmlFor="cgroup">{t("group")}</Label>
+            <Input
+              id="cgroup"
+              value={form.group ?? ""}
+              onChange={(e) => setForm((f) => ({ ...f, group: e.target.value }))}
+              placeholder="Optional group name"
+            />
+          </div>
+          <div>
+            <Label>{t("inbounds")}</Label>
+            {inboundList.length === 0 ? (
+              <p className="text-xs text-muted-foreground mt-1">{t("noInbounds")}</p>
+            ) : (
+              <div className="mt-1 space-y-1 rounded-md border p-2">
+                {inboundList.map((inb) => {
+                  const selected = (form.inbounds as number[]).includes(inb.id);
+                  return (
+                    <label key={inb.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted">
+                      <input
+                        type="checkbox"
+                        checked={selected}
+                        onChange={() => toggleInbound(inb.id)}
+                      />
+                      <span className="font-mono text-sm">{inb.tag}</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{inb.type}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div>
             <Label htmlFor="volume">
@@ -188,16 +264,29 @@ function ClientDialog({
               <span className="text-sm text-muted-foreground">{t("days")}</span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            <input
-              id="enable"
-              type="checkbox"
-              checked={form.enable}
-              onChange={(e) =>
-                setForm((f) => ({ ...f, enable: e.target.checked }))
-              }
-            />
-            <Label htmlFor="enable">{t("enabled")}</Label>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <input
+                id="enable"
+                type="checkbox"
+                checked={form.enable}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, enable: e.target.checked }))
+                }
+              />
+              <Label htmlFor="enable">{t("enabled")}</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <input
+                id="delayStart"
+                type="checkbox"
+                checked={form.delayStart ?? false}
+                onChange={(e) =>
+                  setForm((f) => ({ ...f, delayStart: e.target.checked }))
+                }
+              />
+              <Label htmlFor="delayStart">{t("delayStart")}</Label>
+            </div>
           </div>
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
@@ -236,6 +325,8 @@ export default function UsersPage() {
     })
   );
 
+  const { data: inboundList = [] } = useSWR("/api/inbounds", getInbounds);
+
   async function handleDelete(id: number) {
     if (!confirm(t("confirmDelete"))) return;
     try {
@@ -251,6 +342,7 @@ export default function UsersPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
         <ClientDialog
+          inboundList={inboundList}
           onSaved={() => mutate()}
           trigger={<Button size="sm">{t("add")}</Button>}
         />
@@ -270,6 +362,7 @@ export default function UsersPage() {
               <TableHead>{t("trafficQuota")}</TableHead>
               <TableHead>{t("used")}</TableHead>
               <TableHead>{t("expiryDate")}</TableHead>
+              <TableHead>{t("subLink")}</TableHead>
               <TableHead>{t("actions")}</TableHead>
             </TableRow>
           </TableHeader>
@@ -277,7 +370,7 @@ export default function UsersPage() {
             {isLoading
               ? Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 7 }).map((__, j) => (
+                    {Array.from({ length: 8 }).map((__, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-16" />
                       </TableCell>
@@ -303,9 +396,17 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>{formatExpiry(c.expiry)}</TableCell>
                     <TableCell>
+                      <CopyButton
+                        value={clientSubUrl(c.name)}
+                        label={t("copySubLink")}
+                        copiedLabel={t("subLinkCopied")}
+                      />
+                    </TableCell>
+                    <TableCell>
                       <div className="flex gap-2">
                         <ClientDialog
                           initialData={c}
+                          inboundList={inboundList}
                           onSaved={() => mutate()}
                           trigger={
                             <Button size="sm" variant="outline">
@@ -330,3 +431,4 @@ export default function UsersPage() {
     </div>
   );
 }
+
