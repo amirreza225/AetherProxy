@@ -51,8 +51,8 @@ class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
         .throttle((_) => Stream.value(_listener?.isPaused ?? false), leading: false, trailing: true)
         .throttleTime(const Duration(milliseconds: 250), leading: false, trailing: true)
         .asyncMap((event) async {
-          await event.fold(
-            (f) {
+          await event.fold<Future<void>>(
+            (f) async {
               _logs = [];
               state = state.copyWith(logs: AsyncError(f, StackTrace.current));
             },

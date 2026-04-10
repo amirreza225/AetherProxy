@@ -1,0 +1,42 @@
+Try `flutter pub outdated` for more information.
+Analyzing client-android...                                     
+
+warning • Unused import: 'dart:io' • lib/bootstrap.dart:2:8 • unused_import
+warning • Unused import: 'package:aetherproxy/features/settings/notifier/warp_option/warp_option_notifier.dart' • lib/core/router/bottom_sheets/widgets/quick_settings_modal.dart:3:8 • unused_import
+warning • Invalid assignment to the parameter 'value' • lib/core/router/deep_linking/url_protocol/windows_protocol.dart:53:5 • parameter_assignments
+warning • Unused import: 'package:aetherproxy/core/directories/directories_provider.dart' • lib/features/app/widget/app.dart:2:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/notification/in_app_notification_controller.dart' • lib/features/app/widget/app.dart:7:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/model/environment.dart' • lib/features/app_update/notifier/app_update_notifier.dart:4:8 • unused_import
+warning • Dead code • lib/features/app_update/notifier/app_update_notifier.dart:34:23 • dead_code
+warning • Dead code • lib/features/app_update/notifier/app_update_notifier.dart:34:41 • dead_code
+warning • Unused import: 'package:aetherproxy/core/model/failures.dart' • lib/features/home/widget/connection_button.dart:2:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/router/dialog/widgets/custom_alert_dialog.dart' • lib/features/home/widget/connection_button.dart:5:8 • unused_import
+warning • Dead code • lib/features/home/widget/connection_button.dart:165:9 • dead_code
+warning • This case is covered by the previous cases • lib/features/home/widget/connection_button.dart:165:58 • unreachable_switch_case
+warning • Dead code • lib/features/home/widget/connection_button.dart:166:9 • dead_code
+warning • This case is covered by the previous cases • lib/features/home/widget/connection_button.dart:166:39 • unreachable_switch_case
+warning • Dead code • lib/features/home/widget/connection_button.dart:167:9 • dead_code
+warning • This case is covered by the previous cases • lib/features/home/widget/connection_button.dart:167:11 • unreachable_switch_case
+warning • Unnecessary cast • lib/features/profile/details/json_editor.dart:996:23 • unnecessary_cast
+warning • Unnecessary cast • lib/features/profile/details/json_editor.dart:1008:23 • unnecessary_cast
+warning • Unused import: 'dart:developer' • lib/features/profile/details/profile_details_notifier.dart:2:8 • unused_import
+warning • Unused import: 'package:aetherproxy/singbox/model/singbox_proxy_type.dart' • lib/features/proxy/model/proxy_entity.dart:1:8 • unused_import
+warning • Unused import: 'package:dio/dio.dart' • lib/features/route_rules/notifier/android_apps_notifier.dart:4:8 • unused_import
+warning • Unused import: 'package:aetherproxy/features/proxy/active/active_proxy_notifier.dart' • lib/features/settings/notifier/config_option/config_option_notifier.dart:9:8 • unused_import
+warning • Unused import: 'package:aetherproxy/hiddifycore/core_interface/mtls_channel_cred.dart' • lib/hiddifycore/core_interface/core_interface_desktop.dart:8:8 • unused_import
+warning • The declaration '_logger' isn't referenced • lib/hiddifycore/core_interface/core_interface_mobile.dart:19:7 • unused_element
+warning • Unused import: 'dart:math' • lib/hiddifycore/hiddify_core_service.dart:3:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/model/directories.dart' • lib/hiddifycore/hiddify_core_service.dart:6:8 • unused_import
+warning • Unused import: 'package:aetherproxy/hiddifycore/core_interface/core_interface.dart' • lib/hiddifycore/hiddify_core_service.dart:12:8 • unused_import
+warning • The value of the local variable 'res' isn't used • lib/hiddifycore/hiddify_core_service.dart:208:15 • unused_local_variable
+warning • This case is covered by the previous cases • lib/hiddifycore/hiddify_core_service.dart:558:9 • unreachable_switch_case
+warning • Unused import: 'package:aetherproxy/core/directories/directories_provider.dart' • lib/hiddifycore/hiddify_core_service_provider.dart:1:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/notification/in_app_notification_controller.dart' • lib/hiddifycore/hiddify_core_service_provider.dart:2:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/preferences/general_preferences.dart' • lib/hiddifycore/hiddify_core_service_provider.dart:3:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/directories/directories_provider.dart' • lib/hiddifycore/init_signal.dart:1:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/notification/in_app_notification_controller.dart' • lib/hiddifycore/init_signal.dart:2:8 • unused_import
+warning • Unused import: 'package:aetherproxy/core/preferences/general_preferences.dart' • lib/hiddifycore/init_signal.dart:3:8 • unused_import
+warning • Unused import: 'package:aetherproxy/hiddifycore/hiddify_core_service.dart' • lib/hiddifycore/init_signal.dart:4:8 • unused_import
+warning • The declaration '_keyMap' isn't referenced • lib/singbox/model/singbox_outbound.dart:33:30 • unused_element
+
+147 issues found. (ran in 3.3s)

@@ -18,6 +18,6 @@ Future<LogRepository> logRepository(Ref ref) async {
 }
 
 @Riverpod(keepAlive: true)
-LogPathResolver logPathResolver(LogPathResolverRef ref) {
+LogPathResolver logPathResolver(Ref ref) {
   return LogPathResolver(ref.watch(appDirectoriesProvider).requireValue.workingDir);
 }
