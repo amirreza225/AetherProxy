@@ -84,7 +84,8 @@ install_go() {
   if command -v go >/dev/null 2>&1; then
     local cur
     cur=$(go version | grep -oP '[\d.]+' | head -1)
-    local req="1.22"
+    local req
+    req=$(echo "$GO_VERSION" | cut -d. -f1,2)
     if [[ "$(printf '%s\n' "$req" "$cur" | sort -V | head -1)" == "$req" ]]; then
       ok "Go $cur already installed (>= $req required)."
       return
@@ -194,8 +195,13 @@ JWT_SECRET=""
 if [[ -f "$ENV_FILE" ]]; then
   warn "Config at $ENV_FILE already exists — skipping interactive setup."
   warn "Delete it and re-run to reconfigure, or edit it directly."
-  PANEL_DOMAIN=$(grep -m1 '^AETHER_ADMIN_ORIGIN=' "$ENV_FILE" | cut -d= -f2- | sed 's|https://||' || true)
-  API_DOMAIN="$PANEL_DOMAIN"
+  PANEL_DOMAIN=$(grep -m1 '^PANEL_DOMAIN=' "$ENV_FILE" | cut -d= -f2- || true)
+  API_DOMAIN=$(grep -m1 '^API_DOMAIN='   "$ENV_FILE" | cut -d= -f2- || true)
+  # Fall back to deriving from AETHER_ADMIN_ORIGIN if legacy env file lacks explicit entries
+  if [[ -z "$PANEL_DOMAIN" ]]; then
+    PANEL_DOMAIN=$(grep -m1 '^AETHER_ADMIN_ORIGIN=' "$ENV_FILE" | cut -d= -f2- | sed 's|https://||' || true)
+  fi
+  [[ -z "$API_DOMAIN" ]] && API_DOMAIN="$PANEL_DOMAIN"
 else
   echo -e ""
   echo -e "${BOLD}  Domain Configuration${PLAIN}"
@@ -213,6 +219,9 @@ else
 
   cat > "$ENV_FILE" <<ENVEOF
 # AetherProxy environment — $(date -u '+%Y-%m-%d %H:%M UTC')
+# These two lines are used by the install script on updates; the backend binary does not read them.
+PANEL_DOMAIN=$PANEL_DOMAIN
+API_DOMAIN=$API_DOMAIN
 AETHER_PORT=2095
 AETHER_SUB_PORT=2096
 AETHER_DB_FOLDER=$DATA_DIR/db
@@ -231,10 +240,9 @@ ok "Backend binary written to $BIN_DIR/aetherproxy"
 
 # ── Build frontend ────────────────────────────────────────────────────────────
 info "Installing frontend dependencies ..."
-(cd "$INSTALL_DIR/frontend" && npm install --prefer-offline --no-audit --no-fund 2>&1 | tail -5)
+(cd "$INSTALL_DIR/frontend" && npm install --prefer-offline --no-audit --no-fund)
 info "Building frontend (NEXT_PUBLIC_API_URL=https://${API_DOMAIN}) ..."
-(cd "$INSTALL_DIR/frontend" \
-  && NEXT_PUBLIC_API_URL="https://${API_DOMAIN}" npm run build 2>&1 | tail -10)
+(cd "$INSTALL_DIR/frontend" && NEXT_PUBLIC_API_URL="https://${API_DOMAIN}" npm run build)
 ok "Frontend built."
 
 # ── Create service user and data directory ────────────────────────────────────
@@ -248,7 +256,9 @@ chown -R "$SERVICE_USER:$SERVICE_USER" "$DATA_DIR"
 chown root:"$SERVICE_USER" "$ENV_FILE"
 
 # Give the service user read access to the built frontend
-chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/frontend/.next" 2>/dev/null || true
+if [[ -d "$INSTALL_DIR/frontend/.next" ]]; then
+  chown -R "$SERVICE_USER:$SERVICE_USER" "$INSTALL_DIR/frontend/.next"
+fi
 
 # ── Write Caddy config ────────────────────────────────────────────────────────
 CADDY_CONF="/etc/caddy/Caddyfile"
