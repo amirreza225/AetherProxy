@@ -1,9 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { login, setClientAuthToken } from "@/lib/api";
-import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -27,9 +26,11 @@ export default function LoginPage() {
     try {
       const res = await login(user, pass);
       if (res.success) {
-        if (res.obj?.token) {
-          setClientAuthToken(res.obj.token);
+        if (!res.obj?.token) {
+          setError(t("connectionFailed"));
+          return;
         }
+        setClientAuthToken(res.obj.token);
         const from = searchParams.get("from");
         const destination = from && from.startsWith("/") ? from : "/dashboard";
         router.replace(destination);

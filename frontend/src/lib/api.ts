@@ -47,7 +47,8 @@ export function clearClientAuthToken(): void {
   }
 
   sessionStorage.removeItem("aether_token");
-  document.cookie = "aether_token=; Path=/; Max-Age=0; SameSite=Lax";
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `aether_token=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
 interface ApiResponse<T = unknown> {
