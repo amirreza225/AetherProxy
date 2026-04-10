@@ -33,7 +33,7 @@ export default function RoutingPage() {
 
   const [rules, setRules] = useState<RouteRule[] | null>(null);
   const [saving, setSaving] = useState(false);
-  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveMsg, setSaveMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const displayRules = rules ?? data ?? [];
 
@@ -61,10 +61,10 @@ export default function RoutingPage() {
     setSaveMsg(null);
     try {
       await saveRouting(displayRules);
-      setSaveMsg(t("saveSuccess"));
+      setSaveMsg({ ok: true, text: t("saveSuccess") });
       mutate(displayRules, false);
     } catch {
-      setSaveMsg(t("saveError"));
+      setSaveMsg({ ok: false, text: t("saveError") });
     } finally {
       setSaving(false);
     }
@@ -85,8 +85,8 @@ export default function RoutingPage() {
       </div>
 
       {saveMsg && (
-        <p className={`text-sm ${saveMsg.includes("Failed") || saveMsg.includes("خطا") ? "text-destructive" : "text-green-600"}`}>
-          {saveMsg}
+        <p className={`text-sm ${saveMsg.ok ? "text-green-600" : "text-destructive"}`}>
+          {saveMsg.text}
         </p>
       )}
       {error && <p className="text-sm text-destructive">{t("saveError")}</p>}

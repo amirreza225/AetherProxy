@@ -185,7 +185,7 @@ function ClientDialog({
               />
             )}
             {form.autoReset && (
-              <span className="text-sm text-muted-foreground">days</span>
+              <span className="text-sm text-muted-foreground">{t("days")}</span>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -237,9 +237,13 @@ export default function UsersPage() {
   );
 
   async function handleDelete(id: number) {
-    if (!confirm("Delete this user?")) return;
-    await deleteClient(id);
-    mutate();
+    if (!confirm(t("confirmDelete"))) return;
+    try {
+      await deleteClient(id);
+      mutate();
+    } catch {
+      // Keep UX simple on this screen; API errors are surfaced on next refresh.
+    }
   }
 
   return (

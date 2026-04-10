@@ -141,11 +141,11 @@ export async function loadData(headers?: HeadersInit) {
 }
 
 export async function loadPartial(
-  sections: string[],
+  section: string,
   headers?: HeadersInit
 ) {
   return apiFetch<Record<string, unknown>>(
-    `/api/${sections[0]}`,
+    `/api/${section}`,
     { headers }
   );
 }
@@ -205,6 +205,17 @@ export interface Node {
   lastPing: number;
 }
 
+function toSearchParams(
+  values: Record<string, string | number | boolean | null | undefined>
+) {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(values)) {
+    if (value == null) continue;
+    params.set(key, String(value));
+  }
+  return params;
+}
+
 export async function getNodes(headers?: HeadersInit) {
   return apiFetch<Node[]>("/api/nodes", { headers });
 }
@@ -212,14 +223,29 @@ export async function getNodes(headers?: HeadersInit) {
 export async function createNode(node: Omit<Node, "id" | "status" | "lastPing">) {
   return apiFetch<Node>("/api/createNode", {
     method: "POST",
-    body: new URLSearchParams(node as unknown as Record<string, string>),
+    body: toSearchParams({
+      name: node.name,
+      host: node.host,
+      sshPort: node.sshPort,
+      sshKeyPath: node.sshKeyPath,
+      provider: node.provider,
+    }),
   });
 }
 
 export async function updateNode(node: Node) {
   return apiFetch<Node>("/api/updateNode", {
     method: "POST",
-    body: new URLSearchParams(node as unknown as Record<string, string>),
+    body: toSearchParams({
+      id: node.id,
+      name: node.name,
+      host: node.host,
+      sshPort: node.sshPort,
+      sshKeyPath: node.sshKeyPath,
+      provider: node.provider,
+      status: node.status,
+      lastPing: node.lastPing,
+    }),
   });
 }
 

@@ -2,6 +2,7 @@
 
 import useSWR from "swr";
 import { useState } from "react";
+import { useTranslations } from "next-intl";
 import {
   loadPartial,
   getNodes,
@@ -40,22 +41,33 @@ interface Inbound {
 }
 
 function NodeStatusBadge({ status }: { status: Node["status"] }) {
+  const t = useTranslations("nodes");
   const variant =
     status === "online" ? "default" : status === "offline" ? "destructive" : "secondary";
-  return <Badge variant={variant}>{status}</Badge>;
+  return <Badge variant={variant}>{t(status as Parameters<typeof t>[0])}</Badge>;
 }
 
 function PeerStatusBadge({ status }: { status: PeerNode["status"] }) {
+  const t = useTranslations("nodes");
   const variant =
     status === "alive"
       ? "default"
       : status === "dead"
       ? "destructive"
       : "secondary";
-  return <Badge variant={variant}>{status}</Badge>;
+
+  const labels: Record<PeerNode["status"], string> = {
+    alive: t("peerAlive"),
+    suspect: t("peerSuspect"),
+    dead: t("peerDead"),
+    left: t("peerLeft"),
+  };
+
+  return <Badge variant={variant}>{labels[status]}</Badge>;
 }
 
 function DecentralizedTab() {
+  const t = useTranslations("nodes");
   const {
     data: statusData,
     isLoading: statusLoading,
@@ -102,7 +114,7 @@ function DecentralizedTab() {
     try {
       const res = await discoveryAddPeer(peerAddr);
       if (!res.success) {
-        setPeerError(res.msg || "Failed to join peer");
+        setPeerError(res.msg || t("joinPeerError"));
       } else {
         setPeerAddr("");
         mutatePeers();
@@ -119,28 +131,28 @@ function DecentralizedTab() {
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium flex items-center justify-between">
-            Gossip Cluster Status
+            {t("gossipStatus")}
             {statusLoading ? (
               <Skeleton className="h-5 w-16" />
             ) : (
               <Badge variant={status.running ? "default" : "secondary"}>
-                {status.running ? "Active" : "Inactive"}
+                {status.running ? t("clusterActive") : t("clusterInactive")}
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <p className="text-xs text-muted-foreground">
-            When active, this node participates in a gossip cluster (UDP{" "}
-            <code className="rounded bg-muted px-1">7946</code> by default) and
-            discovers other AetherProxy instances without a central server.
-            Bootstrap peers can be configured via the{" "}
+            {t("gossipDescriptionBefore")} (UDP{" "}
+            <code className="rounded bg-muted px-1">7946</code> {t("byDefault")}) and
+            {" "}{t("gossipDescriptionAfter")}
+            {" "}{t("bootstrapPeersPrefix")}{" "}
             <code className="rounded bg-muted px-1">AETHER_GOSSIP_BOOTSTRAP</code>{" "}
-            environment variable.
+            {t("bootstrapPeersSuffix")}
           </p>
           {status.running && (
             <p className="text-xs text-muted-foreground">
-              Known cluster members: <strong>{status.memberCount}</strong>
+              {t("knownClusterMembers")}: <strong>{status.memberCount}</strong>
             </p>
           )}
           <Button
@@ -152,8 +164,8 @@ function DecentralizedTab() {
             {toggling
               ? "…"
               : status.running
-              ? "Leave decentralized network"
-              : "Join decentralized network"}
+              ? t("leaveNetwork")
+              : t("joinNetwork")}
           </Button>
         </CardContent>
       </Card>
@@ -162,13 +174,13 @@ function DecentralizedTab() {
       {status.running && (
         <Card>
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Add Bootstrap Peer</CardTitle>
+            <CardTitle className="text-sm font-medium">{t("addBootstrapPeer")}</CardTitle>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleAddPeer} className="flex gap-2 items-end">
               <div className="flex-1">
                 <Label htmlFor="peerAddr" className="text-xs">
-                  Peer address (host:port)
+                  {t("peerAddress")}
                 </Label>
                 <Input
                   id="peerAddr"
@@ -179,7 +191,7 @@ function DecentralizedTab() {
                 />
               </div>
               <Button type="submit" size="sm" disabled={addingPeer || !peerAddr}>
-                {addingPeer ? "…" : "Join"}
+                  {addingPeer ? "…" : t("join")}
               </Button>
             </form>
             {peerError && (
@@ -191,7 +203,7 @@ function DecentralizedTab() {
 
       {/* Discovered peers */}
       <div className="space-y-2">
-        <h2 className="text-sm font-medium">Discovered Peers</h2>
+        <h2 className="text-sm font-medium">{t("discoveredPeers")}</h2>
         {peersLoading ? (
           <div className="grid gap-3 md:grid-cols-2">
             {Array.from({ length: 2 }).map((_, i) => (
@@ -207,8 +219,8 @@ function DecentralizedTab() {
           </div>
         ) : peers.length === 0 ? (
           <p className="text-sm text-muted-foreground">
-            No peers discovered yet.{" "}
-            {!status.running && "Join the decentralized network to start."}
+            {t("noDiscoveredPeers")}{" "}
+            {!status.running && t("joinNetworkToStart")}
           </p>
         ) : (
           <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
@@ -224,12 +236,12 @@ function DecentralizedTab() {
                   <p>
                     {peer.address}:{peer.gossipPort}
                   </p>
-                  {peer.version && <p>Version: {peer.version}</p>}
+                  {peer.version && <p>{t("version")}: {peer.version}</p>}
                   <p>
-                    Last seen:{" "}
+                    {t("lastSeen")}:{" "}
                     {peer.lastSeen > 0
                       ? new Date(peer.lastSeen * 1000).toLocaleTimeString()
-                      : "—"}
+                      : t("notAvailable")}
                   </p>
                 </CardContent>
               </Card>
@@ -242,47 +254,64 @@ function DecentralizedTab() {
 }
 
 export default function NodesPage() {
+  const t = useTranslations("nodes");
   const { data: inboundData, isLoading: inboundsLoading, error: inboundsError } = useSWR("/api/inbounds", () =>
-    loadPartial(["inbounds"]).then((r) => r.obj as { inbounds?: Inbound[] })
+    loadPartial("inbounds").then((r) => r.obj as { inbounds?: Inbound[] })
   );
   const { data: nodesData, isLoading: nodesLoading, error: nodesError, mutate: mutateNodes } = useSWR("/api/nodes", () =>
     getNodes().then(r => r.obj as Node[])
   );
+  const [actionMsg, setActionMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const inbounds = inboundData?.inbounds ?? [];
   const nodes = nodesData ?? [];
 
   async function handleDelete(id: number) {
-    if (!confirm("Delete this node?")) return;
-    await deleteNode(id);
-    mutateNodes();
+    if (!confirm(t("confirmDeleteNode"))) return;
+    try {
+      await deleteNode(id);
+      setActionMsg({ ok: true, text: t("deleteSuccess") });
+      mutateNodes();
+    } catch {
+      setActionMsg({ ok: false, text: t("deleteError") });
+    }
   }
 
   async function handleDeploy(id: number) {
-    await deployNode(id);
-    alert("Deploy triggered.");
+    try {
+      await deployNode(id);
+      setActionMsg({ ok: true, text: t("deployTriggered") });
+    } catch {
+      setActionMsg({ ok: false, text: t("deployError") });
+    }
   }
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">Nodes</h1>
+      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+
+      {actionMsg && (
+        <p className={`text-sm ${actionMsg.ok ? "text-green-600" : "text-destructive"}`}>
+          {actionMsg.text}
+        </p>
+      )}
 
       <Tabs defaultValue="remote">
         <TabsList>
-          <TabsTrigger value="remote">Remote Nodes (Phase 2)</TabsTrigger>
-          <TabsTrigger value="decentralized">Decentralized Network</TabsTrigger>
-          <TabsTrigger value="inbounds">Local Inbounds</TabsTrigger>
+          <TabsTrigger value="remote">{t("remoteNodesTab")}</TabsTrigger>
+          <TabsTrigger value="decentralized">{t("decentralizedTab")}</TabsTrigger>
+          <TabsTrigger value="inbounds">{t("localInboundsTab")}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="remote" className="space-y-4 pt-2">
           <div className="flex items-center justify-between">
             <p className="text-sm text-muted-foreground">
-              Manage remote VPS nodes. AetherProxy health-checks them every 30s.
+              {t("remoteNodesDescription")}
             </p>
             <AddNodeDialog onCreated={() => mutateNodes()} />
           </div>
 
-          {nodesError && <p className="text-sm text-destructive">Failed to load nodes.</p>}
+          {nodesError && <p className="text-sm text-destructive">{t("loadNodesError")}</p>}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {nodesLoading
@@ -302,16 +331,16 @@ export default function NodesPage() {
                     </CardHeader>
                     <CardContent className="text-sm text-muted-foreground space-y-1">
                       <p>{node.host}:{node.sshPort}</p>
-                      {node.provider && <p>Provider: {node.provider}</p>}
+                      {node.provider && <p>{t("provider")}: {node.provider}</p>}
                       {node.lastPing > 0 && (
-                        <p>Last ping: {new Date(node.lastPing * 1000).toLocaleTimeString()}</p>
+                        <p>{t("lastPing")}: {new Date(node.lastPing * 1000).toLocaleTimeString()}</p>
                       )}
                       <div className="flex gap-2 pt-2">
                         <Button size="sm" variant="outline" onClick={() => handleDeploy(node.id)}>
-                          Deploy
+                          {t("deploy")}
                         </Button>
                         <Button size="sm" variant="destructive" onClick={() => handleDelete(node.id)}>
-                          Delete
+                          {t("delete")}
                         </Button>
                       </div>
                     </CardContent>
@@ -319,7 +348,7 @@ export default function NodesPage() {
                 ))}
             {!nodesLoading && nodes.length === 0 && (
               <p className="text-sm text-muted-foreground col-span-3">
-                No remote nodes yet. Click &quot;Add Node&quot; to register a VPS.
+                {t("noRemoteNodes")}
               </p>
             )}
           </div>
@@ -331,10 +360,10 @@ export default function NodesPage() {
 
         <TabsContent value="inbounds" className="space-y-4 pt-2">
           <p className="text-sm text-muted-foreground">
-            Local sing-box inbounds on this server.
+            {t("localInboundsDescription")}
           </p>
 
-          {inboundsError && <p className="text-sm text-destructive">Failed to load inbounds.</p>}
+          {inboundsError && <p className="text-sm text-destructive">{t("loadInboundsError")}</p>}
 
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {inboundsLoading
@@ -350,13 +379,13 @@ export default function NodesPage() {
                       <CardTitle className="text-sm font-medium flex items-center justify-between">
                         {ib.tag}
                         <Badge variant={ib.enabled === false ? "secondary" : "default"}>
-                          {ib.enabled === false ? "disabled" : "active"}
+                          {ib.enabled === false ? t("disabled") : t("active")}
                         </Badge>
                       </CardTitle>
                     </CardHeader>
                     <CardContent className="text-sm text-muted-foreground">
-                      <p>Protocol: {ib.type}</p>
-                      {ib.listen_port && <p>Port: {ib.listen_port}</p>}
+                      <p>{t("protocol")}: {ib.type}</p>
+                      {ib.listen_port && <p>{t("port")}: {ib.listen_port}</p>}
                     </CardContent>
                   </Card>
                 ))}
@@ -368,6 +397,8 @@ export default function NodesPage() {
 }
 
 function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
+  const t = useTranslations("nodes");
+  const tc = useTranslations("common");
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", host: "", sshPort: "22", sshKeyPath: "", provider: "" });
   const [saving, setSaving] = useState(false);
@@ -386,34 +417,34 @@ function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={<Button size="sm" />}>Add Node</DialogTrigger>
+      <DialogTrigger render={<Button size="sm" />}>{t("add")}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Add Remote Node</DialogTitle>
+          <DialogTitle>{t("addRemoteNode")}</DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-3">
           <div>
-            <Label htmlFor="name">Name</Label>
+            <Label htmlFor="name">{t("name")}</Label>
             <Input id="name" value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} required />
           </div>
           <div>
-            <Label htmlFor="host">Host / IP</Label>
+            <Label htmlFor="host">{t("hostIp")}</Label>
             <Input id="host" value={form.host} onChange={e => setForm(f => ({ ...f, host: e.target.value }))} required />
           </div>
           <div>
-            <Label htmlFor="sshPort">SSH Port</Label>
+            <Label htmlFor="sshPort">{t("sshPort")}</Label>
             <Input id="sshPort" type="number" value={form.sshPort} onChange={e => setForm(f => ({ ...f, sshPort: e.target.value }))} />
           </div>
           <div>
-            <Label htmlFor="sshKeyPath">SSH Key Path (on server)</Label>
+            <Label htmlFor="sshKeyPath">{t("sshKeyPath")}</Label>
             <Input id="sshKeyPath" value={form.sshKeyPath} onChange={e => setForm(f => ({ ...f, sshKeyPath: e.target.value }))} placeholder="/root/.ssh/id_rsa" />
           </div>
           <div>
-            <Label htmlFor="provider">Provider</Label>
+            <Label htmlFor="provider">{t("provider")}</Label>
             <Input id="provider" value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))} placeholder="e.g. Hetzner, DigitalOcean" />
           </div>
           <Button type="submit" disabled={saving} className="w-full">
-            {saving ? "Saving…" : "Add Node"}
+            {saving ? tc("saving") : t("add")}
           </Button>
         </form>
       </DialogContent>

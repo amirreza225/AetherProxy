@@ -2,25 +2,29 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useTranslations } from "next-intl";
 import { logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { LanguageToggleButton } from "@/components/layout/LanguageToggleButton";
 import { Separator } from "@/components/ui/separator";
 
 const navItems = [
-  { href: "/dashboard", label: "Dashboard" },
-  { href: "/nodes", label: "Nodes" },
-  { href: "/users", label: "Users" },
-  { href: "/subscriptions", label: "Subscriptions" },
-  { href: "/routing", label: "Routing" },
-  { href: "/analytics", label: "Analytics" },
-  { href: "/settings", label: "Settings" },
-  { href: "/plugins", label: "Plugins" },
+  { href: "/dashboard", key: "dashboard" },
+  { href: "/nodes", key: "nodes" },
+  { href: "/users", key: "users" },
+  { href: "/subscriptions", key: "subscriptions" },
+  { href: "/routing", key: "routing" },
+  { href: "/analytics", key: "analytics" },
+  { href: "/settings", key: "settings" },
+  { href: "/plugins", key: "plugins" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
   const router = useRouter();
+  const tNav = useTranslations("nav");
+  const tCommon = useTranslations("common");
 
   async function handleLogout() {
     await logout();
@@ -45,14 +49,15 @@ export function Sidebar() {
                   : "text-muted-foreground"
               )}
             >
-              {item.label}
+              {tNav(item.key as Parameters<typeof tNav>[0])}
             </span>
           </Link>
         ))}
       </nav>
       <Separator className="my-3" />
+      <LanguageToggleButton variant="ghost" size="sm" className="mb-2" />
       <Button variant="ghost" size="sm" onClick={handleLogout}>
-        Sign out
+        {tCommon("signOut")}
       </Button>
     </aside>
   );

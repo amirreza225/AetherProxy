@@ -125,7 +125,7 @@ export default function AnalyticsPage() {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">
-              Protocol Share (% of total traffic)
+                {t("protocolShare")}
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -145,7 +145,7 @@ export default function AnalyticsPage() {
                 <Line
                   type="monotone"
                   dataKey="pct"
-                  name="Share"
+                  name={t("share")}
                   stroke="#f59e0b"
                   dot={{ r: 4 }}
                   strokeWidth={2}

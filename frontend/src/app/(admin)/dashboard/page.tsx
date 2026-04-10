@@ -58,7 +58,12 @@ export default function DashboardPage() {
   const nodesOffline = (nodesData ?? []).filter((n) => n.status === "offline").length;
 
   useEffect(() => {
-    const timer = window.setTimeout(() => {
+    let reconnectTimer: number | null = null;
+    let closedByCleanup = false;
+    let reconnectAttempt = 0;
+
+    const connect = () => {
+      if (closedByCleanup) return;
       const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:2095")
         .replace(/^http/, "ws");
       const token = sessionStorage.getItem("aether_token");
@@ -68,7 +73,10 @@ export default function DashboardPage() {
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => setConnected(true);
+      ws.onopen = () => {
+        reconnectAttempt = 0;
+        setConnected(true);
+      };
       ws.onmessage = (e) => {
         try {
           const frame = JSON.parse(e.data) as LiveStats;
@@ -86,12 +94,30 @@ export default function DashboardPage() {
           // skip malformed
         }
       };
-      ws.onclose = () => setConnected(false);
-      ws.onerror = () => setConnected(false);
-    }, 0);
+
+      ws.onclose = () => {
+        setConnected(false);
+        wsRef.current = null;
+        if (closedByCleanup) return;
+
+        const delay = Math.min(10000, 1000 * 2 ** reconnectAttempt);
+        reconnectAttempt += 1;
+        reconnectTimer = window.setTimeout(connect, delay);
+      };
+
+      ws.onerror = () => {
+        // Trigger onclose so a reconnect can be scheduled.
+        ws.close();
+      };
+    };
+
+    connect();
 
     return () => {
-      window.clearTimeout(timer);
+      closedByCleanup = true;
+      if (reconnectTimer !== null) {
+        window.clearTimeout(reconnectTimer);
+      }
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;

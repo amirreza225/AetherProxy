@@ -34,9 +34,12 @@ function PluginCard({
 
   async function handleToggle() {
     setToggling(true);
-    await setPluginEnabled(plugin.name, !plugin.enabled);
-    onMutate();
-    setToggling(false);
+    try {
+      await setPluginEnabled(plugin.name, !plugin.enabled);
+      onMutate();
+    } finally {
+      setToggling(false);
+    }
   }
 
   async function handleSaveConfig() {
@@ -45,16 +48,21 @@ function PluginCard({
     try {
       parsed = JSON.parse(configText);
     } catch {
-      setConfigError("Invalid JSON");
+      setConfigError(t("invalidJson"));
       return;
     }
-    setSaving(true);
-    const res = await setPluginConfig(plugin.name, parsed);
-    setSaving(false);
-    if (!res.success) {
-      setConfigError(res.msg || "Failed to save config");
-    } else {
-      onMutate();
+    try {
+      setSaving(true);
+      const res = await setPluginConfig(plugin.name, parsed);
+      if (!res.success) {
+        setConfigError(res.msg || t("saveConfigError"));
+      } else {
+        onMutate();
+      }
+    } catch {
+      setConfigError(t("saveConfigError"));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -72,9 +80,9 @@ function PluginCard({
         <p className="text-xs text-muted-foreground">{plugin.description}</p>
 
         <div className="space-y-1">
-          <Label className="text-xs">Configuration (JSON)</Label>
+          <Label className="text-xs">{t("configJson")}</Label>
           <Textarea
-            className="font-mono text-xs min-h-[120px] resize-y"
+            className="font-mono text-xs min-h-30 resize-y"
             value={configText}
             onChange={(e) => {
               setConfigText(e.target.value);
@@ -135,7 +143,7 @@ export default function PluginsPage() {
       </p>
 
       {error && (
-        <p className="text-sm text-destructive">Failed to load plugins.</p>
+        <p className="text-sm text-destructive">{t("loadError")}</p>
       )}
 
       {isLoading ? (
