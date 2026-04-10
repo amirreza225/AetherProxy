@@ -389,23 +389,35 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
       const isEdit = !!initialData;
       const existingTlsId = (initialData?.tls_id as number) ?? 0;
 
-      async function upsertTls(tag: string, server: Record<string, unknown>): Promise<number> {
+      async function upsertTls(
+        tag: string,
+        server: Record<string, unknown>,
+        client: Record<string, unknown> = {}
+      ): Promise<number> {
         if (isEdit && existingTlsId > 0) {
-          await updateTlsProfile(existingTlsId, `${tag}-tls`, server);
+          await updateTlsProfile(existingTlsId, `${tag}-tls`, server, client);
           return existingTlsId;
         }
-        return createTlsProfile(`${tag}-tls`, server);
+        return createTlsProfile(`${tag}-tls`, server, client);
       }
 
       if (preset === "vless-reality") {
         const shortIds = vless.short_ids.split(",").map((s) => s.trim()).filter(Boolean);
-        const tlsId = await upsertTls(vless.tag, {
-          enabled: true, server_name: vless.server_name,
-          reality: { enabled: true,
+        const tlsServer = {
+          enabled: true,
+          server_name: vless.server_name,
+          reality: {
+            enabled: true,
             handshake: { server: vless.handshake_server, server_port: vless.handshake_port },
-            private_key: vless.private_key, short_id: shortIds.length ? shortIds : [""] },
+            private_key: vless.private_key,
+            short_id: shortIds.length ? shortIds : [""],
+          },
+        };
+        const tlsClient = {
           utls: { enabled: true, fingerprint: vless.fingerprint },
-        });
+          reality: { enabled: false, public_key: vless.public_key, short_id: "" },
+        };
+        const tlsId = await upsertTls(vless.tag, tlsServer, tlsClient);
         const res = await saveInbound(isEdit ? "edit" : "new", {
           ...(isEdit ? { id: initialData!.id } : {}),
           type: "vless", tag: vless.tag, listen: vless.listen, listen_port: vless.listen_port, tls_id: tlsId,

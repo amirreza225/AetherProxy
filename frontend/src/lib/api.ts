@@ -222,14 +222,15 @@ export async function getTlsProfiles(headers?: HeadersInit): Promise<TlsProfile[
  */
 export async function createTlsProfile(
   name: string,
-  server: Record<string, unknown>
+  server: Record<string, unknown>,
+  client: Record<string, unknown> = {}
 ): Promise<number> {
   const res = await apiFetch<Record<string, unknown>>("/api/save", {
     method: "POST",
     body: new URLSearchParams({
       object: "tls",
       action: "new",
-      data: JSON.stringify({ name, server }),
+      data: JSON.stringify({ name, server, client }),
     }),
   });
   if (!res.success) throw new Error(res.msg || "Failed to create TLS profile");
@@ -242,14 +243,15 @@ export async function createTlsProfile(
 export async function updateTlsProfile(
   id: number,
   name: string,
-  server: Record<string, unknown>
+  server: Record<string, unknown>,
+  client: Record<string, unknown> = {}
 ): Promise<void> {
   const res = await apiFetch<Record<string, unknown>>("/api/save", {
     method: "POST",
     body: new URLSearchParams({
       object: "tls",
       action: "edit",
-      data: JSON.stringify({ id, name, server }),
+      data: JSON.stringify({ id, name, server, client }),
     }),
   });
   if (!res.success) throw new Error(res.msg || "Failed to update TLS profile");
