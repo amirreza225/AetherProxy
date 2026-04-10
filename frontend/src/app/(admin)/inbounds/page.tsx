@@ -170,18 +170,21 @@ function VlessSection({ form, setForm, generatingKeys, onGenerateKeys }: {
         onListen={(v) => setForm((f) => ({ ...f, listen: v }))}
         onPort={(v) => setForm((f) => ({ ...f, listen_port: v }))} />
       <SectionHead>Reality TLS</SectionHead>
-      <Field label="SNI — Domain to Impersonate" hint="e.g. www.microsoft.com">
+      <Field label="SNI — Domain to Impersonate" hint="domain only, e.g. www.microsoft.com">
         <Input value={form.server_name} placeholder="www.microsoft.com" required
           onChange={(e) => {
-            const v = e.target.value;
+            const v = e.target.value.replace(/^https?:\/\//i, "").replace(/\/.*$/, "");
             setForm((f) => ({ ...f, server_name: v,
               handshake_server: f.handshake_server === f.server_name ? v : f.handshake_server }));
           }} />
       </Field>
       <div className="grid grid-cols-[1fr_7rem] gap-3">
-        <Field label="Handshake Server" hint="real destination host">
+        <Field label="Handshake Server" hint="domain only">
           <Input value={form.handshake_server} placeholder="www.microsoft.com" required
-            onChange={(e) => setForm((f) => ({ ...f, handshake_server: e.target.value }))} />
+            onChange={(e) => setForm((f) => ({
+              ...f,
+              handshake_server: e.target.value.replace(/^https?:\/\//i, "").replace(/\/.*$/, ""),
+            }))} />
         </Field>
         <Field label="Port">
           <Input type="number" min={1} max={65535} value={form.handshake_port}
