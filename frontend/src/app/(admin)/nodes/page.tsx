@@ -14,7 +14,6 @@ import {
   discoveryJoin,
   discoveryLeave,
   discoveryAddPeer,
-  type Inbound,
   type Node,
   type DiscoveryStatus,
   type PeerNode,
@@ -264,7 +263,7 @@ export default function NodesPage() {
   );
   const [actionMsg, setActionMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const inbounds: Inbound[] = inboundData ?? [];
+  const inbounds = inboundData ?? [];
   const nodes = nodesData ?? [];
 
   async function handleDelete(id: number) {
