@@ -164,6 +164,17 @@ func (j *JsonService) getOutbounds(clientConfig json.RawMessage, inbounds []*mod
 				}
 				outbound[key] = value
 			}
+			// Skip outbound if required user credential is missing
+			switch protocol {
+			case "vless", "vmess":
+				if uuid, _ := outbound["uuid"].(string); uuid == "" {
+					continue
+				}
+			case "trojan", "hysteria2":
+				if pass, _ := outbound["password"].(string); pass == "" {
+					continue
+				}
+			}
 		}
 
 		var addrs []map[string]interface{}
