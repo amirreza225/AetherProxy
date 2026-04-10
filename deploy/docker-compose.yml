@@ -22,6 +22,7 @@ services:
     ports:
       - "2095:2095"
       - "2096:2096"
+      - "8443:8443"
     networks:
       - aether_net
     depends_on:
