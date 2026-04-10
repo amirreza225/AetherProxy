@@ -119,7 +119,33 @@
     "generate": "Generate subscription link",
     "token": "Subscription token",
     "tokenPlaceholder": "Paste user token here",
-    "generateButton": "Generate"
+    "generateButton": "Generate",
+    "howToConnectTitle": "How users connect",
+    "howToConnectStep1": "Paste a valid subscription token.",
+    "howToConnectStep1New": "Create token below or paste an existing token.",
+    "howToConnectStep2": "Click Generate to create the share link and QR code.",
+    "howToConnectStep3": "Import the link or scan the QR in your client app.",
+    "quickCreate": "Quick create token",
+    "tokenDesc": "Token label",
+    "tokenDescPlaceholder": "Example: iPhone 16 / Clash app",
+    "tokenExpiryDays": "Expiry (days, 0 = never)",
+    "createAndGenerate": "Create and generate QR",
+    "createTokenSuccess": "Token created and QR generated.",
+    "createTokenError": "Failed to create token.",
+    "mainLink": "Main subscription link",
+    "copyLink": "Copy link",
+    "copied": "Copied",
+    "openLink": "Open link",
+    "advancedFormats": "Advanced formats",
+    "scanHint": "Scan this QR in your app, or use one of the links above.",
+    "existingTokens": "Existing tokens",
+    "noTokens": "No tokens yet.",
+    "tokenNoDesc": "No description",
+    "tokenMasked": "Masked token:",
+    "deleteToken": "Delete",
+    "confirmDeleteToken": "Delete this token?",
+    "expiresAt": "Expires:",
+    "neverExpires": "Never expires"
   },
   "routing": {
     "title": "Routing Rules",
@@ -197,6 +223,7 @@
     "confirm": "Confirm",
     "yes": "Yes",
     "no": "No",
+    "menu": "Menu",
     "signOut": "Sign out"
   }
 }

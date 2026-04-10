@@ -186,10 +186,39 @@ export async function getStats(
 
 // ── Subscription ──────────────────────────────────────────────────────────────
 
+export interface SubscriptionToken {
+  id: number;
+  desc: string;
+  token: string;
+  expiry: number;
+  userId?: number;
+}
+
 export function subUrl(token: string): string {
   const subBase =
     process.env.NEXT_PUBLIC_SUB_URL ?? BASE_URL.replace("2095", "2096");
   return `${subBase}/sub/${token}`;
+}
+
+export async function getTokens(headers?: HeadersInit) {
+  return apiFetch<SubscriptionToken[]>("/api/tokens", { headers });
+}
+
+export async function addToken(expiryDays: number, desc: string) {
+  return apiFetch<string>("/api/addToken", {
+    method: "POST",
+    body: new URLSearchParams({
+      expiry: String(expiryDays),
+      desc,
+    }),
+  });
+}
+
+export async function deleteToken(id: number) {
+  return apiFetch<Record<string, unknown>>("/api/deleteToken", {
+    method: "POST",
+    body: new URLSearchParams({ id: String(id) }),
+  });
 }
 
 // ── Nodes ─────────────────────────────────────────────────────────────────────

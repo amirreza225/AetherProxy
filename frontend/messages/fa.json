@@ -119,7 +119,33 @@
     "generate": "ساخت لینک اشتراک",
     "token": "توکن اشتراک",
     "tokenPlaceholder": "توکن کاربر را اینجا وارد کنید",
-    "generateButton": "ساخت"
+    "generateButton": "ساخت",
+    "howToConnectTitle": "نحوه اتصال کاربر",
+    "howToConnectStep1": "یک توکن اشتراک معتبر وارد کنید.",
+    "howToConnectStep1New": "توکن را همین‌جا بسازید یا یک توکن موجود وارد کنید.",
+    "howToConnectStep2": "روی ساخت بزنید تا لینک و QR تولید شود.",
+    "howToConnectStep3": "لینک را در کلاینت ایمپورت کنید یا QR را اسکن کنید.",
+    "quickCreate": "ساخت سریع توکن",
+    "tokenDesc": "برچسب توکن",
+    "tokenDescPlaceholder": "مثال: iPhone 16 / Clash app",
+    "tokenExpiryDays": "انقضا (روز، ۰ = بدون انقضا)",
+    "createAndGenerate": "ساخت و تولید QR",
+    "createTokenSuccess": "توکن ساخته شد و QR تولید شد.",
+    "createTokenError": "ساخت توکن ناموفق بود.",
+    "mainLink": "لینک اصلی اشتراک",
+    "copyLink": "کپی لینک",
+    "copied": "کپی شد",
+    "openLink": "باز کردن لینک",
+    "advancedFormats": "فرمت‌های پیشرفته",
+    "scanHint": "QR را در برنامه اسکن کنید یا از لینک‌های بالا استفاده کنید.",
+    "existingTokens": "توکن‌های موجود",
+    "noTokens": "هنوز توکنی وجود ندارد.",
+    "tokenNoDesc": "بدون توضیح",
+    "tokenMasked": "توکن ماسک‌شده:",
+    "deleteToken": "حذف",
+    "confirmDeleteToken": "این توکن حذف شود؟",
+    "expiresAt": "انقضا:",
+    "neverExpires": "بدون انقضا"
   },
   "routing": {
     "title": "قوانین مسیریابی",
@@ -197,6 +223,7 @@
     "confirm": "تأیید",
     "yes": "بله",
     "no": "خیر",
+    "menu": "منو",
     "signOut": "خروج"
   }
 }
