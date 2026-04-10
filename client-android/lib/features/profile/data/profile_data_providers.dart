@@ -12,6 +12,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profile_data_providers.g.dart';
 
+@Riverpod(keepAlive: true)
 Future<ProfileRepository> profileRepository(Ref ref) async {
   final repo = ProfileRepositoryImpl(
     profileDataSource: ref.watch(profileDataSourceProvider),

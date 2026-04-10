@@ -24,6 +24,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profile_notifier.g.dart';
 
+@riverpod
 class AddProfileNotifier extends _$AddProfileNotifier with AppLogger {
   @override
   AsyncValue<Unit?> build() {
