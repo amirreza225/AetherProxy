@@ -64,8 +64,18 @@ export default function DashboardPage() {
 
     const connect = () => {
       if (closedByCleanup) return;
-      const apiBase = (process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:2095")
-        .replace(/^http/, "ws");
+      const rawConfiguredApiBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+      const configuredApiBase = rawConfiguredApiBase
+        ? rawConfiguredApiBase.replace(/\/$/, "")
+        : "";
+      const localDevApiBase =
+        window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
+          ? "http://localhost:2095"
+          : "";
+      const httpBase = configuredApiBase || localDevApiBase;
+      const apiBase = httpBase
+        ? httpBase.replace(/^http/i, "ws")
+        : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
       const token = sessionStorage.getItem("aether_token");
       const wsUrl = token
         ? `${apiBase}/api/ws/stats?token=${encodeURIComponent(token)}`

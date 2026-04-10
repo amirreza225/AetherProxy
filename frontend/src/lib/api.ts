@@ -4,8 +4,23 @@
  * aether_token cookie (the backend accepts both).
  */
 
+function resolveDefaultApiBase(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+
+  const host = window.location.hostname;
+  if (host === "localhost" || host === "127.0.0.1") {
+    return "http://localhost:2095";
+  }
+
+  return "";
+}
+
+const configuredApiBase = process.env.NEXT_PUBLIC_API_URL?.trim();
 const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:2095";
+  (configuredApiBase ? configuredApiBase.replace(/\/$/, "") : "") ||
+  resolveDefaultApiBase();
 
 interface ApiResponse<T = unknown> {
   success: boolean;
@@ -206,8 +221,9 @@ export interface SubscriptionToken {
 }
 
 export function subUrl(token: string): string {
-  const subBase =
-    process.env.NEXT_PUBLIC_SUB_URL ?? BASE_URL.replace("2095", "2096");
+  const configuredSubBase = process.env.NEXT_PUBLIC_SUB_URL?.trim();
+  const subBase = (configuredSubBase ? configuredSubBase.replace(/\/$/, "") : "")
+    || (BASE_URL.includes(":2095") ? BASE_URL.replace(":2095", ":2096") : BASE_URL);
   return `${subBase}/sub/${token}`;
 }
 

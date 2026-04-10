@@ -52,9 +52,12 @@ services:
     build:
       context: ../frontend
       dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-}"
+        NEXT_PUBLIC_SUB_URL: "${NEXT_PUBLIC_SUB_URL:-}"
     restart: unless-stopped
     environment:
-      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-http://backend:2095}"
+      NEXT_PUBLIC_API_URL: "${NEXT_PUBLIC_API_URL:-}"
       NEXT_PUBLIC_SUB_URL: "${NEXT_PUBLIC_SUB_URL:-}"
     ports:
       - "3000:3000"
