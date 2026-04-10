@@ -1,7 +1,6 @@
 import 'package:aetherproxy/core/app_info/app_info_provider.dart';
 import 'package:aetherproxy/core/localization/locale_preferences.dart';
 import 'package:aetherproxy/core/model/constants.dart';
-import 'package:aetherproxy/core/model/environment.dart';
 import 'package:aetherproxy/core/preferences/preferences_provider.dart';
 import 'package:aetherproxy/core/utils/preferences_utils.dart';
 import 'package:aetherproxy/features/app_update/data/app_update_data_providers.dart';
@@ -31,7 +30,7 @@ Upgrader upgrader(Ref ref) => Upgrader(
     onMacOS: () => UpgraderAppcastStore(appcastURL: Constants.appCastUrl),
     onWeb: () => UpgraderAppcastStore(appcastURL: Constants.appCastUrl),
   ),
-  debugLogging: false && _debugUpgrader && kDebugMode,
+  debugLogging: _debugUpgrader && kDebugMode,
   // durationUntilAlertAgain: const Duration(hours: 12),
   messages: UpgraderMessages(code: ref.watch(localePreferencesProvider).languageCode),
 );

@@ -1,5 +1,4 @@
 import 'dart:async';
-import 'dart:io';
 
 import 'package:aetherproxy/core/analytics/analytics_controller.dart';
 import 'package:aetherproxy/core/app_info/app_info_provider.dart';

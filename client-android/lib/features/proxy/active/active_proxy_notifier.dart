@@ -9,7 +9,6 @@ import 'package:aetherproxy/features/proxy/model/ip_info_entity.dart' as oldipin
 import 'package:aetherproxy/features/proxy/model/proxy_failure.dart';
 import 'package:aetherproxy/hiddifycore/generated/v2/hcore/hcore.pb.dart';
 import 'package:aetherproxy/hiddifycore/init_signal.dart';
-import 'package:aetherproxy/utils/riverpod_utils.dart';
 import 'package:aetherproxy/utils/utils.dart';
 import 'package:dio/dio.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
@@ -20,7 +19,6 @@ part 'active_proxy_notifier.g.dart';
 class IpInfoNotifier extends _$IpInfoNotifier with AppLogger {
   @override
   Future<oldipinfo.IpInfo> build() async {
-    ref.disposeDelay(const Duration(seconds: 20));
     final cancelToken = CancelToken();
     Timer? timer;
     ref.onDispose(() {

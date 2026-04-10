@@ -2,11 +2,13 @@ import 'package:aetherproxy/core/directories/directories_provider.dart';
 import 'package:aetherproxy/features/log/data/log_path_resolver.dart';
 import 'package:aetherproxy/features/log/data/log_repository.dart';
 import 'package:aetherproxy/hiddifycore/hiddify_core_service_provider.dart';
+import 'package:hooks_riverpod/hooks_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'log_data_providers.g.dart';
 
-Future<LogRepository> logRepository(LogRepositoryRef ref) async {
+@Riverpod(keepAlive: true)
+Future<LogRepository> logRepository(Ref ref) async {
   final repo = LogRepositoryImpl(
     singbox: ref.watch(hiddifyCoreServiceProvider),
     logPathResolver: ref.watch(logPathResolverProvider),
@@ -16,6 +18,6 @@ Future<LogRepository> logRepository(LogRepositoryRef ref) async {
 }
 
 @Riverpod(keepAlive: true)
-LogPathResolver logPathResolver(LogPathResolverRef ref) {
+LogPathResolver logPathResolver(Ref ref) {
   return LogPathResolver(ref.watch(appDirectoriesProvider).requireValue.workingDir);
 }

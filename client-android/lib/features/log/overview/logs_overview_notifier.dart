@@ -5,7 +5,6 @@ import 'package:aetherproxy/features/log/model/log_entity.dart';
 import 'package:aetherproxy/features/log/model/log_level.dart';
 import 'package:aetherproxy/features/log/overview/logs_overview_state.dart';
 import 'package:aetherproxy/hiddifycore/init_signal.dart';
-import 'package:aetherproxy/utils/riverpod_utils.dart';
 import 'package:aetherproxy/utils/utils.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:rxdart/rxdart.dart';
@@ -16,7 +15,6 @@ part 'logs_overview_notifier.g.dart';
 class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
   @override
   LogsOverviewState build() {
-    ref.disposeDelay(const Duration(seconds: 20));
     state = const LogsOverviewState();
     ref.onDispose(() {
       loggy.debug("disposing");
@@ -53,8 +51,8 @@ class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
         .throttle((_) => Stream.value(_listener?.isPaused ?? false), leading: false, trailing: true)
         .throttleTime(const Duration(milliseconds: 250), leading: false, trailing: true)
         .asyncMap((event) async {
-          await event.fold(
-            (f) {
+          await event.fold<Future<void>>(
+            (f) async {
               _logs = [];
               state = state.copyWith(logs: AsyncError(f, StackTrace.current));
             },

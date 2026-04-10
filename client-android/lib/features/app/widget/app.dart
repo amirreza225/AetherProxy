@@ -1,10 +1,8 @@
 import 'package:accessibility_tools/accessibility_tools.dart';
-import 'package:aetherproxy/core/directories/directories_provider.dart';
 import 'package:aetherproxy/core/localization/locale_extensions.dart';
 import 'package:aetherproxy/core/localization/locale_preferences.dart';
 import 'package:aetherproxy/core/localization/translations.dart';
 import 'package:aetherproxy/core/model/constants.dart';
-import 'package:aetherproxy/core/notification/in_app_notification_controller.dart';
 import 'package:aetherproxy/core/router/go_router/go_router_notifier.dart';
 import 'package:aetherproxy/core/router/go_router/helper/active_breakpoint_notifier.dart';
 import 'package:aetherproxy/core/theme/app_theme.dart';
