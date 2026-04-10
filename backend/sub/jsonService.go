@@ -13,6 +13,32 @@ import (
 
 const defaultJson = `
 {
+  "dns": {
+    "servers": [
+      {
+        "tag": "dns-remote",
+        "address": "https://8.8.8.8/dns-query",
+        "detour": "proxy"
+      },
+      {
+        "tag": "dns-direct",
+        "address": "223.5.5.5",
+        "detour": "direct"
+      }
+    ],
+    "rules": [
+      {
+        "clash_mode": "Direct",
+        "server": "dns-direct"
+      },
+      {
+        "clash_mode": "Global",
+        "server": "dns-remote"
+      }
+    ],
+    "final": "dns-remote",
+    "independent_cache": true
+  },
   "inbounds": [
     {
       "type": "tun",
@@ -314,6 +340,8 @@ func (j *JsonService) addOthers(jsonConfig *map[string]interface{}) error {
 	if settingRules, ok := othersJson["rules"].([]interface{}); ok {
 		rules := append(rules_start, settingRules...)
 		route["rules"] = append(rules, rules_end...)
+	} else {
+		route["rules"] = append(rules_start, rules_end...)
 	}
 	if defaultDomainResolver, ok := othersJson["default_domain_resolver"].(string); ok {
 		route["default_domain_resolver"] = defaultDomainResolver
