@@ -23,6 +23,7 @@ COMPOSE_FILE="$INSTALL_DIR/deploy/docker-compose.yml"
 ENV_FILE="$INSTALL_DIR/deploy/.env"
 AUTO_YES=0
 NON_INTERACTIVE=0
+LOW_RAM_MODE=0
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info() { echo -e "${CYAN}[INFO]${PLAIN}  $*"; }
@@ -37,12 +38,14 @@ AetherProxy Docker installer
 Options:
   -y, --yes              Auto-confirm yes/no prompts
   -n, --non-interactive  Do not prompt; require env vars for required values
+  -l, --low-ram          Force conservative build settings for small VPS
   -h, --help             Show this help
 
 Environment variables:
   PANEL_DOMAIN           Panel domain (required in non-interactive mode)
   API_DOMAIN             API domain (required in non-interactive mode)
   AETHER_INSTALL_DIR     Install path (default: /opt/aetherproxy)
+  AETHER_LOW_RAM_BUILD   Set to 1 to force conservative build settings
 USAGE
 }
 
@@ -56,6 +59,10 @@ while [[ $# -gt 0 ]]; do
       NON_INTERACTIVE=1
       shift
       ;;
+    -l|--low-ram)
+      LOW_RAM_MODE=1
+      shift
+      ;;
     -h|--help)
       usage
       exit 0
@@ -65,6 +72,17 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ "${AETHER_LOW_RAM_BUILD:-0}" == "1" ]]; then
+  LOW_RAM_MODE=1
+fi
+
+if [[ "$LOW_RAM_MODE" -eq 0 && -r /proc/meminfo ]]; then
+  _mem_kb=$(awk '/MemTotal:/ {print $2}' /proc/meminfo)
+  if [[ -n "${_mem_kb:-}" && "$_mem_kb" -lt $((3072 * 1024)) ]]; then
+    LOW_RAM_MODE=1
+  fi
+fi
 
 HAS_TTY=0
 [[ -r /dev/tty ]] && HAS_TTY=1
@@ -210,6 +228,14 @@ API_DOMAIN="${_ad:-<api-domain>}"
 # ── Start services ────────────────────────────────────────────────────────────
 echo -e ""
 info "Building images and starting services (first run may take several minutes) ..."
+
+if [[ "$LOW_RAM_MODE" -eq 1 ]]; then
+  warn "Low-RAM build mode enabled (serialized compose build + conservative Go compiler parallelism)."
+  export GO_BUILD_P="${GO_BUILD_P:-1}"
+  export GO_BUILD_GOMAXPROCS="${GO_BUILD_GOMAXPROCS:-1}"
+  export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
+fi
+
 docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
 
 echo -e ""

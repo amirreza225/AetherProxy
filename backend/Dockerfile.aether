@@ -3,12 +3,19 @@ FROM golang:1.26-alpine AS builder
 
 RUN apk add --no-cache git gcc musl-dev
 
+ARG GO_BUILD_P
+ARG GO_BUILD_GOMAXPROCS
+
 WORKDIR /src
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
-RUN CGO_ENABLED=1 GOOS=linux go build -trimpath -ldflags="-s -w" -o /aetherproxy ./
+RUN set -eu; \
+	export CGO_ENABLED=1 GOOS=linux; \
+	if [ -n "${GO_BUILD_P:-}" ]; then export GOFLAGS="-p=${GO_BUILD_P}"; fi; \
+	if [ -n "${GO_BUILD_GOMAXPROCS:-}" ]; then export GOMAXPROCS="${GO_BUILD_GOMAXPROCS}"; fi; \
+	go build -trimpath -ldflags="-s -w" -o /aetherproxy ./
 
 # ── Runtime stage ─────────────────────────────────────────────────────────────
 FROM alpine:3.20

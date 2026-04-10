@@ -3,6 +3,9 @@ services:
     build:
       context: ../backend
       dockerfile: Dockerfile.aether
+      args:
+        GO_BUILD_P: "${GO_BUILD_P:-}"
+        GO_BUILD_GOMAXPROCS: "${GO_BUILD_GOMAXPROCS:-}"
     restart: unless-stopped
     environment:
       AETHER_PORT: "2095"

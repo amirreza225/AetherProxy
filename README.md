@@ -66,19 +66,47 @@ See [`docs/architecture.md`](docs/architecture.md) for the full request flow, mo
 
 ## Quick Start (Docker)
 
-**Prerequisites:** Docker + Docker Compose v2, a domain pointed at your VPS.
+**Prerequisites:**
+- Ubuntu/Debian VPS with root access
+- Docker + Docker Compose v2 (installer can auto-install Docker)
+- Two DNS records already pointed to your VPS IP: panel domain + API domain
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/amirreza225/AetherProxy/main/deploy/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/amirreza225/AetherProxy/main/deploy/install.sh | sudo bash -s -- --yes
 ```
 
 This script:
-1. Clones the repo to `/opt/aetherproxy`
-2. Generates a random `AETHER_JWT_SECRET`
-3. Creates `deploy/.env` for you to edit
-4. Runs `docker compose up -d`
+1. Clones or updates the repo at `/opt/aetherproxy`
+2. Prompts for `PANEL_DOMAIN` and `API_DOMAIN` (if `deploy/.env` does not already exist)
+3. Generates a random `AETHER_JWT_SECRET`
+4. Creates `deploy/.env`
+5. Builds and starts services with Docker Compose
 
-After the install, **edit `/opt/aetherproxy/deploy/.env`** to set your real domains, then:
+If `deploy/.env` already exists, the installer skips domain prompts and reuses your existing config.
+
+### Non-interactive install (CI / automation)
+
+```bash
+PANEL_DOMAIN=panel.example.com API_DOMAIN=api.example.com \
+curl -fsSL https://raw.githubusercontent.com/amirreza225/AetherProxy/main/deploy/install.sh | sudo -E bash -s -- --yes --non-interactive
+```
+
+### Low-RAM VPS behavior (2GB servers)
+
+The installer automatically enables a conservative build mode on small-memory hosts (below ~3GB RAM).
+You can also force it explicitly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/amirreza225/AetherProxy/main/deploy/install.sh | sudo bash -s -- --yes --low-ram
+```
+
+Or with env var:
+
+```bash
+AETHER_LOW_RAM_BUILD=1 curl -fsSL https://raw.githubusercontent.com/amirreza225/AetherProxy/main/deploy/install.sh | sudo -E bash -s -- --yes
+```
+
+After install/update, you can restart services manually anytime with:
 
 ```bash
 docker compose -f /opt/aetherproxy/deploy/docker-compose.yml restart
