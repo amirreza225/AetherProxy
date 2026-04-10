@@ -121,7 +121,14 @@
     "delayStart": "Delay Start",
     "subLink": "Subscription Link",
     "copySubLink": "Copy link",
-    "subLinkCopied": "Copied!"
+    "subLinkCopied": "Copied!",
+    "credentials": "Credentials",
+    "credentialsHint": "Auto-generated credentials for all proxy protocols. Leave unchanged to keep existing or regenerate below.",
+    "regenerate": "Regenerate credentials",
+    "credentialsInvalidJson": "Invalid JSON in credentials field.",
+    "showQr": "QR",
+    "qrDialogTitle": "Subscription QR Code",
+    "qrDialogHint": "Scan this QR in Hiddify, Clash, or any compatible app."
   },
   "inbounds": {
     "title": "Inbounds",
@@ -146,6 +153,10 @@
   },
   "subscriptions": {
     "title": "Subscriptions",
+    "clientSubsTitle": "Share a user's subscription",
+    "clientSubsHint": "Select a user to get their subscription link and QR code. Import into Hiddify, Clash, or any compatible app.",
+    "selectClient": "Select user…",
+    "noClients": "No users found. Create users first.",
     "generate": "Generate subscription link",
     "token": "Subscription token",
     "tokenPlaceholder": "Paste user token here",
@@ -168,6 +179,8 @@
     "openLink": "Open link",
     "advancedFormats": "Advanced formats",
     "scanHint": "Scan this QR in your app, or use one of the links above.",
+    "apiTokensTitle": "API Access Tokens",
+    "apiTokensHint": "These tokens are for programmatic access to the AetherProxy API (e.g. for automation scripts). They are not proxy subscription tokens.",
     "existingTokens": "Existing tokens",
     "noTokens": "No tokens yet.",
     "tokenNoDesc": "No description",

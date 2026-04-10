@@ -121,7 +121,14 @@
     "delayStart": "شروع با تأخیر",
     "subLink": "لینک اشتراک",
     "copySubLink": "کپی لینک",
-    "subLinkCopied": "کپی شد!"
+    "subLinkCopied": "کپی شد!",
+    "credentials": "اطلاعات اتصال",
+    "credentialsHint": "اعتبارنامه‌های خودکار برای تمام پروتکل‌های پراکسی. بدون تغییر بگذارید تا مقادیر موجود حفظ شوند یا دوباره تولید کنید.",
+    "regenerate": "تولید مجدد اعتبارنامه‌ها",
+    "credentialsInvalidJson": "JSON نادرست در فیلد اعتبارنامه‌ها.",
+    "showQr": "QR",
+    "qrDialogTitle": "کد QR اشتراک",
+    "qrDialogHint": "این QR را در Hiddify، Clash یا هر برنامه سازگار اسکن کنید."
   },
   "inbounds": {
     "title": "ورودی‌ها",
@@ -175,7 +182,13 @@
     "deleteToken": "حذف",
     "confirmDeleteToken": "این توکن حذف شود؟",
     "expiresAt": "انقضا:",
-    "neverExpires": "بدون انقضا"
+    "neverExpires": "بدون انقضا",
+    "clientSubsTitle": "اشتراک یک کاربر را به اشتراک بگذارید",
+    "clientSubsHint": "یک کاربر را انتخاب کنید تا لینک اشتراک و کد QR آن‌ها را دریافت کنید. در Hiddify، Clash یا هر برنامه سازگار وارد کنید.",
+    "selectClient": "انتخاب کاربر…",
+    "noClients": "هیچ کاربری یافت نشد. ابتدا کاربر بسازید.",
+    "apiTokensTitle": "توکن‌های دسترسی API",
+    "apiTokensHint": "این توکن‌ها برای دسترسی برنامه‌نویسانه به API هستند. توکن اشتراک پراکسی نیستند."
   },
   "routing": {
     "title": "قوانین مسیریابی",

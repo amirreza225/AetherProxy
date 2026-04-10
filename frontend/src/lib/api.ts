@@ -157,6 +157,16 @@ export async function getClients(headers?: HeadersInit) {
   return apiFetch<Client[]>("/api/clients", { headers });
 }
 
+export async function getClient(id: number): Promise<Client | null> {
+  const res = await apiFetch<Record<string, unknown>>(`/api/clients?id=${id}`);
+  const obj = res.obj as { clients?: Client[] } | Client[] | null;
+  if (Array.isArray(obj)) return (obj as Client[])[0] ?? null;
+  if (obj && Array.isArray((obj as { clients?: Client[] }).clients)) {
+    return ((obj as { clients: Client[] }).clients)[0] ?? null;
+  }
+  return null;
+}
+
 export async function createClient(client: Omit<Client, "id" | "down" | "up" | "totalDown" | "totalUp">) {
   return apiFetch<Record<string, unknown>>("/api/save", {
     method: "POST",

@@ -4,11 +4,11 @@ import useSWR from "swr";
 import { useState } from "react";
 import {
   getClients,
-  getInbounds,
   createClient,
   updateClient,
   deleteClient,
   clientSubUrl,
+  getInbounds,
   type Client,
   type Inbound,
 } from "@/lib/api";
@@ -33,6 +33,37 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { QRCodeCanvas } from "qrcode.react";
+
+// ── Credential helpers ────────────────────────────────────────────────────────
+
+function generatePassword(): string {
+  const arr = new Uint8Array(18);
+  crypto.getRandomValues(arr);
+  return btoa(String.fromCharCode(...Array.from(arr)))
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=/g, "");
+}
+
+function generateClientConfig(): Record<string, unknown> {
+  const uuid = crypto.randomUUID();
+  const pass = generatePassword();
+  return {
+    vless:        { uuid, flow: "xtls-rprx-vision" },
+    vmess:        { uuid },
+    trojan:       { password: pass },
+    shadowsocks:  { password: pass },
+    hysteria2:    { password: pass },
+    hysteria:     { auth_str: pass },
+    tuic:         { uuid, password: pass },
+    anytls:       { password: pass },
+    naive:        { username: "user", password: pass },
+    socks:        { username: "user", password: pass },
+    http:         { username: "user", password: pass },
+    mixed:        { username: "user", password: pass },
+  };
+}
 
 function formatBytes(bytes: number): string {
   if (bytes === 0) return "0 B";
@@ -57,6 +88,29 @@ function CopyButton({ value, label, copiedLabel }: { value: string; label: strin
     <Button size="sm" variant="outline" onClick={handleCopy}>
       {copied ? copiedLabel : label}
     </Button>
+  );
+}
+
+// ── QR code dialog ────────────────────────────────────────────────────────────
+
+function QrButton({ url, label, dialogTitle, dialogHint }: { url: string; label: string; dialogTitle: string; dialogHint: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger render={<Button size="sm" variant="outline">{label}</Button>} />
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{dialogTitle}</DialogTitle>
+        </DialogHeader>
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div className="rounded-xl border p-4">
+            <QRCodeCanvas value={url} size={240} />
+          </div>
+          <p className="break-all rounded bg-muted px-3 py-2 font-mono text-xs">{url}</p>
+          <p className="text-xs text-muted-foreground">{dialogHint}</p>
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }
 
@@ -103,6 +157,10 @@ function ClientDialog({
         }
       : emptyForm()
   );
+  // For new clients, pre-populate credentials. For edits, leave empty (backend preserves existing).
+  const [configJson, setConfigJson] = useState<string>(() =>
+    initialData ? "" : JSON.stringify(generateClientConfig(), null, 2)
+  );
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,11 +179,24 @@ function ClientDialog({
     setSaving(true);
     setError(null);
     try {
+      let config: Record<string, unknown> | undefined;
+      const trimmed = configJson.trim();
+      if (trimmed) {
+        try {
+          config = JSON.parse(trimmed) as Record<string, unknown>;
+        } catch {
+          setError(t("credentialsInvalidJson"));
+          setSaving(false);
+          return;
+        }
+      }
       let res;
       if (initialData) {
-        res = await updateClient({ ...initialData, ...form });
+        // config is intentionally omitted when empty so the backend preserves existing credentials.
+        res = await updateClient({ ...initialData, ...form, ...(config ? { config } : {}) });
       } else {
-        res = await createClient(form);
+        // Always supply credentials for new clients.
+        res = await createClient({ ...form, config: config ?? generateClientConfig() });
       }
       if (!res.success) {
         setError(res.msg || "Failed to save");
@@ -288,6 +359,32 @@ function ClientDialog({
               <Label htmlFor="delayStart">{t("delayStart")}</Label>
             </div>
           </div>
+
+          {/* ── Credentials ─────────────────────────────────────────────── */}
+          <div className="rounded-md border p-3 space-y-2">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="configJson" className="text-sm font-medium">
+                {t("credentials")}
+              </Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => setConfigJson(JSON.stringify(generateClientConfig(), null, 2))}
+              >
+                {t("regenerate")}
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">{t("credentialsHint")}</p>
+            <textarea
+              id="configJson"
+              className="w-full rounded-md border bg-background px-3 py-2 font-mono text-xs h-40 resize-y focus:outline-none focus:ring-1 focus:ring-ring"
+              value={configJson}
+              onChange={(e) => setConfigJson(e.target.value)}
+              spellCheck={false}
+            />
+          </div>
+
           {error && <p className="text-sm text-destructive">{error}</p>}
           <div className="flex justify-end gap-2 pt-1">
             <Button
@@ -396,11 +493,19 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>{formatExpiry(c.expiry)}</TableCell>
                     <TableCell>
-                      <CopyButton
-                        value={clientSubUrl(c.name)}
-                        label={t("copySubLink")}
-                        copiedLabel={t("subLinkCopied")}
-                      />
+                      <div className="flex gap-2">
+                        <CopyButton
+                          value={clientSubUrl(c.name)}
+                          label={t("copySubLink")}
+                          copiedLabel={t("subLinkCopied")}
+                        />
+                        <QrButton
+                          url={clientSubUrl(c.name)}
+                          label={t("showQr")}
+                          dialogTitle={t("qrDialogTitle")}
+                          dialogHint={t("qrDialogHint")}
+                        />
+                      </div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-2">

@@ -565,6 +565,9 @@ func (s *ClientService) findInboundsChanges(tx *gorm.DB, client *model.Client, f
 	if fillOmitted {
 		client.Links = oldClient.Links
 		client.Config = oldClient.Config
+	} else if len(client.Config) == 0 || string(client.Config) == "null" || string(client.Config) == "{}" {
+		// Single edit: preserve existing credentials when none were explicitly provided.
+		client.Config = oldClient.Config
 	}
 	err = json.Unmarshal(oldClient.Inbounds, &oldInboundIds)
 	if err != nil {
