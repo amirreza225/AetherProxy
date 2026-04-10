@@ -81,7 +81,7 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/juju/ratelimit v1.0.2 // indirect
 	github.com/keybase/go-keychain v0.0.1 // indirect
-	github.com/klauspost/compress v1.18.4 // indirect
+	github.com/klauspost/compress v1.18.5 // indirect
 	github.com/klauspost/cpuid/v2 v2.3.0 // indirect
 	github.com/klauspost/reedsolomon v1.13.0 // indirect
 	github.com/libdns/acmedns v0.5.0 // indirect
