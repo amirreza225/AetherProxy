@@ -35,7 +35,7 @@ require (
 	github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2
 	github.com/jellydator/ttlcache/v3 v3.1.0
 	github.com/jsimonetti/rtnetlink v1.4.0
-	github.com/klauspost/compress v1.18.4
+	github.com/klauspost/compress v1.18.5
 	github.com/kortschak/wol v0.0.0-20200729010619-da482cc4850a
 	github.com/mattn/go-isatty v0.0.20
 	github.com/mdlayher/genetlink v1.3.2
@@ -62,7 +62,7 @@ require (
 	golang.org/x/crypto v0.50.0
 	golang.org/x/exp v0.0.0-20250911091902-df9299821621
 	golang.org/x/mod v0.34.0
-	golang.org/x/net v0.52.0
+	golang.org/x/net v0.53.0
 	golang.org/x/oauth2 v0.33.0
 	golang.org/x/sync v0.20.0
 	golang.org/x/sys v0.43.0
@@ -88,7 +88,7 @@ require (
 	github.com/hashicorp/go-msgpack/v2 v2.1.2 // indirect
 	github.com/hashicorp/golang-lru v0.6.0 // indirect
 	github.com/mattn/go-colorable v0.1.13 // indirect
-	github.com/moby/buildkit v0.28.1 // indirect
+	github.com/moby/buildkit v0.29.0 // indirect
 	github.com/onsi/gomega v1.36.2 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/planetscale/vtprotobuf v0.6.1-0.20240319094008-0393e58bdf10 // indirect
@@ -104,12 +104,12 @@ require (
 )
 
 require (
-	filippo.io/edwards25519 v1.1.1 // indirect
+	filippo.io/edwards25519 v1.2.0 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/containerd/stargz-snapshotter/estargz v0.18.2 // indirect
 	github.com/davecgh/go-spew v1.1.2-0.20180830191138-d8f796af33cc // indirect
-	github.com/docker/cli v29.2.1+incompatible // indirect
+	github.com/docker/cli v29.3.1+incompatible // indirect
 	github.com/docker/distribution v2.8.3+incompatible // indirect
 	github.com/docker/docker-credential-helpers v0.9.5 // indirect
 	github.com/fatih/color v1.18.0 // indirect
@@ -138,7 +138,7 @@ require (
 	github.com/u-root/uio v0.0.0-20240224005618-d2acac8f3701 // indirect
 	github.com/vbatts/tar-split v0.12.2 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
-	golang.org/x/image v0.38.0 // indirect
+	golang.org/x/image v0.39.0 // indirect
 	golang.org/x/text v0.36.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
