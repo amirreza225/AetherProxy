@@ -26,6 +26,16 @@ func (s *UserService) GetFirstUser() (*model.User, error) {
 	return user, nil
 }
 
+func (s *UserService) GetUserByUsername(username string) (*model.User, error) {
+	db := database.GetDB()
+	user := &model.User{}
+	err := db.Model(model.User{}).Where("username = ?", username).First(user).Error
+	if err != nil {
+		return nil, err
+	}
+	return user, nil
+}
+
 func (s *UserService) UpdateFirstUser(username string, password string) error {
 	if username == "" {
 		return common.NewError("username can not be empty")

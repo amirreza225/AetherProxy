@@ -137,8 +137,6 @@ func (a *APIv2Handler) getHandler(c *gin.Context) {
 	}
 }
 
-const v2UsernameKey = "_aether_v2_username"
-
 func (a *APIv2Handler) findUsername(c *gin.Context) string {
 	token := c.Request.Header.Get("Token")
 	for index, t := range *a.tokens {
