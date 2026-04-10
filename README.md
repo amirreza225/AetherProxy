@@ -13,6 +13,7 @@
 - [Quick Start (Docker)](#quick-start-docker)
 - [Manual Setup](#manual-setup)
 - [Environment Variables](#environment-variables)
+- [Client Management](#client-management)
 - [API Reference](#api-reference)
 - [Subscription Formats](#subscription-formats)
 - [Android Client](#android-client)
@@ -155,6 +156,163 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `AETHER_DEBUG` | – | Set to `true` for verbose GORM query logging |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:2095` | Frontend → backend API URL |
 | `NEXT_PUBLIC_SUB_URL` | `http://localhost:2096` | Frontend subscription base URL |
+
+---
+
+## Client Management
+
+This section explains the two distinct concepts of **admin users** (people who manage the panel) and **clients** (end-users who connect through proxy accounts), and the full lifecycle of creating and distributing proxy access.
+
+### 1. Admin login and first-run security
+
+On first start, AetherProxy creates one admin account with default credentials:
+
+| Field | Default |
+|---|---|
+| Username | `admin` |
+| Password | `admin` |
+
+> **⚠️ Change these immediately after deployment.**
+
+Open the admin panel (`https://<PANEL_DOMAIN>`) and navigate to **Settings → Change Password**, or call the API directly:
+
+```bash
+curl -X POST https://<API_DOMAIN>/api/changePass \
+  -d "oldPass=admin&newUsername=myadmin&newPass=StrongP@ss!"
+```
+
+The login form fields are `user` and `pass` (not `username` / `password`):
+
+```bash
+curl -X POST https://<API_DOMAIN>/api/login \
+  -d "user=myadmin&pass=StrongP@ss!"
+```
+
+A successful login sets an `aether_token` httpOnly cookie and returns `{ "obj": { "token": "<jwt>" } }`. Pass the token as a `Bearer` header for subsequent API calls.
+
+---
+
+### 2. Create inbounds (proxy listeners)
+
+Before you can give clients access, you need at least one **inbound** — a sing-box listening endpoint that accepts proxy connections.
+
+In the admin panel go to **Inbounds → Add Inbound** and choose a protocol:
+
+| Protocol | Recommended use |
+|---|---|
+| `vless` + Reality + uTLS | Low-traffic or high-censorship environments; looks like HTTPS |
+| `hysteria2` | High-throughput, lossy networks (QUIC/UDP) |
+| `trojan` | TLS-based, wide client support |
+| `shadowsocks` | Simple; pair with ShadowTLS for obfuscation |
+
+Assign a unique **tag** (e.g. `vless-reality`). This tag is used in proxy links delivered to clients.
+
+---
+
+### 3. Create a client account
+
+A **client** is a named proxy account. Its `name` doubles as the subscription token — keep it unguessable (treat it like a password).
+
+#### Via the admin panel
+
+1. Go to **Clients → Add Client**.
+2. Fill in the required fields:
+
+| Field | Description |
+|---|---|
+| **Name** | Unique identifier — also the subscription URL slug (e.g. `alice-2024`). |
+| **Inbounds** | Select one or more inbounds the client may use. |
+| **Volume** | Data cap in bytes; `0` = unlimited. |
+| **Expiry** | Expiry date/time; leave blank for never. |
+| **Group** | Optional label for organising clients (e.g. `team-a`). |
+| **Description** | Free-text note for the operator. |
+| **Auto Reset** | Periodically reset traffic counters (set Reset Days). |
+| **Delay Start** | Don't start the expiry/quota clock until the client first connects. |
+
+3. Click **Save**. AetherProxy auto-generates proxy links for every assigned inbound.
+
+#### Via the API (bulk creation example)
+
+```bash
+curl -b "aether_token=<jwt>" \
+     -X POST https://<API_DOMAIN>/api/save \
+     -d "object=clients" \
+     -d "action=addbulk" \
+     -d 'data=[{"name":"alice-2024","enable":true,"inbounds":[1],"volume":10737418240,"expiry":0}]'
+```
+
+- `inbounds` is an array of inbound **IDs** (visible on the Inbounds page or via `GET /api/inbounds`).
+- `volume` is in bytes (`10737418240` = 10 GB). Use `0` for unlimited.
+- `expiry` is a Unix timestamp in seconds (`0` = never expires).
+
+---
+
+### 4. Distribute subscription URLs to clients
+
+Once a client is created, their subscription URL is:
+
+```
+https://<API_DOMAIN>/sub/<client-name>
+```
+
+For example, a client named `alice-2024` receives:
+
+```
+https://api.example.com/sub/alice-2024
+```
+
+#### Alternative formats
+
+| URL | Format | Best for |
+|---|---|---|
+| `https://<API_DOMAIN>/sub/<name>` | Base64 URI list | Most clients (v2rayNG, NekoBox, …) |
+| `https://<API_DOMAIN>/sub/<name>?format=clash` | Clash/Mihomo YAML | FlClash, Clash Meta, Mihomo |
+| `https://<API_DOMAIN>/sub/<name>?format=json` | sing-box JSON | sing-box native clients |
+| `https://<API_DOMAIN>/sub/qr/<name>` | QR code PNG | Easy phone import |
+
+The response always includes `Subscription-Userinfo` (usage/quota), `Profile-Update-Interval`, and `Profile-Title` headers so clients that support them can display remaining quota and auto-refresh.
+
+#### Share via QR code
+
+Open `https://<API_DOMAIN>/sub/qr/<client-name>` in a browser — it renders a 256×256 PNG that the AetherProxy Android app (or any sing-box / v2ray client with camera import) can scan to add the subscription in one step.
+
+---
+
+### 5. How clients connect
+
+#### Android (AetherProxy / Hiddify app)
+
+1. Open the app.
+2. Tap **+** → **Add from URL**, paste the subscription URL, or tap **Scan QR** and point the camera at the QR code.
+3. Tap **Connect**. The app will fetch the latest proxy list from the subscription URL automatically.
+
+#### Desktop (AetherProxy Tauri client)
+
+1. Open the system-tray app.
+2. Click **Import Subscription** and paste the URL.
+3. Click **Connect** in the main window.
+
+#### Other compatible clients (v2rayNG, NekoBox, Mihomo, …)
+
+These clients accept any of the three subscription formats. Import the Base64 URL for the widest compatibility:
+
+1. Open the client's subscription / profile manager.
+2. Add a new subscription and paste `https://<API_DOMAIN>/sub/<client-name>`.
+3. Click **Update** to pull the latest proxy list.
+4. Select a server and connect.
+
+---
+
+### 6. Traffic limits and expiry
+
+| Behaviour | How it works |
+|---|---|
+| **Volume cap** | When `up + down >= volume` the client is automatically disabled. |
+| **Expiry** | When the current time passes the `expiry` timestamp the client is automatically disabled. |
+| **Auto Reset** | Every `resetDays` days traffic counters are zeroed and (if volume-depleted) the client is re-enabled. |
+| **Delay Start** | Expiry clock starts from first-byte activity, not account creation. |
+
+Disabled clients receive a `400` error from the subscription server — their proxy apps will show a connection failure, signalling that their quota or subscription has ended.
 
 ---
 
