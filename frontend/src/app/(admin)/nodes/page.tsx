@@ -32,13 +32,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-
-interface Inbound {
-  tag: string;
-  type: string;
-  listen_port?: number;
-  enabled?: boolean;
-}
+import { toast } from "sonner";
 
 function NodeStatusBadge({ status }: { status: Node["status"] }) {
   const t = useTranslations("nodes");
@@ -261,7 +255,6 @@ export default function NodesPage() {
   const { data: nodesData, isLoading: nodesLoading, error: nodesError, mutate: mutateNodes } = useSWR("/api/nodes", () =>
     getNodes().then(r => r.obj as Node[])
   );
-  const [actionMsg, setActionMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const inbounds = inboundData ?? [];
   const nodes = nodesData ?? [];
@@ -270,31 +263,25 @@ export default function NodesPage() {
     if (!confirm(t("confirmDeleteNode"))) return;
     try {
       await deleteNode(id);
-      setActionMsg({ ok: true, text: t("deleteSuccess") });
+      toast.success(t("deleteSuccess"));
       mutateNodes();
     } catch {
-      setActionMsg({ ok: false, text: t("deleteError") });
+      toast.error(t("deleteError"));
     }
   }
 
   async function handleDeploy(id: number) {
     try {
       await deployNode(id);
-      setActionMsg({ ok: true, text: t("deployTriggered") });
+      toast.success(t("deployTriggered"));
     } catch {
-      setActionMsg({ ok: false, text: t("deployError") });
+      toast.error(t("deployError"));
     }
   }
 
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
-
-      {actionMsg && (
-        <p className={`text-sm ${actionMsg.ok ? "text-green-600" : "text-destructive"}`}>
-          {actionMsg.text}
-        </p>
-      )}
 
       <Tabs defaultValue="remote">
         <TabsList>
@@ -402,21 +389,30 @@ function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
   const [open, setOpen] = useState(false);
   const [form, setForm] = useState({ name: "", host: "", sshPort: "22", sshKeyPath: "", provider: "" });
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    setError(null);
     setSaving(true);
     try {
-      await createNode({ ...form, sshPort: Number(form.sshPort) });
+      const res = await createNode({ ...form, sshPort: Number(form.sshPort) });
+      if (!res.success) {
+        setError(res.msg || t("addNodeError"));
+        return;
+      }
       onCreated();
       setOpen(false);
+      setForm({ name: "", host: "", sshPort: "22", sshKeyPath: "", provider: "" });
+    } catch {
+      setError(t("addNodeError"));
     } finally {
       setSaving(false);
     }
   }
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={(v) => { setOpen(v); if (!v) setError(null); }}>
       <DialogTrigger render={<Button size="sm" />}>{t("add")}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
@@ -443,6 +439,7 @@ function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
             <Label htmlFor="provider">{t("provider")}</Label>
             <Input id="provider" value={form.provider} onChange={e => setForm(f => ({ ...f, provider: e.target.value }))} placeholder="e.g. Hetzner, DigitalOcean" />
           </div>
+          {error && <p className="text-sm text-destructive">{error}</p>}
           <Button type="submit" disabled={saving} className="w-full">
             {saving ? tc("saving") : t("add")}
           </Button>

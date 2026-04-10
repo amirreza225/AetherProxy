@@ -79,6 +79,7 @@
     "noRemoteNodes": "هنوز نود ریموتی ثبت نشده است. برای ثبت VPS روی «افزودن نود» بزنید.",
     "localInboundsDescription": "Inbound های محلی sing-box روی این سرور.",
     "loadInboundsError": "بارگذاری inboundها ناموفق بود.",
+    "addNodeError": "افزودن نود ناموفق بود.",
     "gossipStatus": "وضعیت کلاستر Gossip",
     "clusterActive": "فعال",
     "clusterInactive": "غیرفعال",
@@ -124,6 +125,10 @@
     "unlimited": "نامحدود",
     "actions": "عملیات",
     "confirmDelete": "این کاربر حذف شود؟",
+    "deleteSuccess": "کاربر حذف شد.",
+    "deleteError": "حذف کاربر ناموفق بود.",
+    "addSuccess": "کاربر ایجاد شد.",
+    "editSuccess": "کاربر به‌روز شد.",
     "inbounds": "ورودی‌ها",
     "noInbounds": "هنوز ورودی‌ای تنظیم نشده است.",
     "desc": "توضیحات",
@@ -159,7 +164,8 @@
     "advancedJson": "گزینه‌های پیشرفته (JSON)",
     "invalidJson": "JSON نامعتبر است",
     "saveError": "خطا در ذخیره ورودی.",
-    "deleteError": "خطا در حذف ورودی."
+    "deleteError": "خطا در حذف ورودی.",
+    "deleteSuccess": "ورودی حذف شد."
   },
   "subscriptions": {
     "title": "اشتراک‌ها",
@@ -191,6 +197,8 @@
     "tokenMasked": "توکن ماسک‌شده:",
     "deleteToken": "حذف",
     "confirmDeleteToken": "این توکن حذف شود؟",
+    "deleteTokenSuccess": "توکن حذف شد.",
+    "deleteTokenError": "حذف توکن ناموفق بود.",
     "expiresAt": "انقضا:",
     "neverExpires": "بدون انقضا",
     "clientSubsTitle": "اشتراک یک کاربر را به اشتراک بگذارید",
@@ -284,6 +292,8 @@
     "yes": "بله",
     "no": "خیر",
     "menu": "منو",
-    "signOut": "خروج"
+    "signOut": "خروج",
+    "created": "با موفقیت ایجاد شد.",
+    "updated": "با موفقیت به‌روز شد."
   }
 }

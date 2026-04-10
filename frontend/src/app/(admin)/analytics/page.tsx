@@ -7,6 +7,7 @@ import { useTranslations } from "next-intl";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
+import { formatBytes } from "@/lib/utils";
 import {
   BarChart,
   Bar,
@@ -15,16 +16,7 @@ import {
   Tooltip,
   ResponsiveContainer,
   Legend,
-  LineChart,
-  Line,
 } from "recharts";
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
-}
 
 const WINDOWS = [24, 168, 720] as const;
 type WindowHours = (typeof WINDOWS)[number];
@@ -53,9 +45,9 @@ export default function AnalyticsPage() {
       }))
     : [];
 
-  // Per-protocol as percentage of total for the line chart
+  // Per-protocol as percentage of total for the share chart
   const totalTraffic = chartData.reduce((s, d) => s + d.total, 0);
-  const lineData = chartData.map((d) => ({
+  const shareData = chartData.map((d) => ({
     tag: d.tag,
     pct: totalTraffic > 0 ? Math.round((d.total / totalTraffic) * 100) : 0,
   }));
@@ -130,8 +122,8 @@ export default function AnalyticsPage() {
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={160}>
-              <LineChart
-                data={lineData}
+              <BarChart
+                data={shareData}
                 margin={{ top: 4, right: 10, left: 10, bottom: 4 }}
               >
                 <XAxis dataKey="tag" tick={{ fontSize: 11 }} />
@@ -142,15 +134,13 @@ export default function AnalyticsPage() {
                   width={36}
                 />
                 <Tooltip formatter={(v) => `${v}%`} />
-                <Line
-                  type="monotone"
+                <Bar
                   dataKey="pct"
                   name={t("share")}
-                  stroke="#f59e0b"
-                  dot={{ r: 4 }}
-                  strokeWidth={2}
+                  fill="#f59e0b"
+                  radius={[4, 4, 0, 0]}
                 />
-              </LineChart>
+              </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>

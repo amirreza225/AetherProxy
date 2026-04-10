@@ -16,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCodeCanvas } from "qrcode.react";
+import { toast } from "sonner";
 
 export default function SubscriptionsPage() {
   const t = useTranslations("subscriptions");
@@ -85,8 +86,17 @@ export default function SubscriptionsPage() {
 
   async function handleDeleteToken(id: number) {
     if (!confirm(t("confirmDeleteToken"))) return;
-    await deleteToken(id);
-    mutateTokens();
+    try {
+      const res = await deleteToken(id);
+      if (!res.success) {
+        toast.error(res.msg || t("deleteTokenError"));
+        return;
+      }
+      mutateTokens();
+      toast.success(t("deleteTokenSuccess"));
+    } catch {
+      toast.error(t("deleteTokenError"));
+    }
   }
 
   return (

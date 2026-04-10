@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
@@ -487,7 +488,9 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
         if (!res.success) { setError(res.msg || "Failed to save"); return; }
       }
 
-      onSaved(); setOpen(false);
+      onSaved();
+      toast.success(isEdit ? tc("updated") : tc("created"));
+      setOpen(false);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to save");
     } finally { setSaving(false); }
@@ -564,9 +567,15 @@ export default function InboundsPage() {
     if (!confirm(t("confirmDelete"))) return;
     try {
       const res = await deleteInbound(tag);
-      if (!res.success) { alert(res.msg || t("deleteError")); return; }
+      if (!res.success) {
+        toast.error(res.msg || t("deleteError"));
+        return;
+      }
       mutate();
-    } catch { alert(t("deleteError")); }
+      toast.success(t("deleteSuccess"));
+    } catch {
+      toast.error(t("deleteError"));
+    }
   }
 
   return (

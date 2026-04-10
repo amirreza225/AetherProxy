@@ -34,6 +34,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { QRCodeCanvas } from "qrcode.react";
+import { toast } from "sonner";
+import { formatBytes } from "@/lib/utils";
 
 // ── Credential helpers ────────────────────────────────────────────────────────
 
@@ -63,13 +65,6 @@ function generateClientConfig(): Record<string, unknown> {
     http:         { username: "user", password: pass },
     mixed:        { username: "user", password: pass },
   };
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return "0 B";
-  const units = ["B", "KB", "MB", "GB", "TB"];
-  const i = Math.floor(Math.log(bytes) / Math.log(1024));
-  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i]}`;
 }
 
 function formatExpiry(unix: number): string {
@@ -203,6 +198,7 @@ function ClientDialog({
         return;
       }
       onSaved();
+      toast.success(initialData ? t("editSuccess") : t("addSuccess"));
       setOpen(false);
     } catch {
       setError("Failed to save");
@@ -427,10 +423,15 @@ export default function UsersPage() {
   async function handleDelete(id: number) {
     if (!confirm(t("confirmDelete"))) return;
     try {
-      await deleteClient(id);
+      const res = await deleteClient(id);
+      if (!res.success) {
+        toast.error(res.msg || t("deleteError"));
+        return;
+      }
       mutate();
+      toast.success(t("deleteSuccess"));
     } catch {
-      // Keep UX simple on this screen; API errors are surfaced on next refresh.
+      toast.error(t("deleteError"));
     }
   }
 

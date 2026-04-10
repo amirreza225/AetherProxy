@@ -79,6 +79,7 @@
     "noRemoteNodes": "No remote nodes yet. Click Add Node to register a VPS.",
     "localInboundsDescription": "Local sing-box inbounds on this server.",
     "loadInboundsError": "Failed to load inbounds.",
+    "addNodeError": "Failed to add node.",
     "gossipStatus": "Gossip Cluster Status",
     "clusterActive": "Active",
     "clusterInactive": "Inactive",
@@ -124,6 +125,10 @@
     "unlimited": "Unlimited",
     "actions": "Actions",
     "confirmDelete": "Delete this user?",
+    "deleteSuccess": "User deleted.",
+    "deleteError": "Failed to delete user.",
+    "addSuccess": "User created.",
+    "editSuccess": "User updated.",
     "inbounds": "Inbounds",
     "noInbounds": "No inbounds configured yet.",
     "desc": "Description",
@@ -159,7 +164,8 @@
     "advancedJson": "Advanced Options (JSON)",
     "invalidJson": "Invalid JSON",
     "saveError": "Failed to save inbound.",
-    "deleteError": "Failed to delete inbound."
+    "deleteError": "Failed to delete inbound.",
+    "deleteSuccess": "Inbound deleted."
   },
   "subscriptions": {
     "title": "Subscriptions",
@@ -197,6 +203,8 @@
     "tokenMasked": "Masked token:",
     "deleteToken": "Delete",
     "confirmDeleteToken": "Delete this token?",
+    "deleteTokenSuccess": "Token deleted.",
+    "deleteTokenError": "Failed to delete token.",
     "expiresAt": "Expires:",
     "neverExpires": "Never expires"
   },
@@ -284,6 +292,8 @@
     "yes": "Yes",
     "no": "No",
     "menu": "Menu",
-    "signOut": "Sign out"
+    "signOut": "Sign out",
+    "created": "Created successfully.",
+    "updated": "Updated successfully."
   }
 }
