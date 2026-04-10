@@ -325,7 +325,7 @@ export default function UsersPage() {
     })
   );
 
-  const { data: inboundList = [] } = useSWR("/api/inbounds", getInbounds);
+  const { data: inboundList = [] } = useSWR("/api/inbounds", () => getInbounds());
 
   async function handleDelete(id: number) {
     if (!confirm(t("confirmDelete"))) return;

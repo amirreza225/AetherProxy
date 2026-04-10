@@ -248,7 +248,7 @@ function InboundDialog({
 export default function InboundsPage() {
   const t = useTranslations("inbounds");
 
-  const { data, isLoading, error, mutate } = useSWR("/api/inbounds", getInbounds);
+  const { data, isLoading, error, mutate } = useSWR("/api/inbounds", () => getInbounds());
 
   async function handleDelete(tag: string) {
     if (!confirm(t("confirmDelete"))) return;
