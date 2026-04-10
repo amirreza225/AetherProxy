@@ -11,6 +11,7 @@ import (
 	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
+	coreplugin "github.com/aetherproxy/backend/core/plugin"
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/util/common"
 
@@ -418,4 +419,43 @@ func (s *SettingService) GetSubClashExt() (string, error) {
 func (s *SettingService) fileExists(path string) error {
 	_, err := os.Stat(path)
 	return err
+}
+
+// ── Plugin state persistence ──────────────────────────────────────────────────
+
+func (s *SettingService) SavePluginEnabled(name string, enabled bool) error {
+	return s.saveSetting("plugin."+name+".enabled", strconv.FormatBool(enabled))
+}
+
+func (s *SettingService) SavePluginConfig(name string, cfg json.RawMessage) error {
+	return s.saveSetting("plugin."+name+".config", string(cfg))
+}
+
+// LoadPluginStates reads all persisted plugin settings from the DB and
+// applies them to the in-memory plugin registry. Must be called after
+// plugins are registered.
+func (s *SettingService) LoadPluginStates() {
+	db := database.GetDB()
+	var settings []model.Setting
+	db.Model(model.Setting{}).Where("key LIKE 'plugin.%.enabled' OR key LIKE 'plugin.%.config'").Find(&settings)
+	for _, row := range settings {
+		parts := strings.SplitN(row.Key, ".", 3) // ["plugin", "<name>", "enabled"|"config"]
+		if len(parts) != 3 {
+			continue
+		}
+		pluginName := parts[1]
+		field := parts[2]
+		info := coreplugin.Get(pluginName)
+		if info == nil {
+			continue
+		}
+		switch field {
+		case "enabled":
+			if v, err := strconv.ParseBool(row.Value); err == nil {
+				info.Plugin.SetEnabled(v)
+			}
+		case "config":
+			info.Config = json.RawMessage(row.Value)
+		}
+	}
 }

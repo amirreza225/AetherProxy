@@ -585,14 +585,23 @@ func (a *ApiService) SetPluginEnabled(c *gin.Context) {
 		return
 	}
 	info.Plugin.SetEnabled(enabled)
+	if err := a.SettingService.SavePluginEnabled(name, enabled); err != nil {
+		logger.Warning("failed to persist plugin enabled state:", err)
+	}
 	jsonMsg(c, "plugin", nil)
 }
 
 func (a *ApiService) SetPluginConfig(c *gin.Context) {
 	name := c.Request.FormValue("name")
 	cfg := json.RawMessage(c.Request.FormValue("config"))
-	err := plugin.SetConfig(name, cfg)
-	jsonMsg(c, "plugin", err)
+	if err := plugin.SetConfig(name, cfg); err != nil {
+		jsonMsg(c, "plugin", err)
+		return
+	}
+	if err := a.SettingService.SavePluginConfig(name, cfg); err != nil {
+		logger.Warning("failed to persist plugin config:", err)
+	}
+	jsonMsg(c, "plugin", nil)
 }
 
 // ── Decentralized Node Discovery ──────────────────────────────────────────────

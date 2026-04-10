@@ -58,6 +58,7 @@ func (a *APP) Init() error {
 	a.configService = service.NewConfigService(a.core)
 
 	a.registerBuiltinPlugins()
+	a.SettingService.LoadPluginStates()
 
 	return nil
 }
