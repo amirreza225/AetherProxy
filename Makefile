@@ -10,8 +10,10 @@ help: ## Show this help
 		awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-22s\033[0m %s\n", $$1, $$2}'
 
 # ── Backend ───────────────────────────────────────────────────────────────────
+BACKEND_TAGS ?= with_utls,with_quic,with_grpc,with_acme,with_gvisor,with_naive_outbound
+
 backend-build: ## Build the Go backend binary
-	cd backend && $(GOBIN) build -trimpath -ldflags="-s -w" -o ../bin/aetherproxy .
+	cd backend && $(GOBIN) build -trimpath -ldflags="-s -w" -tags "$(BACKEND_TAGS)" -o ../bin/aetherproxy .
 
 backend-dev: ## Run the Go backend in watch mode (requires air)
 	cd backend && air
