@@ -154,6 +154,9 @@ func (j *JsonService) getOutbounds(clientConfig json.RawMessage, inbounds []*mod
 			} else {
 				pass, _ = configs["shadowsocks"].(map[string]interface{})["password"].(string)
 			}
+			if pass == "" {
+				continue
+			}
 			userPass = append(userPass, pass)
 			outbound["password"] = strings.Join(userPass, ":")
 		} else { // Other protocols
@@ -284,6 +287,7 @@ func (j *JsonService) addOthers(jsonConfig *map[string]interface{}) error {
 		return err
 	}
 	if len(othersStr) == 0 {
+		route["rules"] = append(rules_start, rules_end...)
 		(*jsonConfig)["route"] = route
 		return nil
 	}

@@ -86,15 +86,17 @@ function detectPreset(inb: Inbound, profiles: TlsProfile[]): Preset {
 
 function defaultVless(inb?: Inbound, tls?: TlsProfile): VlessForm {
   const srv = (tls?.server ?? {}) as Record<string,unknown>;
+  const cli = (tls?.client ?? {}) as Record<string,unknown>;
   const reality = (srv.reality ?? {}) as Record<string,unknown>;
+  const cliReality = (cli.reality ?? {}) as Record<string,unknown>;
   const hs = (reality.handshake ?? {}) as Record<string,unknown>;
-  const utls = (srv.utls ?? {}) as Record<string,unknown>;
+  const utls = (cli.utls ?? {}) as Record<string,unknown>;
   return {
     tag: (inb?.tag as string) ?? "", listen: (inb?.listen as string) ?? "0.0.0.0",
     listen_port: (inb?.listen_port as number) ?? 443,
     server_name: (srv.server_name as string) ?? "",
     handshake_server: (hs.server as string) ?? "", handshake_port: (hs.server_port as number) ?? 443,
-    private_key: (reality.private_key as string) ?? "", public_key: "",
+    private_key: (reality.private_key as string) ?? "", public_key: (cliReality.public_key as string) ?? "",
     short_ids: ((reality.short_id as string[]) ?? []).join(", "),
     fingerprint: (utls.fingerprint as string) ?? "chrome",
   };
