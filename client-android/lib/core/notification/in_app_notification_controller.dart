@@ -6,6 +6,7 @@ import 'package:toastification/toastification.dart';
 
 part 'in_app_notification_controller.g.dart';
 
+@Riverpod(keepAlive: true)
 InAppNotificationController inAppNotificationController(Ref ref) {
   return InAppNotificationController();
 }

@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'remote_version_entity.freezed.dart';
 
+@freezed
 class RemoteVersionEntity with _$RemoteVersionEntity {
   const RemoteVersionEntity._();
 

@@ -31,6 +31,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'dialog_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class DialogNotifier extends _$DialogNotifier {
   @override
   void build() {}

@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'core_status.freezed.dart';
 
+@freezed
 sealed class CoreStatus with _$CoreStatus {
   const CoreStatus._();
 

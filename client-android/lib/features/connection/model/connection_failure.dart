@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'connection_failure.freezed.dart';
 
+@freezed
 sealed class ConnectionFailure with _$ConnectionFailure, Failure {
   const ConnectionFailure._();
 

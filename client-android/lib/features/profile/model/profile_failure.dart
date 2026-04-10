@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'profile_failure.freezed.dart';
 
+@freezed
 sealed class ProfileFailure with _$ProfileFailure, Failure {
   const ProfileFailure._();
 

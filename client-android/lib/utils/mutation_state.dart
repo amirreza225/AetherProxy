@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'mutation_state.freezed.dart';
 
+@freezed
 class MutationState<F extends Failure> with _$MutationState<F> {
   const MutationState._();
 

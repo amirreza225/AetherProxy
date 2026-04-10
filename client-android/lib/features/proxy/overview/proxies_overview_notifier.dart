@@ -54,6 +54,7 @@ class ProxiesSortNotifier extends _$ProxiesSortNotifier with AppLogger {
 }
 
 @riverpod
+@riverpod
 class ProxiesOverviewNotifier extends _$ProxiesOverviewNotifier with AppLogger {
   @override
   Stream<OutboundGroup?> build() async* {

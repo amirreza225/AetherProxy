@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 part 'log_level.mapper.dart';
 
+@MappableEnum()
 enum LogLevel {
   trace,
   debug,

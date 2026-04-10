@@ -12,6 +12,7 @@ import 'package:rxdart/rxdart.dart';
 
 part 'logs_overview_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class LogsOverviewNotifier extends _$LogsOverviewNotifier with AppLogger {
   @override
   LogsOverviewState build() {

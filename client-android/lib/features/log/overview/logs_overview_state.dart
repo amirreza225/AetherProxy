@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'logs_overview_state.freezed.dart';
 
+@freezed
 class LogsOverviewState with _$LogsOverviewState {
   const LogsOverviewState._();
 

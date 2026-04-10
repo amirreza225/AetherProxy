@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'proxy_entity.freezed.dart';
 
+@freezed
 class ProxyGroupEntity with _$ProxyGroupEntity {
   const ProxyGroupEntity._();
 

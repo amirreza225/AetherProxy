@@ -16,6 +16,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'active_proxy_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class IpInfoNotifier extends _$IpInfoNotifier with AppLogger {
   @override
   Future<oldipinfo.IpInfo> build() async {

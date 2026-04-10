@@ -5,6 +5,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'optional_range.mapper.dart';
 
+@MappableClass()
 class OptionalRange with OptionalRangeMappable {
   const OptionalRange({this.min, this.max});
 

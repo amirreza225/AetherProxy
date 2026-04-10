@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'stats_failure.freezed.dart';
 
+@freezed
 sealed class StatsFailure with _$StatsFailure, Failure {
   const StatsFailure._();
 

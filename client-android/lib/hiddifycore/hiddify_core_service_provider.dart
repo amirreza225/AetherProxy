@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'hiddify_core_service_provider.g.dart';
 
+@Riverpod(keepAlive: true)
 HiddifyCoreService hiddifyCoreService(Ref ref) {
   return HiddifyCoreService(ref);
 }

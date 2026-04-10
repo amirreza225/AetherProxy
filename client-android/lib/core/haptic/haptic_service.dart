@@ -5,6 +5,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'haptic_service.g.dart';
 
+@Riverpod(keepAlive: true)
 class HapticService extends _$HapticService {
   @override
   bool build() {

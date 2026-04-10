@@ -15,6 +15,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profiles_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class ProfilesSortNotifier extends _$ProfilesSortNotifier with AppLogger {
   @override
   ({ProfilesSort by, SortMode mode}) build() {
@@ -27,6 +28,7 @@ class ProfilesSortNotifier extends _$ProfilesSortNotifier with AppLogger {
       state = (by: state.by, mode: state.mode == SortMode.ascending ? SortMode.descending : SortMode.ascending);
 }
 
+@riverpod
 @riverpod
 class ProfilesNotifier extends _$ProfilesNotifier with AppLogger {
   @override

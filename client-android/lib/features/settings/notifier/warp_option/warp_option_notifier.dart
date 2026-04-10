@@ -12,6 +12,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 part 'warp_option_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class WarpOptionNotifier extends _$WarpOptionNotifier with AppLogger {
   SharedPreferences get _prefs => ref.read(sharedPreferencesProvider).requireValue;
 

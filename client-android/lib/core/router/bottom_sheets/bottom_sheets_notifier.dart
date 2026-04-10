@@ -10,6 +10,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'bottom_sheets_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class BottomSheetsNotifier extends _$BottomSheetsNotifier {
   @override
   void build() {}

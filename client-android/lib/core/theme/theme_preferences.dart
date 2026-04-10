@@ -4,6 +4,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'theme_preferences.g.dart';
 
+@Riverpod(keepAlive: true)
 class ThemePreferences extends _$ThemePreferences {
   @override
   AppThemeMode build() {

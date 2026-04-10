@@ -18,6 +18,7 @@ import 'package:window_manager/window_manager.dart';
 
 part 'system_tray_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class SystemTrayNotifier extends _$SystemTrayNotifier with TrayListener, AppLogger {
   bool listenerAdded = false;
   @override
