@@ -13,6 +13,10 @@ import (
 
 const jwtContextKey = "_aether_jwt_token"
 
+// v2UsernameKey is the gin context key used by the APIv2 token middleware
+// to pass the resolved username to downstream handlers.
+const v2UsernameKey = "_aether_v2_username"
+
 type aetherClaims struct {
 	Username string `json:"username"`
 	jwt.RegisteredClaims
@@ -79,7 +83,7 @@ func SetLoginUser(c *gin.Context, userName string, maxAge int) error {
 // then a token query param, and finally a value set by the APIv2 token middleware.
 func GetLoginUser(c *gin.Context) string {
 	// Check username set by APIv2 token middleware first.
-	if v, ok := c.Get("_aether_v2_username"); ok {
+	if v, ok := c.Get(v2UsernameKey); ok {
 		if username, ok := v.(string); ok && username != "" {
 			return username
 		}

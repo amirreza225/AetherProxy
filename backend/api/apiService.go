@@ -290,6 +290,16 @@ func (a *ApiService) Login(c *gin.Context) {
 
 func (a *ApiService) ChangePass(c *gin.Context) {
 	id := c.Request.FormValue("id")
+	// If id is not provided, resolve it from the authenticated session user.
+	if id == "" || id == "0" {
+		username := GetLoginUser(c)
+		if username != "" {
+			user, err := a.UserService.GetUserByUsername(username)
+			if err == nil && user != nil {
+				id = strconv.FormatUint(uint64(user.Id), 10)
+			}
+		}
+	}
 	oldPass := c.Request.FormValue("oldPass")
 	newUsername := c.Request.FormValue("newUsername")
 	newPass := c.Request.FormValue("newPass")

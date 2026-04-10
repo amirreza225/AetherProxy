@@ -66,7 +66,7 @@ export default function SettingsPage() {
     setPassSaving(true);
     setPassMsg(null);
     try {
-      const res = await changePass("1", passForm.oldPass, passForm.newUsername, passForm.newPass);
+      const res = await changePass(passForm.oldPass, passForm.newUsername, passForm.newPass);
       if (res.success) {
         setPassMsg({ ok: true, text: t("changePasswordSuccess") });
         setPassForm({ oldPass: "", newUsername: "", newPass: "" });
