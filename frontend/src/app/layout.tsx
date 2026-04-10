@@ -43,6 +43,7 @@ export default async function RootLayout({
       lang={locale}
       dir={dir}
       className={`${inter.variable} ${vazirmatn.variable} ${geistMono.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col" suppressHydrationWarning>
         <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
