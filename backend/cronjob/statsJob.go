@@ -17,7 +17,7 @@ func NewStatsJob(saveTraffic bool) *StatsJob {
 }
 
 func (s *StatsJob) Run() {
-	err := s.StatsService.SaveStats(s.enableTraffic)
+	err := s.SaveStats(s.enableTraffic)
 	if err != nil {
 		logger.Warning("Get stats failed: ", err)
 		return

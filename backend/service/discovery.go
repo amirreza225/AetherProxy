@@ -228,7 +228,7 @@ func (d *DiscoveryService) fetchSignedManifest(url string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	body, err := io.ReadAll(io.LimitReader(resp.Body, maxManifestBodyBytes))
 	if err != nil {

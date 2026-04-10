@@ -23,7 +23,7 @@ func GetExternalLink(url string) string {
 		logger.Warning("sub: Error making HTTP request:", err)
 		return ""
 	}
-	defer response.Body.Close()
+	defer func() { _ = response.Body.Close() }()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {

@@ -42,43 +42,43 @@ func (a *APIv2Handler) postHandler(c *gin.Context) {
 
 	switch action {
 	case "save":
-		a.ApiService.Save(c, username)
+		a.Save(c, username)
 	case "restartApp":
-		a.ApiService.RestartApp(c)
+		a.RestartApp(c)
 	case "restartSb":
-		a.ApiService.RestartSb(c)
+		a.RestartSb(c)
 	case "linkConvert":
-		a.ApiService.LinkConvert(c)
+		a.LinkConvert(c)
 	case "subConvert":
-		a.ApiService.SubConvert(c)
+		a.SubConvert(c)
 	case "importdb":
-		a.ApiService.ImportDb(c)
+		a.ImportDb(c)
 	case "addToken":
-		a.ApiService.AddToken(c)
+		a.AddToken(c)
 		a.ReloadTokens()
 	case "deleteToken":
-		a.ApiService.DeleteToken(c)
+		a.DeleteToken(c)
 		a.ReloadTokens()
 	case "createNode":
-		a.ApiService.CreateNode(c)
+		a.CreateNode(c)
 	case "updateNode":
-		a.ApiService.UpdateNode(c)
+		a.UpdateNode(c)
 	case "deleteNode":
-		a.ApiService.DeleteNode(c)
+		a.DeleteNode(c)
 	case "deployNode":
-		a.ApiService.DeployNode(c)
+		a.DeployNode(c)
 	case "saveRouting":
-		a.ApiService.SaveRouting(c)
+		a.SaveRouting(c)
 	case "setPluginEnabled":
-		a.ApiService.SetPluginEnabled(c)
+		a.SetPluginEnabled(c)
 	case "setPluginConfig":
-		a.ApiService.SetPluginConfig(c)
+		a.SetPluginConfig(c)
 	case "discoveryJoin":
-		a.ApiService.DiscoveryJoin(c)
+		a.DiscoveryJoin(c)
 	case "discoveryLeave":
-		a.ApiService.DiscoveryLeave(c)
+		a.DiscoveryLeave(c)
 	case "discoveryAddPeer":
-		a.ApiService.DiscoveryAddPeer(c)
+		a.DiscoveryAddPeer(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
@@ -89,49 +89,49 @@ func (a *APIv2Handler) getHandler(c *gin.Context) {
 
 	switch action {
 	case "load":
-		a.ApiService.LoadData(c)
+		a.LoadData(c)
 	case "inbounds", "outbounds", "endpoints", "services", "tls", "clients", "config":
-		err := a.ApiService.LoadPartialData(c, []string{action})
+		err := a.LoadPartialData(c, []string{action})
 		if err != nil {
 			jsonMsg(c, action, err)
 		}
 		return
 	case "users":
-		a.ApiService.GetUsers(c)
+		a.GetUsers(c)
 	case "settings":
-		a.ApiService.GetSettings(c)
+		a.GetSettings(c)
 	case "stats":
-		a.ApiService.GetStats(c)
+		a.GetStats(c)
 	case "status":
-		a.ApiService.GetStatus(c)
+		a.GetStatus(c)
 	case "onlines":
-		a.ApiService.GetOnlines(c)
+		a.GetOnlines(c)
 	case "logs":
-		a.ApiService.GetLogs(c)
+		a.GetLogs(c)
 	case "changes":
-		a.ApiService.CheckChanges(c)
+		a.CheckChanges(c)
 	case "keypairs":
-		a.ApiService.GetKeypairs(c)
+		a.GetKeypairs(c)
 	case "getdb":
-		a.ApiService.GetDb(c)
+		a.GetDb(c)
 	case "checkOutbound":
-		a.ApiService.GetCheckOutbound(c)
+		a.GetCheckOutbound(c)
 	case "tokens":
-		a.ApiService.GetTokens(c)
+		a.GetTokens(c)
 	case "singbox-config":
-		a.ApiService.GetSingboxConfig(c)
+		a.GetSingboxConfig(c)
 	case "nodes":
-		a.ApiService.GetNodes(c)
+		a.GetNodes(c)
 	case "routing":
-		a.ApiService.GetRouting(c)
+		a.GetRouting(c)
 	case "analytics":
-		a.ApiService.GetAnalytics(c)
+		a.GetAnalytics(c)
 	case "plugins":
-		a.ApiService.GetPlugins(c)
+		a.GetPlugins(c)
 	case "discoveryStatus":
-		a.ApiService.GetDiscoveryStatus(c)
+		a.GetDiscoveryStatus(c)
 	case "discoveryPeers":
-		a.ApiService.GetDiscoveryPeers(c)
+		a.GetDiscoveryPeers(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}
@@ -163,7 +163,7 @@ func (a *APIv2Handler) checkToken(c *gin.Context) {
 }
 
 func (a *APIv2Handler) ReloadTokens() {
-	tokens, err := a.ApiService.LoadTokens()
+	tokens, err := a.LoadTokens()
 	if err == nil {
 		var newTokens []TokenInMemory
 		err = json.Unmarshal(tokens, &newTokens)

@@ -68,15 +68,15 @@ func (s *InboundService) GetAll() (*[]map[string]interface{}, error) {
 			inbData["listen"] = restFields["listen"]
 			inbData["listen_port"] = restFields["listen_port"]
 			if inbound.Type == "shadowtls" {
-				json.Unmarshal(restFields["version"], &shadowtls_version)
+				_ = json.Unmarshal(restFields["version"], &shadowtls_version)
 			}
 			if inbound.Type == "shadowsocks" {
-				json.Unmarshal(restFields["managed"], &ss_managed)
+				_ = json.Unmarshal(restFields["managed"], &ss_managed)
 			}
 		}
 		if s.hasUser(inbound.Type) &&
-			!(inbound.Type == "shadowtls" && shadowtls_version < 3) &&
-			!(inbound.Type == "shadowsocks" && ss_managed) {
+			(inbound.Type != "shadowtls" || shadowtls_version >= 3) &&
+			(inbound.Type != "shadowsocks" || !ss_managed) {
 			users := []string{}
 			err = db.Raw("SELECT clients.name FROM clients, json_each(clients.inbounds) as je WHERE je.value = ?", inbound.Id).Scan(&users).Error
 			if err != nil {
@@ -163,9 +163,9 @@ func (s *InboundService) Save(tx *gorm.DB, act string, data json.RawMessage, ini
 		}
 		switch act {
 		case "new":
-			err = s.ClientService.UpdateClientsOnInboundAdd(tx, initUserIds, inbound.Id, hostname)
+			err = s.UpdateClientsOnInboundAdd(tx, initUserIds, inbound.Id, hostname)
 		case "edit":
-			err = s.ClientService.UpdateLinksByInboundChange(tx, &[]model.Inbound{inbound}, hostname, oldTag)
+			err = s.UpdateLinksByInboundChange(tx, &[]model.Inbound{inbound}, hostname, oldTag)
 		}
 		if err != nil {
 			return err
@@ -187,7 +187,7 @@ func (s *InboundService) Save(tx *gorm.DB, act string, data json.RawMessage, ini
 		if err != nil {
 			return err
 		}
-		err = s.ClientService.UpdateClientsOnInboundDelete(tx, id, tag)
+		err = s.UpdateClientsOnInboundDelete(tx, id, tag)
 		if err != nil {
 			return err
 		}
@@ -276,7 +276,7 @@ func (s *InboundService) fetchUsers(db *gorm.DB, inboundType string, condition s
 	var usersJson []json.RawMessage
 	for _, user := range users {
 		if inboundType == "vless" && inbound["tls"] == nil {
-			user = strings.Replace(user, "xtls-rprx-vision", "", -1)
+			user = strings.ReplaceAll(user, "xtls-rprx-vision", "")
 		}
 		usersJson = append(usersJson, json.RawMessage(user))
 	}

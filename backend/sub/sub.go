@@ -46,12 +46,12 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 
 	engine := gin.Default()
 
-	subPath, err := s.SettingService.GetSubPath()
+	subPath, err := s.GetSubPath()
 	if err != nil {
 		return nil, err
 	}
 
-	subDomain, err := s.SettingService.GetSubDomain()
+	subDomain, err := s.GetSubDomain()
 	if err != nil {
 		return nil, err
 	}
@@ -70,7 +70,7 @@ func (s *Server) Start() (err error) {
 	//This is an anonymous function, no function name
 	defer func() {
 		if err != nil {
-			s.Stop()
+			_ = s.Stop()
 		}
 	}()
 
@@ -79,19 +79,19 @@ func (s *Server) Start() (err error) {
 		return err
 	}
 
-	certFile, err := s.SettingService.GetSubCertFile()
+	certFile, err := s.GetSubCertFile()
 	if err != nil {
 		return err
 	}
-	keyFile, err := s.SettingService.GetSubKeyFile()
+	keyFile, err := s.GetSubKeyFile()
 	if err != nil {
 		return err
 	}
-	listen, err := s.SettingService.GetSubListen()
+	listen, err := s.GetSubListen()
 	if err != nil {
 		return err
 	}
-	port, err := s.SettingService.GetSubPort()
+	port, err := s.GetSubPort()
 	if err != nil {
 		return err
 	}
@@ -105,7 +105,7 @@ func (s *Server) Start() (err error) {
 	if certFile != "" || keyFile != "" {
 		cert, err := tls.LoadX509KeyPair(certFile, keyFile)
 		if err != nil {
-			listener.Close()
+			_ = listener.Close()
 			return err
 		}
 		c := &tls.Config{
@@ -127,7 +127,7 @@ func (s *Server) Start() (err error) {
 	}
 
 	go func() {
-		s.httpServer.Serve(listener)
+		_ = s.httpServer.Serve(listener)
 	}()
 
 	return nil

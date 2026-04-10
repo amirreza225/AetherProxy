@@ -59,7 +59,7 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 		logger.Warning("ws/stats: accept error:", err)
 		return
 	}
-	defer conn.CloseNow()
+	defer func() { _ = conn.CloseNow() }()
 
 	ctx := conn.CloseRead(c.Request.Context())
 
@@ -74,12 +74,12 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			onlines, err := h.StatsService.GetOnlines()
+			onlines, err := h.GetOnlines()
 			if err != nil {
 				logger.Warning("ws/stats: GetOnlines:", err)
 				continue
 			}
-			status := h.ServerService.GetStatus("")
+			status := h.GetStatus("")
 
 			// Collect new evasion events since the last tick.
 			newAlerts := getNewEvasionAlerts(lastEvasionTS)

@@ -43,8 +43,8 @@ func moveJsonToDb(db *gorm.DB) error {
 	}
 
 	oldInbounds := oldConfig["inbounds"].([]interface{})
-	db.Migrator().DropTable(&model.Inbound{})
-	db.AutoMigrate(&model.Inbound{})
+	_ = db.Migrator().DropTable(&model.Inbound{})
+	_ = db.AutoMigrate(&model.Inbound{})
 	for _, inbound := range oldInbounds {
 		inbObj, _ := inbound.(map[string]interface{})
 		tag, _ := inbObj["tag"].(string)
@@ -80,7 +80,7 @@ func moveJsonToDb(db *gorm.DB) error {
 		if inbData.Id > 0 {
 			inbObj["out_json"] = inbData.OutJson
 			var addrs []map[string]interface{}
-			json.Unmarshal(inbData.Addrs, &addrs)
+			_ = json.Unmarshal(inbData.Addrs, &addrs)
 			for index, addr := range addrs {
 				if tlsEnable, ok := addr["tls"].(bool); ok {
 					newTls := map[string]interface{}{
@@ -125,8 +125,8 @@ func moveJsonToDb(db *gorm.DB) error {
 	dnsOutboundTags := []string{}
 
 	oldOutbounds := oldConfig["outbounds"].([]interface{})
-	db.Migrator().DropTable(&model.Outbound{}, &model.Endpoint{})
-	db.AutoMigrate(&model.Outbound{}, &model.Endpoint{})
+	_ = db.Migrator().DropTable(&model.Outbound{}, &model.Endpoint{})
+	_ = db.AutoMigrate(&model.Outbound{}, &model.Endpoint{})
 	for _, outbound := range oldOutbounds {
 		outType, _ := outbound.(map[string]interface{})["type"].(string)
 		outboundRaw, _ := json.MarshalIndent(outbound, "", "  ")
@@ -149,7 +149,7 @@ func moveJsonToDb(db *gorm.DB) error {
 			// Delete deprecated fields
 			if newOutbound.Type == "direct" {
 				var options map[string]interface{}
-				json.Unmarshal(newOutbound.Options, &options)
+				_ = json.Unmarshal(newOutbound.Options, &options)
 				delete(options, "override_address")
 				delete(options, "override_port")
 				newOutbound.Options, _ = json.Marshal(options)

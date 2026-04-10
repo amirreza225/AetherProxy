@@ -277,7 +277,7 @@ func (s *ClientService) UpdateClientsOnInboundAdd(tx *gorm.DB, initIds string, i
 	for _, client := range clients {
 		// Add inbounds
 		var clientInbounds []uint
-		json.Unmarshal(client.Inbounds, &clientInbounds)
+		_ = json.Unmarshal(client.Inbounds, &clientInbounds)
 		clientInbounds = append(clientInbounds, inboundId)
 		client.Inbounds, err = json.MarshalIndent(clientInbounds, "", "  ")
 		if err != nil {
@@ -285,7 +285,7 @@ func (s *ClientService) UpdateClientsOnInboundAdd(tx *gorm.DB, initIds string, i
 		}
 		// Add links
 		var clientLinks, newClientLinks []map[string]string
-		json.Unmarshal(client.Links, &clientLinks)
+		_ = json.Unmarshal(client.Links, &clientLinks)
 		newLinks := util.LinkGenerator(client.Config, &inbound, hostname)
 		for _, newLink := range newLinks {
 			newClientLinks = append(newClientLinks, map[string]string{
@@ -329,7 +329,7 @@ func (s *ClientService) UpdateClientsOnInboundDelete(tx *gorm.DB, id uint, tag s
 	for _, client := range clients {
 		// Delete inbounds
 		var clientInbounds, newClientInbounds []uint
-		json.Unmarshal(client.Inbounds, &clientInbounds)
+		_ = json.Unmarshal(client.Inbounds, &clientInbounds)
 		for _, clientInbound := range clientInbounds {
 			if clientInbound != id {
 				newClientInbounds = append(newClientInbounds, clientInbound)
@@ -341,7 +341,7 @@ func (s *ClientService) UpdateClientsOnInboundDelete(tx *gorm.DB, id uint, tag s
 		}
 		// Delete links
 		var clientLinks, newClientLinks []map[string]string
-		json.Unmarshal(client.Links, &clientLinks)
+		_ = json.Unmarshal(client.Links, &clientLinks)
 		for _, clientLink := range clientLinks {
 			if clientLink["remark"] != tag {
 				newClientLinks = append(newClientLinks, clientLink)
@@ -377,7 +377,7 @@ func (s *ClientService) UpdateLinksByInboundChange(tx *gorm.DB, inbounds *[]mode
 		}
 		for _, client := range clients {
 			var clientLinks, newClientLinks []map[string]string
-			json.Unmarshal(client.Links, &clientLinks)
+			_ = json.Unmarshal(client.Links, &clientLinks)
 			newLinks := util.LinkGenerator(client.Config, &inbound, hostname)
 			for _, newLink := range newLinks {
 				newClientLinks = append(newClientLinks, map[string]string{
@@ -409,7 +409,6 @@ func (s *ClientService) DepleteClients() ([]uint, error) {
 	var err error
 	var clients []model.Client
 	var changes []model.Changes
-	var users []string
 	var inboundIds []uint
 
 	dt := time.Now().Unix()
@@ -441,9 +440,8 @@ func (s *ClientService) DepleteClients() ([]uint, error) {
 
 	for _, client := range clients {
 		logger.Debug("Client ", client.Name, " is going to be disabled")
-		users = append(users, client.Name)
 		var userInbounds []uint
-		json.Unmarshal(client.Inbounds, &userInbounds)
+		_ = json.Unmarshal(client.Inbounds, &userInbounds)
 		// Find changed inbounds
 		inboundIds = common.UnionUintArray(inboundIds, userInbounds)
 		changes = append(changes, model.Changes{
@@ -529,7 +527,7 @@ func (s *ClientService) ResetClients(tx *gorm.DB, dt int64) ([]uint, error) {
 		if !client.Enable {
 			client.Enable = true
 			var clientInboundIds []uint
-			json.Unmarshal(client.Inbounds, &clientInboundIds)
+			_ = json.Unmarshal(client.Inbounds, &clientInboundIds)
 			inboundIds = common.UnionUintArray(inboundIds, clientInboundIds)
 		}
 	}

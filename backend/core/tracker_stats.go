@@ -15,8 +15,8 @@ import (
 )
 
 type Counter struct {
-	read  *atomic.Int64
-	write *atomic.Int64
+	read  *atomic.Int64 //nolint:staticcheck
+	write *atomic.Int64 //nolint:staticcheck
 }
 
 type StatsTracker struct {
@@ -42,9 +42,9 @@ func (c *StatsTracker) Reset() {
 	c.users = make(map[string]Counter)
 }
 
-func (c *StatsTracker) getReadCounters(inbound string, outbound string, user string) ([]*atomic.Int64, []*atomic.Int64) {
-	var readCounter []*atomic.Int64
-	var writeCounter []*atomic.Int64
+func (c *StatsTracker) getReadCounters(inbound string, outbound string, user string) ([]*atomic.Int64, []*atomic.Int64) { //nolint:staticcheck
+	var readCounter []*atomic.Int64  //nolint:staticcheck
+	var writeCounter []*atomic.Int64 //nolint:staticcheck
 	c.access.Lock()
 	defer c.access.Unlock()
 
@@ -68,7 +68,7 @@ func (c *StatsTracker) loadOrCreateCounter(obj *map[string]Counter, name string)
 	if loaded {
 		return counter
 	}
-	counter = Counter{read: &atomic.Int64{}, write: &atomic.Int64{}}
+	counter = Counter{read: &atomic.Int64{}, write: &atomic.Int64{}} //nolint:staticcheck
 	(*obj)[name] = counter
 	return counter
 }

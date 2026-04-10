@@ -105,7 +105,7 @@ func InitDB(dbPath string) error {
 
 	// Default Outbounds
 	if !db.Migrator().HasTable(&model.Outbound{}) {
-		db.Migrator().CreateTable(&model.Outbound{})
+		_ = db.Migrator().CreateTable(&model.Outbound{})
 		defaultOutbound := []model.Outbound{
 			{Type: "direct", Tag: "direct", Options: json.RawMessage(`{}`)},
 		}

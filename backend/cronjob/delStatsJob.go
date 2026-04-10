@@ -17,7 +17,7 @@ func NewDelStatsJob(ta int) *DelStatsJob {
 }
 
 func (s *DelStatsJob) Run() {
-	err := s.StatsService.DelOldStats(s.trafficAge)
+	err := s.DelOldStats(s.trafficAge)
 	if err != nil {
 		logger.Warning("Deleting old statistics failed: ", err)
 		return

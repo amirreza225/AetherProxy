@@ -25,9 +25,10 @@ import (
 func GetDb(exclude string) ([]byte, error) {
 	exclude_changes, exclude_stats := false, false
 	for _, table := range strings.Split(exclude, ",") {
-		if table == "changes" {
+		switch table {
+		case "changes":
 			exclude_changes = true
-		} else if table == "stats" {
+		case "stats":
 			exclude_stats = true
 		}
 	}
@@ -42,7 +43,7 @@ func GetDb(exclude string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer os.Remove(dbPath)
+	defer func() { _ = os.Remove(dbPath) }()
 
 	err = backupDb.AutoMigrate(
 		&model.Setting{},
@@ -148,14 +149,14 @@ func GetDb(exclude string) ([]byte, error) {
 	}
 
 	bdb, _ := backupDb.DB()
-	bdb.Close()
+	_ = bdb.Close()
 
 	// Open the file for reading
 	file, err := os.Open(dbPath)
 	if err != nil {
 		return nil, err
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 
 	// Read the file contents
 	fileContents, err := io.ReadAll(file)
@@ -197,14 +198,14 @@ func ImportDB(file multipart.File) error {
 	if err != nil {
 		return common.NewErrorf("Error creating temporary db file: %v", err)
 	}
-	defer tempFile.Close()
+	defer func() { _ = tempFile.Close() }()
 
 	// Remove temp file before returning
-	defer os.Remove(tempPath)
+	defer func() { _ = os.Remove(tempPath) }()
 
 	// Close old DB
 	old_db, _ := db.DB()
-	old_db.Close()
+	_ = old_db.Close()
 
 	// Save uploaded file to temporary file
 	_, err = io.Copy(tempFile, file)
@@ -218,7 +219,7 @@ func ImportDB(file multipart.File) error {
 		return common.NewErrorf("Error checking db: %v", err)
 	}
 	newDb_db, _ := newDb.DB()
-	newDb_db.Close()
+	_ = newDb_db.Close()
 
 	// Backup the current database for fallback
 	fallbackPath := fmt.Sprintf("%s.backup", config.GetDBPath())
@@ -237,7 +238,7 @@ func ImportDB(file multipart.File) error {
 	}
 
 	// Remove the temporary file before returning
-	defer os.Remove(fallbackPath)
+	defer func() { _ = os.Remove(fallbackPath) }()
 
 	// Move temp to DB path
 	err = os.Rename(tempPath, config.GetDBPath())

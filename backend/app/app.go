@@ -28,7 +28,6 @@ type APP struct {
 	webServer     *web.Server
 	subServer     *sub.Server
 	cronJob       *cronjob.CronJob
-	logger        *logging.Logger
 	core          *core.Core
 }
 
@@ -47,7 +46,7 @@ func (a *APP) Init() error {
 	}
 
 	// Init Setting
-	a.SettingService.GetAllSetting()
+	_, _ = a.GetAllSetting()
 
 	a.core = core.NewCore()
 
@@ -58,18 +57,18 @@ func (a *APP) Init() error {
 	a.configService = service.NewConfigService(a.core)
 
 	a.registerBuiltinPlugins()
-	a.SettingService.LoadPluginStates()
+	a.LoadPluginStates()
 
 	return nil
 }
 
 func (a *APP) Start() error {
-	loc, err := a.SettingService.GetTimeLocation()
+	loc, err := a.GetTimeLocation()
 	if err != nil {
 		return err
 	}
 
-	trafficAge, err := a.SettingService.GetTrafficAge()
+	trafficAge, err := a.GetTrafficAge()
 	if err != nil {
 		return err
 	}
@@ -166,7 +165,7 @@ func (a *APP) loadPlugins() {
 
 func (a *APP) RestartApp() {
 	a.Stop()
-	a.Start()
+	_ = a.Start()
 }
 
 func (a *APP) GetCore() *core.Core {

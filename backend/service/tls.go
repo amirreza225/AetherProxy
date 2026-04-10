@@ -47,7 +47,7 @@ func (s *TlsService) Save(tx *gorm.DB, action string, data json.RawMessage, host
 				return err
 			}
 			if len(inbounds) > 0 {
-				err = s.ClientService.UpdateLinksByInboundChange(tx, &inbounds, hostname, "")
+				err = s.UpdateLinksByInboundChange(tx, &inbounds, hostname, "")
 				if err != nil {
 					return err
 				}
@@ -55,11 +55,11 @@ func (s *TlsService) Save(tx *gorm.DB, action string, data json.RawMessage, host
 				for _, inbound := range inbounds {
 					inboundIds = append(inboundIds, inbound.Id)
 				}
-				err = s.InboundService.UpdateOutJsons(tx, inboundIds, hostname)
+				err = s.UpdateOutJsons(tx, inboundIds, hostname)
 				if err != nil {
 					return common.NewError("unable to update out_json of inbounds: ", err.Error())
 				}
-				err = s.InboundService.RestartInbounds(tx, inboundIds)
+				err = s.RestartInbounds(tx, inboundIds)
 				if err != nil {
 					return err
 				}
@@ -70,7 +70,7 @@ func (s *TlsService) Save(tx *gorm.DB, action string, data json.RawMessage, host
 				return err
 			}
 			if len(serviceIds) > 0 {
-				err = s.ServicesService.RestartServices(tx, serviceIds)
+				err = s.RestartServices(tx, serviceIds)
 				if err != nil {
 					return err
 				}

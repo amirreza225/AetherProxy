@@ -74,7 +74,7 @@ func (s *EndpointService) Save(tx *gorm.DB, act string, data json.RawMessage) er
 
 		if endpoint.Type == "warp" {
 			if act == "new" {
-				err = s.WarpService.RegisterWarp(&endpoint)
+				err = s.RegisterWarp(&endpoint)
 				if err != nil {
 					return err
 				}
@@ -84,7 +84,7 @@ func (s *EndpointService) Save(tx *gorm.DB, act string, data json.RawMessage) er
 				if err != nil {
 					return err
 				}
-				err = s.WarpService.SetWarpLicense(old_license, &endpoint)
+				err = s.SetWarpLicense(old_license, &endpoint)
 				if err != nil {
 					return err
 				}

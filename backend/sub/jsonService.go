@@ -87,7 +87,7 @@ func (j *JsonService) GetJson(subId string, format string) (*string, []string, e
 		return nil, nil, err
 	}
 
-	links := j.LinkService.GetLinks(&client.Links, "external", "")
+	links := j.GetLinks(&client.Links, "external", "")
 	tagNumEnable := 0
 	if len(links) > 1 {
 		tagNumEnable = 1
@@ -110,12 +110,12 @@ func (j *JsonService) GetJson(subId string, format string) (*string, []string, e
 	jsonConfig["outbounds"] = outbounds
 
 	// Add other objects from settings
-	j.addOthers(&jsonConfig)
+	_ = j.addOthers(&jsonConfig)
 
 	result, _ := json.MarshalIndent(jsonConfig, "", "  ")
 	resultStr := string(result)
 
-	updateInterval, _ := j.SettingService.GetSubUpdates()
+	updateInterval, _ := j.GetSubUpdates()
 	headers := util.GetHeaders(client, updateInterval)
 
 	return &resultStr, headers, nil
@@ -308,7 +308,7 @@ func (j *JsonService) addOthers(jsonConfig *map[string]interface{}) error {
 		"rules":                 rules_start,
 	}
 
-	othersStr, err := j.SettingService.GetSubJsonExt()
+	othersStr, err := j.GetSubJsonExt()
 	if err != nil {
 		return err
 	}

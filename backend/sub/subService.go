@@ -26,18 +26,18 @@ func (s *SubService) GetSubs(subId string) (*string, []string, error) {
 	}
 
 	clientInfo := ""
-	subShowInfo, _ := s.SettingService.GetSubShowInfo()
+	subShowInfo, _ := s.GetSubShowInfo()
 	if subShowInfo {
 		clientInfo = s.getClientInfo(client)
 	}
 
-	linksArray := s.LinkService.GetLinks(&client.Links, "all", clientInfo)
+	linksArray := s.GetLinks(&client.Links, "all", clientInfo)
 	linksArray = filterOfflineNodes(linksArray)
 	result := strings.Join(linksArray, "\n")
 
 	headers := s.getClientHeaders(client)
 
-	subEncode, _ := s.SettingService.GetSubEncode()
+	subEncode, _ := s.GetSubEncode()
 	if subEncode {
 		result = base64.StdEncoding.EncodeToString([]byte(result))
 	}
@@ -107,7 +107,7 @@ func (j *SubService) getClientBySubId(subId string) (*model.Client, error) {
 }
 
 func (s *SubService) getClientHeaders(client *model.Client) []string {
-	updateInterval, _ := s.SettingService.GetSubUpdates()
+	updateInterval, _ := s.GetSubUpdates()
 	return util.GetHeaders(client, updateInterval)
 }
 

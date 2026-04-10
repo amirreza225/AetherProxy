@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/aetherproxy/backend/core/plugin"
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/service"
 	"github.com/aetherproxy/backend/util"
-	"github.com/aetherproxy/backend/core/plugin"
 	"github.com/aetherproxy/backend/util/common"
 
 	"github.com/gin-gonic/gin"
@@ -50,7 +50,7 @@ func (a *ApiService) getData(c *gin.Context) (interface{}, error) {
 	}
 	onlines, err := a.StatsService.GetOnlines()
 
-	sysInfo := a.ServerService.GetSingboxInfo()
+	sysInfo := a.GetSingboxInfo()
 	if sysInfo["running"] == false {
 		logs := a.ServerService.GetLogs("1", "debug")
 		if len(logs) > 0 {
@@ -90,11 +90,11 @@ func (a *ApiService) getData(c *gin.Context) (interface{}, error) {
 		if err != nil {
 			return "", err
 		}
-		subURI, err := a.SettingService.GetFinalSubURI(getHostname(c))
+		subURI, err := a.GetFinalSubURI(getHostname(c))
 		if err != nil {
 			return "", err
 		}
-		trafficAge, err := a.SettingService.GetTrafficAge()
+		trafficAge, err := a.GetTrafficAge()
 		if err != nil {
 			return "", err
 		}
@@ -164,7 +164,7 @@ func (a *ApiService) LoadPartialData(c *gin.Context, objs []string) error {
 			}
 			data[obj] = json.RawMessage(config)
 		case "settings":
-			settings, err := a.SettingService.GetAllSetting()
+			settings, err := a.GetAllSetting()
 			if err != nil {
 				return err
 			}
@@ -186,7 +186,7 @@ func (a *ApiService) GetUsers(c *gin.Context) {
 }
 
 func (a *ApiService) GetSettings(c *gin.Context) {
-	data, err := a.SettingService.GetAllSetting()
+	data, err := a.GetAllSetting()
 	if err != nil {
 		jsonMsg(c, "", err)
 		return
@@ -231,14 +231,14 @@ func (a *ApiService) CheckChanges(c *gin.Context) {
 	actor := c.Query("a")
 	chngKey := c.Query("k")
 	count := c.Query("c")
-	changes := a.ConfigService.GetChanges(actor, chngKey, count)
+	changes := a.GetChanges(actor, chngKey, count)
 	jsonObj(c, changes, nil)
 }
 
 func (a *ApiService) GetKeypairs(c *gin.Context) {
 	kType := c.Query("k")
 	options := c.Query("o")
-	keypair := a.ServerService.GenKeypair(kType, options)
+	keypair := a.GenKeypair(kType, options)
 	jsonObj(c, keypair, nil)
 }
 
@@ -251,16 +251,7 @@ func (a *ApiService) GetDb(c *gin.Context) {
 	}
 	c.Header("Content-Type", "application/octet-stream")
 	c.Header("Content-Disposition", "attachment; filename=s-ui_"+time.Now().Format("20060102-150405")+".db")
-	c.Writer.Write(db)
-}
-
-func (a *ApiService) postActions(c *gin.Context) (string, json.RawMessage, error) {
-	var data map[string]json.RawMessage
-	err := c.ShouldBind(&data)
-	if err != nil {
-		return "", nil, err
-	}
-	return string(data["action"]), data["data"], nil
+	_, _ = c.Writer.Write(db)
 }
 
 func (a *ApiService) Login(c *gin.Context) {
@@ -271,7 +262,7 @@ func (a *ApiService) Login(c *gin.Context) {
 		return
 	}
 
-	sessionMaxAge, err := a.SettingService.GetSessionMaxAge()
+	sessionMaxAge, err := a.GetSessionMaxAge()
 	if err != nil {
 		logger.Infof("Unable to get session's max age from DB")
 	}
@@ -294,7 +285,7 @@ func (a *ApiService) ChangePass(c *gin.Context) {
 	if id == "" || id == "0" {
 		username := GetLoginUser(c)
 		if username != "" {
-			user, err := a.UserService.GetUserByUsername(username)
+			user, err := a.GetUserByUsername(username)
 			if err == nil && user != nil {
 				id = strconv.FormatUint(uint64(user.Id), 10)
 			}
@@ -331,12 +322,12 @@ func (a *ApiService) Save(c *gin.Context, loginUser string) {
 }
 
 func (a *ApiService) RestartApp(c *gin.Context) {
-	err := a.PanelService.RestartPanel(3)
+	err := a.RestartPanel(3)
 	jsonMsg(c, "restartApp", err)
 }
 
 func (a *ApiService) RestartSb(c *gin.Context) {
-	err := a.ConfigService.RestartCore()
+	err := a.RestartCore()
 	jsonMsg(c, "restartSb", err)
 }
 
@@ -358,7 +349,7 @@ func (a *ApiService) ImportDb(c *gin.Context) {
 		jsonMsg(c, "", err)
 		return
 	}
-	defer file.Close()
+	defer func() { _ = file.Close() }()
 	err = database.ImportDB(file)
 	jsonMsg(c, "", err)
 }
@@ -378,7 +369,7 @@ func (a *ApiService) LoadTokens() ([]byte, error) {
 
 func (a *ApiService) GetTokens(c *gin.Context) {
 	loginUser := GetLoginUser(c)
-	tokens, err := a.UserService.GetUserTokens(loginUser)
+	tokens, err := a.GetUserTokens(loginUser)
 	jsonObj(c, tokens, err)
 }
 
@@ -405,18 +396,18 @@ func (a *ApiService) GetSingboxConfig(c *gin.Context) {
 	rawConfig, err := a.ConfigService.GetConfig("")
 	if err != nil {
 		c.Status(400)
-		c.Writer.WriteString(err.Error())
+		_, _ = c.Writer.WriteString(err.Error())
 		return
 	}
 	c.Header("Content-Type", "application/json")
 	c.Header("Content-Disposition", "attachment; filename=config_"+time.Now().Format("20060102-150405")+".json")
-	c.Writer.Write(*rawConfig)
+	_, _ = c.Writer.Write(*rawConfig)
 }
 
 func (a *ApiService) GetCheckOutbound(c *gin.Context) {
 	tag := c.Query("tag")
 	link := c.Query("link")
-	result := a.ConfigService.CheckOutbound(tag, link)
+	result := a.CheckOutbound(tag, link)
 	jsonObj(c, result, nil)
 }
 
@@ -485,7 +476,7 @@ func (a *ApiService) DeployNode(c *gin.Context) {
 // ── Routing ───────────────────────────────────────────────────────────────────
 
 func (a *ApiService) GetRouting(c *gin.Context) {
-	rules, err := a.RoutingService.GetRules()
+	rules, err := a.GetRules()
 	jsonObj(c, rules, err)
 }
 
@@ -495,7 +486,7 @@ func (a *ApiService) SaveRouting(c *gin.Context) {
 		jsonMsg(c, "", err)
 		return
 	}
-	err := a.RoutingService.SaveRules(rules)
+	err := a.SaveRules(rules)
 	jsonMsg(c, "routing", err)
 }
 
@@ -585,7 +576,7 @@ func (a *ApiService) SetPluginEnabled(c *gin.Context) {
 		return
 	}
 	info.Plugin.SetEnabled(enabled)
-	if err := a.SettingService.SavePluginEnabled(name, enabled); err != nil {
+	if err := a.SavePluginEnabled(name, enabled); err != nil {
 		logger.Warning("failed to persist plugin enabled state:", err)
 	}
 	jsonMsg(c, "plugin", nil)
@@ -598,7 +589,7 @@ func (a *ApiService) SetPluginConfig(c *gin.Context) {
 		jsonMsg(c, "plugin", err)
 		return
 	}
-	if err := a.SettingService.SavePluginConfig(name, cfg); err != nil {
+	if err := a.SavePluginConfig(name, cfg); err != nil {
 		logger.Warning("failed to persist plugin config:", err)
 	}
 	jsonMsg(c, "plugin", nil)

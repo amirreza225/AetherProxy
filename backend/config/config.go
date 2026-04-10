@@ -139,7 +139,7 @@ func GetGossipPort() int {
 		return 7946
 	}
 	var port int
-	fmt.Sscanf(p, "%d", &port)
+	_, _ = fmt.Sscanf(p, "%d", &port)
 	if port <= 0 {
 		return 7946
 	}

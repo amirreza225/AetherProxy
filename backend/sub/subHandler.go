@@ -36,9 +36,9 @@ func (s *SubHandler) subs(c *gin.Context) {
 	if isFormat {
 		switch format {
 		case "json":
-			result, headers, err = s.JsonService.GetJson(subId, format)
+			result, headers, err = s.GetJson(subId, format)
 		case "clash":
-			result, headers, err = s.ClashService.GetClash(subId)
+			result, headers, err = s.GetClash(subId)
 		}
 		if err != nil || result == nil {
 			logger.Error(err)
@@ -46,7 +46,7 @@ func (s *SubHandler) subs(c *gin.Context) {
 			return
 		}
 	} else {
-		result, headers, err = s.SubService.GetSubs(subId)
+		result, headers, err = s.GetSubs(subId)
 		if err != nil || result == nil {
 			logger.Error(err)
 			c.String(400, "Error!")
@@ -61,14 +61,14 @@ func (s *SubHandler) subs(c *gin.Context) {
 
 func (s *SubHandler) subHeaders(c *gin.Context) {
 	subId := c.Param("subid")
-	client, err := s.SubService.getClientBySubId(subId)
+	client, err := s.getClientBySubId(subId)
 	if err != nil {
 		logger.Error(err)
 		c.String(400, "Error!")
 		return
 	}
 
-	headers := s.SubService.getClientHeaders(client)
+	headers := s.getClientHeaders(client)
 	s.addHeaders(c, headers)
 
 	c.Status(200)

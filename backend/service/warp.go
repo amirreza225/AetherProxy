@@ -34,7 +34,7 @@ func (s *WarpService) getWarpInfo(deviceId string, accessToken string) ([]byte, 
 	if err != nil || resp.StatusCode != 200 {
 		return nil, err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	buffer := bytes.NewBuffer(make([]byte, 8192))
 	buffer.Reset()
 	_, err = buffer.ReadFrom(resp.Body)
@@ -67,7 +67,7 @@ func (s *WarpService) RegisterWarp(ep *model.Endpoint) error {
 	if err != nil || resp.StatusCode != 200 {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	buffer := bytes.NewBuffer(make([]byte, 8192))
 	buffer.Reset()
 	_, err = buffer.ReadFrom(resp.Body)
@@ -201,7 +201,7 @@ func (s *WarpService) SetWarpLicense(old_license string, ep *model.Endpoint) err
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	buffer := bytes.NewBuffer(make([]byte, 8192))
 	buffer.Reset()
 	_, err = buffer.ReadFrom(resp.Body)
@@ -214,7 +214,7 @@ func (s *WarpService) SetWarpLicense(old_license string, ep *model.Endpoint) err
 		return err
 	}
 
-	if success, ok := response["success"].(bool); ok && success == false {
+	if success, ok := response["success"].(bool); ok && !success {
 		errorArr, _ := response["errors"].([]interface{})
 		errorObj := errorArr[0].(map[string]interface{})
 		return common.NewError(errorObj["code"], errorObj["message"])

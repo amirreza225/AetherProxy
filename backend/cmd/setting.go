@@ -137,7 +137,7 @@ func getPublicIP() string {
 				ch <- result{"", err}
 				return
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
 				ch <- result{"", err}
@@ -173,10 +173,7 @@ func getPanelURI() {
 	Domain, _ := settingService.GetWebDomain()
 	KeyFile, _ := settingService.GetKeyFile()
 	CertFile, _ := settingService.GetCertFile()
-	TLS := false
-	if KeyFile != "" && CertFile != "" {
-		TLS = true
-	}
+	TLS := KeyFile != "" && CertFile != ""
 	Proto := ""
 	if TLS {
 		Proto = "https://"

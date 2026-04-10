@@ -134,7 +134,7 @@ func (s *NodeService) pingNode(id uint) {
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	status := "offline"
 	if err == nil {
-		conn.Close()
+		_ = conn.Close()
 		status = "online"
 	}
 
@@ -156,7 +156,7 @@ func (s *NodeService) DeployConfig(nodeID uint, configJSON []byte) error {
 	if err != nil {
 		return fmt.Errorf("SSH dial failed: %w", err)
 	}
-	defer sshClient.Close()
+	defer func() { _ = sshClient.Close() }()
 
 	// Write config file
 	configPath := "/etc/sing-box/config.json"
@@ -201,7 +201,7 @@ func (s *NodeService) sshRun(client *ssh.Client, cmd string) error {
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	defer func() { _ = sess.Close() }()
 	return sess.Run(cmd)
 }
 
@@ -210,7 +210,7 @@ func (s *NodeService) sshWriteFile(client *ssh.Client, remotePath string, data [
 	if err != nil {
 		return err
 	}
-	defer sess.Close()
+	defer func() { _ = sess.Close() }()
 
 	stdin, err := sess.StdinPipe()
 	if err != nil {
@@ -219,10 +219,10 @@ func (s *NodeService) sshWriteFile(client *ssh.Client, remotePath string, data [
 
 	// Use scp protocol to transfer the file
 	go func() {
-		defer stdin.Close()
-		fmt.Fprintf(stdin, "C0644 %d config.json\n", len(data))
-		stdin.Write(data)
-		fmt.Fprintf(stdin, "\x00")
+		defer func() { _ = stdin.Close() }()
+		_, _ = fmt.Fprintf(stdin, "C0644 %d config.json\n", len(data))
+		_, _ = stdin.Write(data)
+		_, _ = fmt.Fprintf(stdin, "\x00")
 	}()
 
 	dir := remotePath[:len(remotePath)-len("/config.json")]

@@ -187,7 +187,7 @@ func (s *ConfigService) CheckOutbound(tag string, link string) core.CheckOutboun
 
 func (s *ConfigService) Save(obj string, act string, data json.RawMessage, initUsers string, loginUser string, hostname string) ([]string, error) {
 	var err error
-	var objs []string = []string{obj}
+	objs := []string{obj}
 
 	db := database.GetDB()
 	tx := db.Begin()
@@ -196,7 +196,7 @@ func (s *ConfigService) Save(obj string, act string, data json.RawMessage, initU
 			tx.Commit()
 			// Try to start core if it is not running
 			if !corePtr.IsRunning() {
-				s.StartCore()
+				_ = s.StartCore()
 			}
 		} else {
 			tx.Rollback()
@@ -209,7 +209,7 @@ func (s *ConfigService) Save(obj string, act string, data json.RawMessage, initU
 		inboundIds, err = s.ClientService.Save(tx, act, data, hostname)
 		if err == nil && len(inboundIds) > 0 {
 			objs = append(objs, "inbounds")
-			err = s.InboundService.RestartInbounds(tx, inboundIds)
+			err = s.RestartInbounds(tx, inboundIds)
 			if err != nil {
 				return nil, common.NewErrorf("failed to update users for inbounds: %v", err)
 			}
@@ -227,7 +227,7 @@ func (s *ConfigService) Save(obj string, act string, data json.RawMessage, initU
 	case "endpoints":
 		err = s.EndpointService.Save(tx, act, data)
 	case "config":
-		err = s.SettingService.SaveConfig(tx, data)
+		err = s.SaveConfig(tx, data)
 		if err != nil {
 			return nil, err
 		}

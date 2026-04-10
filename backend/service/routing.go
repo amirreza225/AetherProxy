@@ -88,13 +88,13 @@ func (s *RoutingService) SaveRules(rules []RouteRule) error {
 	// Persist via SettingService
 	db := database.GetDB()
 	tx := db.Begin()
-	if err := s.SettingService.SaveConfig(tx, newConfig); err != nil {
+	if err := s.SaveConfig(tx, newConfig); err != nil {
 		tx.Rollback()
 		return err
 	}
 	tx.Commit()
 
 	// Async restart so the HTTP handler returns quickly
-	go func() { _ = s.ConfigService.restartCoreWithConfig(newConfig) }()
+	go func() { _ = s.restartCoreWithConfig(newConfig) }()
 	return nil
 }

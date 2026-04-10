@@ -127,7 +127,7 @@ func (w *EvasionWatcher) fetchJavidData() []model.EvasionEvent {
 		logger.Warning("EvasionWatcher: fetch failed:", err)
 		return nil
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if resp.StatusCode != http.StatusOK {
 		logger.Warning("EvasionWatcher: unexpected status:", resp.StatusCode)

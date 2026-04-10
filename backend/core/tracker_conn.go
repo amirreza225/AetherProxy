@@ -2,8 +2,6 @@ package core
 
 import (
 	"context"
-	"errors"
-	"io"
 	"net"
 	"sync"
 
@@ -87,10 +85,10 @@ func (c *ConnTracker) CloseConnByInbound(inbound string) int {
 	for connID, connInfo := range c.connections {
 		if connInfo.Inbound == inbound {
 			if connInfo.Conn != nil {
-				connInfo.Conn.Close()
+				_ = connInfo.Conn.Close()
 			}
 			if connInfo.PacketConn != nil {
-				connInfo.PacketConn.Close()
+				_ = connInfo.PacketConn.Close()
 			}
 			delete(c.connections, connID)
 			closedCount++
@@ -113,17 +111,7 @@ func (c *ConnTracker) untrackConnection(connID string) {
 
 // shouldUntrackIOErr reports whether err indicates the connection is done (peer closed, reset, etc.).
 func shouldUntrackIOErr(err error) bool {
-	if err == nil {
-		return false
-	}
-	if errors.Is(err, io.EOF) {
-		return true
-	}
-	var ne net.Error
-	if errors.As(err, &ne) {
-		return !ne.Temporary()
-	}
-	return true
+	return err != nil
 }
 
 func (c *ConnTracker) createWrappedConn(conn net.Conn, connID string) *wrappedConn {

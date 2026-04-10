@@ -73,7 +73,7 @@ func (s *ClashService) GetClash(subId string) (*string, []string, error) {
 		return nil, nil, err
 	}
 
-	links := s.LinkService.GetLinks(&client.Links, "external", "")
+	links := s.GetLinks(&client.Links, "external", "")
 	tagNumEnable := 0
 	if len(links) > 1 {
 		tagNumEnable = 1
@@ -96,14 +96,14 @@ func (s *ClashService) GetClash(subId string) (*string, []string, error) {
 		return nil, nil, err
 	}
 
-	updateInterval, _ := s.SettingService.GetSubUpdates()
+	updateInterval, _ := s.GetSubUpdates()
 	headers := util.GetHeaders(client, updateInterval)
 
 	return &resultStr, headers, nil
 }
 
 func (s *ClashService) getClashConfig() (string, error) {
-	subClashExt, err := s.SettingService.GetSubClashExt()
+	subClashExt, err := s.GetSubClashExt()
 	if err != nil {
 		return "", err
 	}
@@ -126,7 +126,7 @@ func (s *ClashService) ConvertToClashMeta(outbounds *[]map[string]interface{}, b
 		proxy["type"] = t
 
 		server, _ := obMap["server"].(string)
-		if len(server) > 0 && strings.Contains(server, ":") && !strings.Contains(server, ".") && !(strings.HasPrefix(server, "[") && strings.HasSuffix(server, "]")) {
+		if len(server) > 0 && strings.Contains(server, ":") && !strings.Contains(server, ".") && (!strings.HasPrefix(server, "[") || !strings.HasSuffix(server, "]")) {
 			server = "'[" + server + "]'"
 		}
 		proxy["server"] = server
