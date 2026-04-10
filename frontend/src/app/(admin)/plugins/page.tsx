@@ -15,6 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 function PluginCard({
   plugin,
@@ -36,7 +37,10 @@ function PluginCard({
     setToggling(true);
     try {
       await setPluginEnabled(plugin.name, !plugin.enabled);
+      toast.success(plugin.enabled ? t("disableSuccess") : t("enableSuccess"));
       onMutate();
+    } catch {
+      toast.error(t("toggleError"));
     } finally {
       setToggling(false);
     }
@@ -57,6 +61,7 @@ function PluginCard({
       if (!res.success) {
         setConfigError(res.msg || t("saveConfigError"));
       } else {
+        toast.success(t("saveConfigSuccess"));
         onMutate();
       }
     } catch {

@@ -123,7 +123,7 @@ export default function SettingsPage() {
 
               {msg && (
                 <p
-                  className={`text-sm ${msg.ok ? "text-green-600" : "text-destructive"}`}
+                  className={`text-sm ${msg.ok ? "text-emerald-600" : "text-destructive"}`}
                 >
                   {msg.text}
                 </p>
@@ -175,7 +175,7 @@ export default function SettingsPage() {
               />
             </div>
             {passMsg && (
-              <p className={`text-sm ${passMsg.ok ? "text-green-600" : "text-destructive"}`}>
+              <p className={`text-sm ${passMsg.ok ? "text-emerald-600" : "text-destructive"}`}>
                 {passMsg.text}
               </p>
             )}

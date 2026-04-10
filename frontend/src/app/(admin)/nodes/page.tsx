@@ -33,6 +33,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 function NodeStatusBadge({ status }: { status: Node["status"] }) {
   const t = useTranslations("nodes");
@@ -249,6 +250,7 @@ function DecentralizedTab() {
 
 export default function NodesPage() {
   const t = useTranslations("nodes");
+  const tc = useTranslations("common");
   const { data: inboundData, isLoading: inboundsLoading, error: inboundsError } = useSWR("/api/inbounds", () =>
     getInbounds()
   );
@@ -260,7 +262,6 @@ export default function NodesPage() {
   const nodes = nodesData ?? [];
 
   async function handleDelete(id: number) {
-    if (!confirm(t("confirmDeleteNode"))) return;
     try {
       await deleteNode(id);
       toast.success(t("deleteSuccess"));
@@ -326,9 +327,16 @@ export default function NodesPage() {
                         <Button size="sm" variant="outline" onClick={() => handleDeploy(node.id)}>
                           {t("deploy")}
                         </Button>
-                        <Button size="sm" variant="destructive" onClick={() => handleDelete(node.id)}>
-                          {t("delete")}
-                        </Button>
+                        <ConfirmDialog
+                          title={t("confirmDeleteNode")}
+                          confirmLabel={t("delete")}
+                          cancelLabel={tc("cancel")}
+                          onConfirm={() => handleDelete(node.id)}
+                        >
+                          <Button size="sm" variant="destructive">
+                            {t("delete")}
+                          </Button>
+                        </ConfirmDialog>
                       </div>
                     </CardContent>
                   </Card>

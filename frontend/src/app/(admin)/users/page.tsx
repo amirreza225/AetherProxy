@@ -36,6 +36,7 @@ import { Label } from "@/components/ui/label";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { formatBytes } from "@/lib/utils";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 // ── Credential helpers ────────────────────────────────────────────────────────
 
@@ -402,6 +403,7 @@ function ClientDialog({
 
 export default function UsersPage() {
   const t = useTranslations("users");
+  const tc = useTranslations("common");
 
   const { data, isLoading, error, mutate } = useSWR("/api/clients", () =>
     getClients().then((r) => {
@@ -421,7 +423,6 @@ export default function UsersPage() {
   const { data: inboundList = [] } = useSWR("/api/inbounds", () => getInbounds());
 
   async function handleDelete(id: number) {
-    if (!confirm(t("confirmDelete"))) return;
     try {
       const res = await deleteClient(id);
       if (!res.success) {
@@ -520,13 +521,16 @@ export default function UsersPage() {
                             </Button>
                           }
                         />
-                        <Button
-                          size="sm"
-                          variant="destructive"
-                          onClick={() => handleDelete(c.id)}
+                        <ConfirmDialog
+                          title={t("confirmDelete")}
+                          confirmLabel={t("delete")}
+                          cancelLabel={tc("cancel")}
+                          onConfirm={() => handleDelete(c.id)}
                         >
-                          {t("delete")}
-                        </Button>
+                          <Button size="sm" variant="destructive">
+                            {t("delete")}
+                          </Button>
+                        </ConfirmDialog>
                       </div>
                     </TableCell>
                   </TableRow>

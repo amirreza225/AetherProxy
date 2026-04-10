@@ -85,7 +85,7 @@ export default function RoutingPage() {
       </div>
 
       {saveMsg && (
-        <p className={`text-sm ${saveMsg.ok ? "text-green-600" : "text-destructive"}`}>
+        <p className={`text-sm ${saveMsg.ok ? "text-emerald-600" : "text-destructive"}`}>
           {saveMsg.text}
         </p>
       )}

@@ -278,6 +278,10 @@
     "configJson": "Configuration (JSON)",
     "invalidJson": "Invalid JSON",
     "saveConfigError": "Failed to save config",
+    "saveConfigSuccess": "Config saved.",
+    "enableSuccess": "Plugin enabled.",
+    "disableSuccess": "Plugin disabled.",
+    "toggleError": "Failed to toggle plugin.",
     "loadError": "Failed to load plugins.",
     "enable": "Enable",
     "disable": "Disable"

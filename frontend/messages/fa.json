@@ -278,6 +278,10 @@
     "configJson": "پیکربندی (JSON)",
     "invalidJson": "JSON نامعتبر است",
     "saveConfigError": "ذخیره پیکربندی ناموفق بود",
+    "saveConfigSuccess": "پیکربندی ذخیره شد.",
+    "enableSuccess": "افزونه فعال شد.",
+    "disableSuccess": "افزونه غیرفعال شد.",
+    "toggleError": "تغییر وضعیت افزونه ناموفق بود.",
     "loadError": "بارگذاری افزونه‌ها ناموفق بود.",
     "enable": "فعال‌سازی",
     "disable": "غیرفعال‌سازی"

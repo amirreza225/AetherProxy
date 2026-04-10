@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 
 export default function SubscriptionsPage() {
   const t = useTranslations("subscriptions");
@@ -58,34 +59,31 @@ export default function SubscriptionsPage() {
   const [tokenDesc, setTokenDesc] = useState("");
   const [tokenExpiryDays, setTokenExpiryDays] = useState("30");
   const [creating, setCreating] = useState(false);
-  const [createMsg, setCreateMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
   const { data: tokensData, mutate: mutateTokens } = useSWR("/api/tokens", () =>
     getTokens().then((r) => r.obj ?? [])
   );
 
   async function handleCreateToken() {
-    setCreateMsg(null);
     setCreating(true);
     try {
       const expiry = Math.max(0, Number(tokenExpiryDays) || 0);
       const res = await addToken(expiry, tokenDesc.trim());
       if (!res.success || !res.obj) {
-        setCreateMsg({ ok: false, text: res.msg || t("createTokenError") });
+        toast.error(res.msg || t("createTokenError"));
         return;
       }
       setTokenDesc("");
-      setCreateMsg({ ok: true, text: t("createTokenSuccess") });
+      toast.success(t("createTokenSuccess"));
       mutateTokens();
     } catch {
-      setCreateMsg({ ok: false, text: t("createTokenError") });
+      toast.error(t("createTokenError"));
     } finally {
       setCreating(false);
     }
   }
 
   async function handleDeleteToken(id: number) {
-    if (!confirm(t("confirmDeleteToken"))) return;
     try {
       const res = await deleteToken(id);
       if (!res.success) {
@@ -199,11 +197,6 @@ export default function SubscriptionsPage() {
                 onChange={(e) => setTokenExpiryDays(e.target.value)}
               />
             </div>
-            {createMsg && (
-              <p className={`text-sm ${createMsg.ok ? "text-green-600" : "text-destructive"}`}>
-                {createMsg.text}
-              </p>
-            )}
             <Button onClick={handleCreateToken} disabled={creating}>
               {creating ? tc("saving") : t("createAndGenerate")}
             </Button>
@@ -228,13 +221,16 @@ export default function SubscriptionsPage() {
                           : t("neverExpires")}
                       </p>
                     </div>
-                    <Button
-                      size="sm"
-                      variant="destructive"
-                      onClick={() => handleDeleteToken(item.id)}
+                    <ConfirmDialog
+                      title={t("confirmDeleteToken")}
+                      confirmLabel={t("deleteToken")}
+                      cancelLabel={tc("cancel")}
+                      onConfirm={() => handleDeleteToken(item.id)}
                     >
-                      {t("deleteToken")}
-                    </Button>
+                      <Button size="sm" variant="destructive">
+                        {t("deleteToken")}
+                      </Button>
+                    </ConfirmDialog>
                   </div>
                 ))}
               </div>
