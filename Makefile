@@ -2,7 +2,9 @@
         frontend-dev frontend-build frontend-lint deploy-up deploy-down \
         plugin-build plugin-test
 
-GOBIN := $(shell which go 2>/dev/null || echo /usr/local/go/bin/go)
+GOBIN  := $(shell which go 2>/dev/null || echo /usr/local/go/bin/go)
+GOPATH := $(shell go env GOPATH 2>/dev/null || echo $$HOME/go)
+AIR    := $(GOPATH)/bin/air
 NPM   := npm
 
 help: ## Show this help
@@ -16,7 +18,7 @@ backend-build: ## Build the Go backend binary
 	cd backend && $(GOBIN) build -trimpath -ldflags="-s -w" -tags "$(BACKEND_TAGS)" -o ../bin/aetherproxy .
 
 backend-dev: ## Run the Go backend in watch mode (requires air)
-	cd backend && air
+	cd backend && $(AIR)
 
 backend-test: ## Run Go unit tests
 	cd backend && $(GOBIN) test ./... -race -timeout 60s

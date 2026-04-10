@@ -8,6 +8,19 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
+  Activity,
+  Cpu,
+  HardDrive,
+  Server,
+  Users,
+  Network,
+  Clock,
+  Database,
+  X,
+  ShieldAlert,
+  Circle,
+} from "lucide-react";
+import {
   AreaChart,
   Area,
   XAxis,
@@ -17,7 +30,7 @@ import {
   Legend,
 } from "recharts";
 
-// ── Types matching the backend WebSocket payload ─────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
 interface Onlines {
   user?: string[];
@@ -39,11 +52,7 @@ interface MemInfo {
 
 interface SingboxInfo {
   running: boolean;
-  stats: {
-    Uptime: number;      // seconds
-    NumGoroutine: number;
-    Alloc: number;
-  };
+  stats: { Uptime: number; NumGoroutine: number; Alloc: number };
 }
 
 interface DbInfo {
@@ -78,8 +87,6 @@ interface LiveStats {
   evasionAlerts?: EvasionAlert[];
 }
 
-// ── Chart data ────────────────────────────────────────────────────────────────
-
 interface ThroughputPoint {
   t: number;
   down: number;
@@ -88,7 +95,7 @@ interface ThroughputPoint {
 
 const MAX_HISTORY = 30;
 
-// ── Formatters ────────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -109,24 +116,83 @@ function formatUptime(seconds: number): string {
   return parts.join(" ");
 }
 
-// ── Component ─────────────────────────────────────────────────────────────────
+function MemoryBar({ current, total }: { current: number; total: number }) {
+  const pct = total > 0 ? Math.round((current / total) * 100) : 0;
+  const color =
+    pct > 85 ? "bg-destructive" : pct > 65 ? "bg-amber-500" : "bg-primary";
+  return (
+    <div className="space-y-1">
+      <div className="flex justify-between text-xs text-muted-foreground">
+        <span>{formatBytes(current)}</span>
+        <span>{pct}%</span>
+      </div>
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className={`h-full rounded-full transition-all ${color}`}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <p className="text-xs text-muted-foreground">of {formatBytes(total)}</p>
+    </div>
+  );
+}
+
+// ── Stat card ─────────────────────────────────────────────────────────────────
+
+function StatCard({
+  title,
+  value,
+  icon: Icon,
+  iconColor,
+  children,
+}: {
+  title: string;
+  value?: string | null;
+  icon: React.ElementType;
+  iconColor: string;
+  children?: React.ReactNode;
+}) {
+  return (
+    <Card className="relative overflow-hidden">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {title}
+          </CardTitle>
+          <div className={`rounded-lg p-2 ${iconColor}`}>
+            <Icon className="size-4 text-white" />
+          </div>
+        </div>
+      </CardHeader>
+      <CardContent>
+        {children ?? (
+          value != null ? (
+            <p className="text-2xl font-bold tracking-tight">{value}</p>
+          ) : (
+            <Skeleton className="h-8 w-28" />
+          )
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
 
-  const [stats, setStats] = useState<LiveStats | null>(null);
-  const [connected, setConnected] = useState(false);
-  const [history, setHistory] = useState<ThroughputPoint[]>([]);
+  const [stats, setStats]                   = useState<LiveStats | null>(null);
+  const [connected, setConnected]           = useState(false);
+  const [history, setHistory]               = useState<ThroughputPoint[]>([]);
   const [dismissedAlerts, setDismissedAlerts] = useState<number[]>([]);
-  const wsRef = useRef<WebSocket | null>(null);
-
-  // Track previous cumulative network counters to compute per-tick throughput.
+  const wsRef     = useRef<WebSocket | null>(null);
   const prevNetRef = useRef<{ sent: number; recv: number } | null>(null);
 
   const { data: nodesData } = useSWR("/api/nodes", () =>
     getNodes().then((r) => r.obj ?? [])
   );
-  const nodesOnline = (nodesData ?? []).filter((n) => n.status === "online").length;
+  const nodesOnline  = (nodesData ?? []).filter((n) => n.status === "online").length;
   const nodesOffline = (nodesData ?? []).filter((n) => n.status === "offline").length;
 
   useEffect(() => {
@@ -136,15 +202,13 @@ export default function DashboardPage() {
 
     const connect = () => {
       if (closedByCleanup) return;
-      const rawConfiguredApiBase = process.env.NEXT_PUBLIC_API_URL?.trim();
-      const configuredApiBase = rawConfiguredApiBase
-        ? rawConfiguredApiBase.replace(/\/$/, "")
-        : "";
-      const localDevApiBase =
+      const rawBase = process.env.NEXT_PUBLIC_API_URL?.trim();
+      const configBase = rawBase ? rawBase.replace(/\/$/, "") : "";
+      const localBase =
         window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1"
           ? "http://localhost:2095"
           : "";
-      const httpBase = configuredApiBase || localDevApiBase;
+      const httpBase = configBase || localBase;
       const apiBase = httpBase
         ? httpBase.replace(/^http/i, "ws")
         : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
@@ -152,36 +216,29 @@ export default function DashboardPage() {
       const wsUrl = token
         ? `${apiBase}/api/ws/stats?token=${encodeURIComponent(token)}`
         : `${apiBase}/api/ws/stats`;
+
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
 
-      ws.onopen = () => {
-        reconnectAttempt = 0;
-        setConnected(true);
-      };
+      ws.onopen = () => { reconnectAttempt = 0; setConnected(true); };
 
       ws.onmessage = (e) => {
         try {
           const frame = JSON.parse(e.data) as LiveStats;
           setStats(frame);
-
-          // Compute throughput delta from cumulative net counters.
           const net = frame.status?.net;
           if (net) {
             const prev = prevNetRef.current;
             const downDelta = prev ? Math.max(0, net.recv - prev.recv) : 0;
             const upDelta   = prev ? Math.max(0, net.sent - prev.sent) : 0;
             prevNetRef.current = { sent: net.sent, recv: net.recv };
-
-            setHistory((prev) => {
-              const point: ThroughputPoint = { t: Date.now(), down: downDelta, up: upDelta };
-              const next = [...prev, point];
+            setHistory((p) => {
+              const pt: ThroughputPoint = { t: Date.now(), down: downDelta, up: upDelta };
+              const next = [...p, pt];
               return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next;
             });
           }
-        } catch {
-          // skip malformed frame
-        }
+        } catch { /* skip malformed */ }
       };
 
       ws.onclose = () => {
@@ -193,95 +250,104 @@ export default function DashboardPage() {
         reconnectTimer = window.setTimeout(connect, delay);
       };
 
-      ws.onerror = () => {
-        ws.close();
-      };
+      ws.onerror = () => ws.close();
     };
 
     connect();
-
     return () => {
       closedByCleanup = true;
       if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
-      if (wsRef.current) {
-        wsRef.current.close();
-        wsRef.current = null;
-      }
+      if (wsRef.current) { wsRef.current.close(); wsRef.current = null; }
     };
   }, []);
 
-  // ── Derived values ──────────────────────────────────────────────────────────
+  // ── Derived ───────────────────────────────────────────────────────────────
 
-  const onlineUsers  = stats?.onlines?.user ?? [];
-  const onlineCount  = stats !== null ? onlineUsers.length : null;
-  const sbd          = stats?.status?.sbd;
-  const db           = stats?.status?.db;
-  const mem          = stats?.status?.mem;
-  const cpu          = stats?.status?.cpu;
-
-  const pendingAlerts = (stats?.evasionAlerts ?? []).filter(
+  const onlineUsers     = stats?.onlines?.user ?? [];
+  const onlineCount     = stats !== null ? onlineUsers.length : null;
+  const sbd             = stats?.status?.sbd;
+  const db              = stats?.status?.db;
+  const mem             = stats?.status?.mem;
+  const cpu             = stats?.status?.cpu;
+  const pendingAlerts   = (stats?.evasionAlerts ?? []).filter(
     (a) => !dismissedAlerts.includes(a.dateTime)
   );
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+
+      {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
-        <Badge variant={connected ? "default" : "secondary"}>
+        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+        <Badge
+          variant={connected ? "default" : "secondary"}
+          className={connected ? "bg-primary/15 text-primary border-primary/30" : ""}
+        >
+          <Circle
+            className={`mr-1.5 size-2 fill-current ${connected ? "text-green-500" : "text-muted-foreground"}`}
+          />
           {connected ? t("live") : t("connecting")}
         </Badge>
       </div>
 
-      {/* Evasion alerts */}
+      {/* ── Evasion alerts ── */}
       {pendingAlerts.map((alert) => (
         <div
           key={alert.dateTime}
-          className="flex items-start justify-between rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+          className="flex items-start justify-between rounded-xl border border-destructive/30 bg-destructive/8 px-4 py-3"
         >
-          <div className="space-y-0.5">
-            <p className="font-semibold">{t("evasionAlerts")}</p>
-            <p className="opacity-80">
-              {alert.protocol} — {alert.detail}
-              {alert.autoAction ? ` (${alert.autoAction})` : ""}
-            </p>
+          <div className="flex gap-3">
+            <ShieldAlert className="mt-0.5 size-5 shrink-0 text-destructive" />
+            <div>
+              <p className="text-sm font-semibold text-destructive">{t("evasionAlerts")}</p>
+              <p className="text-sm text-muted-foreground">
+                {alert.protocol} — {alert.detail}
+                {alert.autoAction ? ` · ${alert.autoAction}` : ""}
+              </p>
+            </div>
           </div>
           <button
             onClick={() => setDismissedAlerts((p) => [...p, alert.dateTime])}
-            className="ml-4 shrink-0 text-xs underline opacity-70 hover:opacity-100"
+            className="ml-4 shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
           >
-            {t("evasionAlertDismiss")}
+            <X className="size-4" />
           </button>
         </div>
       ))}
 
-      {/* Top stat cards */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {/* ── Primary stats row ── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={t("onlineClients")}
           value={onlineCount !== null ? String(onlineCount) : null}
+          icon={Users}
+          iconColor="bg-indigo-500"
         />
         <StatCard
           title={t("cpuUsage")}
           value={cpu != null ? `${cpu.toFixed(1)} %` : null}
+          icon={Cpu}
+          iconColor={cpu != null && cpu > 85 ? "bg-destructive" : cpu != null && cpu > 65 ? "bg-amber-500" : "bg-sky-500"}
         />
         <StatCard
           title={t("memory")}
-          value={
-            mem
-              ? `${formatBytes(mem.current)} / ${formatBytes(mem.total)}`
-              : null
-          }
-        />
-        {nodesData !== undefined && (
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {t("nodeStatus")}
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-1">
-              <p className="text-sm font-semibold text-green-600">
+          icon={HardDrive}
+          iconColor={mem && mem.current / mem.total > 0.85 ? "bg-destructive" : mem && mem.current / mem.total > 0.65 ? "bg-amber-500" : "bg-violet-500"}
+        >
+          {mem ? (
+            <MemoryBar current={mem.current} total={mem.total} />
+          ) : (
+            <Skeleton className="h-12 w-full" />
+          )}
+        </StatCard>
+        {nodesData !== undefined ? (
+          <StatCard
+            title={t("nodeStatus")}
+            icon={Server}
+            iconColor={nodesOffline > 0 ? "bg-amber-500" : "bg-emerald-500"}
+          >
+            <div className="space-y-1">
+              <p className="text-sm font-semibold text-emerald-600">
                 {t("nodesOnline", { count: nodesOnline })}
               </p>
               {nodesOffline > 0 && (
@@ -289,89 +355,107 @@ export default function DashboardPage() {
                   {t("nodesOffline", { count: nodesOffline })}
                 </p>
               )}
-            </CardContent>
-          </Card>
+            </div>
+          </StatCard>
+        ) : (
+          <StatCard title={t("nodeStatus")} icon={Server} iconColor="bg-emerald-500" />
         )}
       </div>
 
-      {/* Second row: uptime, total clients, singbox status */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      {/* ── Secondary stats row ── */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <StatCard
           title={t("uptime")}
-          value={sbd?.running && sbd.stats.Uptime ? formatUptime(sbd.stats.Uptime) : sbd ? "—" : null}
+          value={
+            sbd
+              ? sbd.running && sbd.stats.Uptime
+                ? formatUptime(sbd.stats.Uptime)
+                : "—"
+              : null
+          }
+          icon={Clock}
+          iconColor="bg-teal-500"
         />
         <StatCard
           title={t("totalClients")}
           value={db ? String(db.clients) : null}
+          icon={Database}
+          iconColor="bg-pink-500"
         />
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium text-muted-foreground">
-              sing-box
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {sbd ? (
-              <p className={`text-sm font-semibold ${sbd.running ? "text-green-600" : "text-destructive"}`}>
+        <StatCard
+          title="sing-box"
+          icon={Activity}
+          iconColor={sbd ? (sbd.running ? "bg-emerald-500" : "bg-destructive") : "bg-muted-foreground"}
+        >
+          {sbd ? (
+            <div className="flex items-center gap-2">
+              <span
+                className={`inline-block size-2.5 rounded-full ${sbd.running ? "bg-emerald-500" : "bg-destructive"}`}
+              />
+              <span className={`text-sm font-semibold ${sbd.running ? "text-emerald-600" : "text-destructive"}`}>
                 {sbd.running ? t("singboxRunning") : t("singboxStopped")}
-              </p>
-            ) : (
-              <Skeleton className="h-5 w-24" />
-            )}
-          </CardContent>
-        </Card>
+              </span>
+            </div>
+          ) : (
+            <Skeleton className="h-5 w-28" />
+          )}
+        </StatCard>
       </div>
 
-      {/* Network throughput chart */}
+      {/* ── Network throughput chart ── */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {t("trafficHistory")}
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Network className="size-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {t("trafficHistory")}
+            </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           {history.length < 2 ? (
             <Skeleton className="h-36 w-full" />
           ) : (
-            <ResponsiveContainer width="100%" height={150}>
+            <ResponsiveContainer width="100%" height={160}>
               <AreaChart
                 data={history}
                 margin={{ top: 4, right: 8, left: 8, bottom: 4 }}
               >
                 <defs>
                   <linearGradient id="downGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
+                    <stop offset="5%"  stopColor="#6366f1" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#6366f1" stopOpacity={0} />
                   </linearGradient>
                   <linearGradient id="upGrad" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.3} />
-                    <stop offset="95%" stopColor="#3b82f6" stopOpacity={0} />
+                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.25} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                   </linearGradient>
                 </defs>
                 <XAxis dataKey="t" hide />
-                <YAxis tickFormatter={formatBytes} tick={{ fontSize: 10 }} width={60} />
+                <YAxis tickFormatter={formatBytes} tick={{ fontSize: 10 }} width={62} />
                 <Tooltip
                   formatter={(v) => formatBytes(Number(v))}
                   labelFormatter={() => ""}
+                  contentStyle={{ borderRadius: "0.5rem", fontSize: "0.75rem" }}
                 />
-                <Legend />
+                <Legend iconType="circle" iconSize={8} wrapperStyle={{ fontSize: "0.75rem" }} />
                 <Area
                   type="monotone"
                   dataKey="down"
                   name={t("networkDown")}
-                  stroke="#10b981"
+                  stroke="#6366f1"
                   fill="url(#downGrad)"
                   dot={false}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                 />
                 <Area
                   type="monotone"
                   dataKey="up"
                   name={t("networkUp")}
-                  stroke="#3b82f6"
+                  stroke="#10b981"
                   fill="url(#upGrad)"
                   dot={false}
-                  strokeWidth={1.5}
+                  strokeWidth={2}
                 />
               </AreaChart>
             </ResponsiveContainer>
@@ -379,48 +463,46 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      {/* Active users list */}
+      {/* ── Active users list ── */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {t("onlineUsers")}
-          </CardTitle>
+          <div className="flex items-center gap-2">
+            <Users className="size-4 text-muted-foreground" />
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              {t("onlineUsers")}
+              {onlineCount !== null && onlineCount > 0 && (
+                <span className="ms-2 inline-flex size-5 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+                  {onlineCount}
+                </span>
+              )}
+            </CardTitle>
+          </div>
         </CardHeader>
         <CardContent>
           {stats === null ? (
-            <Skeleton className="h-8 w-full" />
+            <div className="flex gap-2">
+              <Skeleton className="h-6 w-16 rounded-full" />
+              <Skeleton className="h-6 w-20 rounded-full" />
+              <Skeleton className="h-6 w-14 rounded-full" />
+            </div>
           ) : onlineUsers.length === 0 ? (
             <p className="text-sm text-muted-foreground">{t("noActiveUsers")}</p>
           ) : (
             <div className="flex flex-wrap gap-2">
               {onlineUsers.map((u) => (
-                <Badge key={u} variant="secondary">
+                <span
+                  key={u}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/8 px-3 py-0.5 text-sm font-medium text-primary"
+                >
+                  <span className="size-1.5 rounded-full bg-emerald-500" />
                   {u}
-                </Badge>
+                </span>
               ))}
             </div>
           )}
         </CardContent>
       </Card>
-    </div>
-  );
-}
 
-function StatCard({ title, value }: { title: string; value: string | null }) {
-  return (
-    <Card>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium text-muted-foreground">
-          {title}
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        {value !== null ? (
-          <p className="text-2xl font-bold">{value}</p>
-        ) : (
-          <Skeleton className="h-8 w-24" />
-        )}
-      </CardContent>
-    </Card>
+    </div>
   );
 }

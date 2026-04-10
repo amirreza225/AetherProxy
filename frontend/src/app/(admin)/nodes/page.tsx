@@ -4,7 +4,7 @@ import useSWR from "swr";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import {
-  loadPartial,
+  getInbounds,
   getNodes,
   createNode,
   deleteNode,
@@ -14,6 +14,7 @@ import {
   discoveryJoin,
   discoveryLeave,
   discoveryAddPeer,
+  type Inbound,
   type Node,
   type DiscoveryStatus,
   type PeerNode,
@@ -256,14 +257,14 @@ function DecentralizedTab() {
 export default function NodesPage() {
   const t = useTranslations("nodes");
   const { data: inboundData, isLoading: inboundsLoading, error: inboundsError } = useSWR("/api/inbounds", () =>
-    loadPartial("inbounds").then((r) => r.obj as { inbounds?: Inbound[] })
+    getInbounds()
   );
   const { data: nodesData, isLoading: nodesLoading, error: nodesError, mutate: mutateNodes } = useSWR("/api/nodes", () =>
     getNodes().then(r => r.obj as Node[])
   );
   const [actionMsg, setActionMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const inbounds = inboundData?.inbounds ?? [];
+  const inbounds: Inbound[] = inboundData ?? [];
   const nodes = nodesData ?? [];
 
   async function handleDelete(id: number) {
