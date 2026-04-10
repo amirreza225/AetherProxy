@@ -134,6 +134,18 @@ export async function deleteClient(id: number) {
   });
 }
 
+export async function changePass(
+  id: string,
+  oldPass: string,
+  newUsername: string,
+  newPass: string
+) {
+  return apiFetch<Record<string, unknown>>("/api/changePass", {
+    method: "POST",
+    body: new URLSearchParams({ id, oldPass, newUsername, newPass }),
+  });
+}
+
 // ── Full config (inbounds, outbounds, clients, …) ────────────────────────────
 
 export async function loadData(headers?: HeadersInit) {

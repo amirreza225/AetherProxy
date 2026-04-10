@@ -198,7 +198,14 @@
     "timeLocation": "منطقه زمانی",
     "trafficAge": "مدت نگهداری آمار (روز)",
     "maxAge": "مدت نشست (روز)",
-    "subPath": "مسیر اشتراک"
+    "subPath": "مسیر اشتراک",
+    "changePassword": "تغییر رمز عبور",
+    "oldPassword": "رمز عبور فعلی",
+    "newUsername": "نام کاربری جدید (برای نگه‌داشتن نام فعلی خالی بگذارید)",
+    "newPassword": "رمز عبور جدید",
+    "changePasswordSave": "به‌روزرسانی اعتبارنامه",
+    "changePasswordSuccess": "اعتبارنامه با موفقیت به‌روز شد.",
+    "changePasswordError": "به‌روزرسانی اعتبارنامه ناموفق بود."
   },
   "plugins": {
     "title": "افزونه‌ها",
