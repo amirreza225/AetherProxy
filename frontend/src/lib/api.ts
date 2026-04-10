@@ -201,6 +201,69 @@ export async function changePass(
   });
 }
 
+// ── TLS Profiles ──────────────────────────────────────────────────────────────
+
+export interface TlsProfile {
+  id: number;
+  name: string;
+  server: Record<string, unknown>;
+  client?: Record<string, unknown>;
+}
+
+export async function getTlsProfiles(headers?: HeadersInit): Promise<TlsProfile[]> {
+  const res = await apiFetch<Record<string, unknown>>("/api/tls", { headers });
+  const tls = (res.obj as { tls?: unknown }).tls;
+  return Array.isArray(tls) ? (tls as TlsProfile[]) : [];
+}
+
+/**
+ * Creates a TLS profile and returns its database ID.
+ * POST /api/save object=tls action=new → response includes full tls list.
+ */
+export async function createTlsProfile(
+  name: string,
+  server: Record<string, unknown>
+): Promise<number> {
+  const res = await apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "tls",
+      action: "new",
+      data: JSON.stringify({ name, server }),
+    }),
+  });
+  if (!res.success) throw new Error(res.msg || "Failed to create TLS profile");
+  const tls = ((res.obj as Record<string, unknown>).tls ?? []) as TlsProfile[];
+  const created = tls.find((t) => t.name === name);
+  if (!created) throw new Error("TLS profile not found after creation");
+  return created.id;
+}
+
+export async function updateTlsProfile(
+  id: number,
+  name: string,
+  server: Record<string, unknown>
+): Promise<void> {
+  const res = await apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "tls",
+      action: "edit",
+      data: JSON.stringify({ id, name, server }),
+    }),
+  });
+  if (!res.success) throw new Error(res.msg || "Failed to update TLS profile");
+}
+
+/**
+ * Generates a keypair of the given type.
+ * k=reality → ["PrivateKey: <b64url>", "PublicKey: <b64url>"]
+ */
+export async function getKeypairs(k: string): Promise<string[]> {
+  const res = await apiFetch<string[]>(`/api/keypairs?k=${k}`);
+  return Array.isArray(res.obj) ? (res.obj as string[]) : [];
+}
+
 // ── Inbounds ──────────────────────────────────────────────────────────────────
 
 export interface Inbound {
