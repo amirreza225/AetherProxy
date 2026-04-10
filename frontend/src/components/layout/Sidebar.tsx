@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { useTranslations } from "next-intl";
 import { MenuIcon } from "lucide-react";
-import { logout } from "@/lib/api";
+import { clearClientAuthToken, logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { LanguageToggleButton } from "@/components/layout/LanguageToggleButton";
@@ -41,8 +41,11 @@ export function Sidebar() {
   }
 
   async function handleLogout() {
-    await logout();
-    sessionStorage.removeItem("aether_token");
+    try {
+      await logout();
+    } finally {
+      clearClientAuthToken();
+    }
     setMobileOpen(false);
     router.push("/login");
   }

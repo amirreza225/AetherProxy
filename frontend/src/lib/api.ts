@@ -22,6 +22,34 @@ const BASE_URL =
   (configuredApiBase ? configuredApiBase.replace(/\/$/, "") : "") ||
   resolveDefaultApiBase();
 
+const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24;
+
+export function getClientAuthToken(): string {
+  if (typeof window === "undefined") {
+    return "";
+  }
+  return sessionStorage.getItem("aether_token") ?? "";
+}
+
+export function setClientAuthToken(token: string): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.setItem("aether_token", token);
+  const secure = window.location.protocol === "https:" ? "; Secure" : "";
+  document.cookie = `aether_token=${encodeURIComponent(token)}; Path=/; Max-Age=${AUTH_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+}
+
+export function clearClientAuthToken(): void {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  sessionStorage.removeItem("aether_token");
+  document.cookie = "aether_token=; Path=/; Max-Age=0; SameSite=Lax";
+}
+
 interface ApiResponse<T = unknown> {
   success: boolean;
   msg: string;
@@ -32,14 +60,23 @@ async function apiFetch<T>(
   path: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> {
+  const headers = new Headers(options.headers ?? {});
+  if (!headers.has("Content-Type")) {
+    headers.set("Content-Type", "application/x-www-form-urlencoded");
+  }
+  if (!headers.has("X-Requested-With")) {
+    headers.set("X-Requested-With", "XMLHttpRequest");
+  }
+
+  const token = getClientAuthToken();
+  if (token && !headers.has("Authorization")) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     credentials: "include", // send aether_token cookie
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "X-Requested-With": "XMLHttpRequest",
-      ...options.headers,
-    },
+    headers,
   });
 
   if (res.status === 401) {

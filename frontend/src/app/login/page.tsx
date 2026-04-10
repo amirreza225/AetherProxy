@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { login } from "@/lib/api";
+import { login, setClientAuthToken } from "@/lib/api";
+import { useSearchParams } from "next/navigation";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -13,6 +14,7 @@ import { LanguageToggleButton } from "@/components/layout/LanguageToggleButton";
 export default function LoginPage() {
   const t = useTranslations("login");
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [user, setUser] = useState("");
   const [pass, setPass] = useState("");
   const [error, setError] = useState("");
@@ -26,9 +28,12 @@ export default function LoginPage() {
       const res = await login(user, pass);
       if (res.success) {
         if (res.obj?.token) {
-          sessionStorage.setItem("aether_token", res.obj.token);
+          setClientAuthToken(res.obj.token);
         }
-        router.push("/dashboard");
+        const from = searchParams.get("from");
+        const destination = from && from.startsWith("/") ? from : "/dashboard";
+        router.replace(destination);
+        router.refresh();
       } else {
         setError(res.msg || t("invalidCredentials"));
       }

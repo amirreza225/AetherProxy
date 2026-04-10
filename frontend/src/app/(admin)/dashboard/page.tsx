@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { getNodes } from "@/lib/api";
+import { getClientAuthToken, getNodes } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -76,7 +76,7 @@ export default function DashboardPage() {
       const apiBase = httpBase
         ? httpBase.replace(/^http/i, "ws")
         : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
-      const token = sessionStorage.getItem("aether_token");
+      const token = getClientAuthToken();
       const wsUrl = token
         ? `${apiBase}/api/ws/stats?token=${encodeURIComponent(token)}`
         : `${apiBase}/api/ws/stats`;
