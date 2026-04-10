@@ -26,10 +26,20 @@
     "onlineClients": "کاربران آنلاین",
     "cpuUsage": "مصرف CPU",
     "memory": "حافظه",
+    "networkDown": "دانلود",
+    "networkUp": "آپلود",
+    "uptime": "آپتایم",
+    "totalClients": "کل کاربران",
+    "singboxRunning": "sing-box فعال",
+    "singboxStopped": "sing-box غیرفعال",
     "nodeStatus": "وضعیت نودها",
     "nodesOnline": "{count} آنلاین",
     "nodesOffline": "{count} آفلاین",
-    "trafficHistory": "ترافیک (آخرین ۳۰ به‌روزرسانی)"
+    "trafficHistory": "توان شبکه (هر ۲ ثانیه)",
+    "onlineUsers": "کاربران متصل",
+    "noActiveUsers": "کاربر متصلی وجود ندارد",
+    "evasionAlerts": "هشدار سانسور",
+    "evasionAlertDismiss": "رد کردن"
   },
   "nodes": {
     "title": "نودها",

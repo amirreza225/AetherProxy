@@ -79,7 +79,7 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 				logger.Warning("ws/stats: GetOnlines:", err)
 				continue
 			}
-			status := h.GetStatus("")
+			status := h.GetStatus("cpu,mem,net,sbd,db")
 
 			// Collect new evasion events since the last tick.
 			newAlerts := getNewEvasionAlerts(lastEvasionTS)

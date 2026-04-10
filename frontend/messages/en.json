@@ -26,10 +26,20 @@
     "onlineClients": "Online Clients",
     "cpuUsage": "CPU Usage",
     "memory": "Memory",
+    "networkDown": "Download",
+    "networkUp": "Upload",
+    "uptime": "Uptime",
+    "totalClients": "Total Clients",
+    "singboxRunning": "sing-box Running",
+    "singboxStopped": "sing-box Stopped",
     "nodeStatus": "Node Status",
     "nodesOnline": "{count} online",
     "nodesOffline": "{count} offline",
-    "trafficHistory": "Traffic (last 30 updates)"
+    "trafficHistory": "Network Throughput (per 2s)",
+    "onlineUsers": "Active Users",
+    "noActiveUsers": "No active users",
+    "evasionAlerts": "Censorship Alert",
+    "evasionAlertDismiss": "Dismiss"
   },
   "nodes": {
     "title": "Nodes",

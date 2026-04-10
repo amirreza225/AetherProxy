@@ -264,21 +264,38 @@ func (s *InboundService) fetchUsers(db *gorm.DB, inboundType string, condition s
 		}
 	}
 
-	var users []string
+	type clientRow struct {
+		Name   string
+		Config string
+	}
+	var rows []clientRow
 
 	err := db.Raw(
-		fmt.Sprintf(`SELECT json_extract(clients.config, "$.%s")
+		fmt.Sprintf(`SELECT clients.name AS name, json_extract(clients.config, "$.%s") AS config
 		FROM clients WHERE enable = true AND json_extract(clients.config, "$.%s") IS NOT NULL AND %s`,
-			inboundType, inboundType, condition)).Scan(&users).Error
+			inboundType, inboundType, condition)).Scan(&rows).Error
 	if err != nil {
 		return nil, err
 	}
 	var usersJson []json.RawMessage
-	for _, user := range users {
+	for _, row := range rows {
+		userStr := row.Config
 		if inboundType == "vless" && inbound["tls"] == nil {
-			user = strings.ReplaceAll(user, "xtls-rprx-vision", "")
+			userStr = strings.ReplaceAll(userStr, "xtls-rprx-vision", "")
 		}
-		usersJson = append(usersJson, json.RawMessage(user))
+		// Inject the client name so sing-box can attribute traffic to the correct user.
+		var userMap map[string]interface{}
+		if err := json.Unmarshal([]byte(userStr), &userMap); err != nil {
+			usersJson = append(usersJson, json.RawMessage(userStr))
+			continue
+		}
+		userMap["name"] = row.Name
+		userBytes, err := json.Marshal(userMap)
+		if err != nil {
+			usersJson = append(usersJson, json.RawMessage(userStr))
+			continue
+		}
+		usersJson = append(usersJson, json.RawMessage(userBytes))
 	}
 	return usersJson, nil
 }

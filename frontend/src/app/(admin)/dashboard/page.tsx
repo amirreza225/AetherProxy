@@ -17,24 +17,78 @@ import {
   Legend,
 } from "recharts";
 
-interface LiveStats {
-  onlines: Record<string, number>;
-  status: {
-    cpu?: number;
-    mem?: { current: number; total: number };
-    uptime?: number;
-    down?: number;
-    up?: number;
+// ── Types matching the backend WebSocket payload ─────────────────────────────
+
+interface Onlines {
+  user?: string[];
+  inbound?: string[];
+  outbound?: string[];
+}
+
+interface NetInfo {
+  sent: number;
+  recv: number;
+  psent: number;
+  precv: number;
+}
+
+interface MemInfo {
+  current: number;
+  total: number;
+}
+
+interface SingboxInfo {
+  running: boolean;
+  stats: {
+    Uptime: number;      // seconds
+    NumGoroutine: number;
+    Alloc: number;
   };
 }
 
-interface TrafficPoint {
+interface DbInfo {
+  clients: number;
+  inbounds: number;
+  outbounds: number;
+  services: number;
+  endpoints: number;
+  clientUp: number;
+  clientDown: number;
+}
+
+interface StatusPayload {
+  cpu?: number;
+  mem?: MemInfo;
+  net?: NetInfo;
+  sbd?: SingboxInfo;
+  db?: DbInfo;
+}
+
+interface EvasionAlert {
+  dateTime: number;
+  source: string;
+  protocol: string;
+  autoAction: string;
+  detail: string;
+}
+
+interface LiveStats {
+  onlines: Onlines;
+  status: StatusPayload;
+  evasionAlerts?: EvasionAlert[];
+}
+
+// ── Chart data ────────────────────────────────────────────────────────────────
+
+interface ThroughputPoint {
   t: number;
   down: number;
   up: number;
 }
 
 const MAX_HISTORY = 30;
+
+// ── Formatters ────────────────────────────────────────────────────────────────
 
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
@@ -43,13 +97,31 @@ function formatBytes(bytes: number): string {
   return `${(bytes / 1024 ** 3).toFixed(1)} GB`;
 }
 
+function formatUptime(seconds: number): string {
+  if (!seconds) return "0m";
+  const d = Math.floor(seconds / 86400);
+  const h = Math.floor((seconds % 86400) / 3600);
+  const m = Math.floor((seconds % 3600) / 60);
+  const parts: string[] = [];
+  if (d > 0) parts.push(`${d}d`);
+  if (h > 0) parts.push(`${h}h`);
+  parts.push(`${m}m`);
+  return parts.join(" ");
+}
+
+// ── Component ─────────────────────────────────────────────────────────────────
+
 export default function DashboardPage() {
   const t = useTranslations("dashboard");
 
   const [stats, setStats] = useState<LiveStats | null>(null);
   const [connected, setConnected] = useState(false);
-  const [history, setHistory] = useState<TrafficPoint[]>([]);
+  const [history, setHistory] = useState<ThroughputPoint[]>([]);
+  const [dismissedAlerts, setDismissedAlerts] = useState<number[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Track previous cumulative network counters to compute per-tick throughput.
+  const prevNetRef = useRef<{ sent: number; recv: number } | null>(null);
 
   const { data: nodesData } = useSWR("/api/nodes", () =>
     getNodes().then((r) => r.obj ?? [])
@@ -87,21 +159,28 @@ export default function DashboardPage() {
         reconnectAttempt = 0;
         setConnected(true);
       };
+
       ws.onmessage = (e) => {
         try {
           const frame = JSON.parse(e.data) as LiveStats;
           setStats(frame);
-          setHistory((prev) => {
-            const point: TrafficPoint = {
-              t: Date.now(),
-              down: frame.status?.down ?? 0,
-              up: frame.status?.up ?? 0,
-            };
-            const next = [...prev, point];
-            return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next;
-          });
+
+          // Compute throughput delta from cumulative net counters.
+          const net = frame.status?.net;
+          if (net) {
+            const prev = prevNetRef.current;
+            const downDelta = prev ? Math.max(0, net.recv - prev.recv) : 0;
+            const upDelta   = prev ? Math.max(0, net.sent - prev.sent) : 0;
+            prevNetRef.current = { sent: net.sent, recv: net.recv };
+
+            setHistory((prev) => {
+              const point: ThroughputPoint = { t: Date.now(), down: downDelta, up: upDelta };
+              const next = [...prev, point];
+              return next.length > MAX_HISTORY ? next.slice(-MAX_HISTORY) : next;
+            });
+          }
         } catch {
-          // skip malformed
+          // skip malformed frame
         }
       };
 
@@ -109,14 +188,12 @@ export default function DashboardPage() {
         setConnected(false);
         wsRef.current = null;
         if (closedByCleanup) return;
-
         const delay = Math.min(10000, 1000 * 2 ** reconnectAttempt);
         reconnectAttempt += 1;
         reconnectTimer = window.setTimeout(connect, delay);
       };
 
       ws.onerror = () => {
-        // Trigger onclose so a reconnect can be scheduled.
         ws.close();
       };
     };
@@ -125,9 +202,7 @@ export default function DashboardPage() {
 
     return () => {
       closedByCleanup = true;
-      if (reconnectTimer !== null) {
-        window.clearTimeout(reconnectTimer);
-      }
+      if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
       if (wsRef.current) {
         wsRef.current.close();
         wsRef.current = null;
@@ -135,12 +210,22 @@ export default function DashboardPage() {
     };
   }, []);
 
-  const onlineCount = stats
-    ? Object.values(stats.onlines ?? {}).reduce((a, b) => a + b, 0)
-    : null;
+  // ── Derived values ──────────────────────────────────────────────────────────
+
+  const onlineUsers  = stats?.onlines?.user ?? [];
+  const onlineCount  = stats !== null ? onlineUsers.length : null;
+  const sbd          = stats?.status?.sbd;
+  const db           = stats?.status?.db;
+  const mem          = stats?.status?.mem;
+  const cpu          = stats?.status?.cpu;
+
+  const pendingAlerts = (stats?.evasionAlerts ?? []).filter(
+    (a) => !dismissedAlerts.includes(a.dateTime)
+  );
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">{t("title")}</h1>
         <Badge variant={connected ? "default" : "secondary"}>
@@ -148,6 +233,29 @@ export default function DashboardPage() {
         </Badge>
       </div>
 
+      {/* Evasion alerts */}
+      {pendingAlerts.map((alert) => (
+        <div
+          key={alert.dateTime}
+          className="flex items-start justify-between rounded-md border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive"
+        >
+          <div className="space-y-0.5">
+            <p className="font-semibold">{t("evasionAlerts")}</p>
+            <p className="opacity-80">
+              {alert.protocol} — {alert.detail}
+              {alert.autoAction ? ` (${alert.autoAction})` : ""}
+            </p>
+          </div>
+          <button
+            onClick={() => setDismissedAlerts((p) => [...p, alert.dateTime])}
+            className="ml-4 shrink-0 text-xs underline opacity-70 hover:opacity-100"
+          >
+            {t("evasionAlertDismiss")}
+          </button>
+        </div>
+      ))}
+
+      {/* Top stat cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <StatCard
           title={t("onlineClients")}
@@ -155,17 +263,13 @@ export default function DashboardPage() {
         />
         <StatCard
           title={t("cpuUsage")}
-          value={
-            stats?.status.cpu != null
-              ? `${stats.status.cpu.toFixed(1)} %`
-              : null
-          }
+          value={cpu != null ? `${cpu.toFixed(1)} %` : null}
         />
         <StatCard
           title={t("memory")}
           value={
-            stats?.status.mem
-              ? `${formatBytes(stats.status.mem.current)} / ${formatBytes(stats.status.mem.total)}`
+            mem
+              ? `${formatBytes(mem.current)} / ${formatBytes(mem.total)}`
               : null
           }
         />
@@ -190,6 +294,35 @@ export default function DashboardPage() {
         )}
       </div>
 
+      {/* Second row: uptime, total clients, singbox status */}
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <StatCard
+          title={t("uptime")}
+          value={sbd?.running && sbd.stats.Uptime ? formatUptime(sbd.stats.Uptime) : sbd ? "—" : null}
+        />
+        <StatCard
+          title={t("totalClients")}
+          value={db ? String(db.clients) : null}
+        />
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              sing-box
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {sbd ? (
+              <p className={`text-sm font-semibold ${sbd.running ? "text-green-600" : "text-destructive"}`}>
+                {sbd.running ? t("singboxRunning") : t("singboxStopped")}
+              </p>
+            ) : (
+              <Skeleton className="h-5 w-24" />
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Network throughput chart */}
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -225,7 +358,7 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="down"
-                  name="Download"
+                  name={t("networkDown")}
                   stroke="#10b981"
                   fill="url(#downGrad)"
                   dot={false}
@@ -234,7 +367,7 @@ export default function DashboardPage() {
                 <Area
                   type="monotone"
                   dataKey="up"
-                  name="Upload"
+                  name={t("networkUp")}
                   stroke="#3b82f6"
                   fill="url(#upGrad)"
                   dot={false}
@@ -245,17 +378,35 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Active users list */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t("onlineUsers")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {stats === null ? (
+            <Skeleton className="h-8 w-full" />
+          ) : onlineUsers.length === 0 ? (
+            <p className="text-sm text-muted-foreground">{t("noActiveUsers")}</p>
+          ) : (
+            <div className="flex flex-wrap gap-2">
+              {onlineUsers.map((u) => (
+                <Badge key={u} variant="secondary">
+                  {u}
+                </Badge>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
 
-function StatCard({
-  title,
-  value,
-}: {
-  title: string;
-  value: string | null;
-}) {
+function StatCard({ title, value }: { title: string; value: string | null }) {
   return (
     <Card>
       <CardHeader className="pb-2">
