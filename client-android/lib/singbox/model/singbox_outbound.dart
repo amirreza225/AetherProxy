@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'singbox_outbound.freezed.dart';
 part 'singbox_outbound.g.dart';
 
+@freezed
 class SingboxOutboundGroup with _$SingboxOutboundGroup {
   @JsonSerializable(fieldRename: FieldRename.kebab)
   const factory SingboxOutboundGroup({

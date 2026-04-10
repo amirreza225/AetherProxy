@@ -54,6 +54,7 @@ enum RuleEnum {
 }
 
 @riverpod
+@riverpod
 class RuleNotifier extends _$RuleNotifier {
   bool isEditMode = false;
 
@@ -89,12 +90,14 @@ class RuleNotifier extends _$RuleNotifier {
 }
 
 @riverpod
+@riverpod
 bool isRuleEdited(Ref ref, int? listOrder) {
   if (listOrder == null) return true;
   return ref.watch(RuleNotifierProvider(listOrder)) !=
       ref.watch(rulesNotifierProvider.select((value) => value.where((rule) => rule.listOrder == listOrder))).first;
 }
 
+@riverpod
 @riverpod
 class DialogCheckboxNotifier extends _$DialogCheckboxNotifier {
   @override

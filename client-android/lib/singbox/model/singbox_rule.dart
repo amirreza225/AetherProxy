@@ -3,6 +3,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'singbox_rule.freezed.dart';
 part 'singbox_rule.g.dart';
 
+@freezed
 class SingboxRule with _$SingboxRule {
   const SingboxRule._();
 

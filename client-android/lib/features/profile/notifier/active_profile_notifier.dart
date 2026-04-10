@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'active_profile_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class ActiveProfile extends _$ActiveProfile with AppLogger {
   @override
   Stream<ProfileEntity?> build() {

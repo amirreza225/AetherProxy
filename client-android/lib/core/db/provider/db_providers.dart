@@ -4,4 +4,5 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'db_providers.g.dart';
 
+@Riverpod(keepAlive: true)
 Db db(Ref ref) => Db();

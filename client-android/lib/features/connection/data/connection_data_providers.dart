@@ -8,6 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'connection_data_providers.g.dart';
 
+@Riverpod(keepAlive: true)
 ConnectionRepository connectionRepository(Ref ref) {
   return ConnectionRepositoryImpl(
     ref: ref,

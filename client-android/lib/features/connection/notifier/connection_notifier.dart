@@ -20,6 +20,7 @@ import 'package:sentry_flutter/sentry_flutter.dart';
 
 part 'connection_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class ConnectionNotifier extends _$ConnectionNotifier with AppLogger {
   @override
   Stream<ConnectionStatus> build() async* {

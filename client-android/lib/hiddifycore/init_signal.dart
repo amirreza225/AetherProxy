@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'init_signal.g.dart';
 
+@Riverpod(keepAlive: true)
 class CoreRestartSignal extends _$CoreRestartSignal {
   @override
   int build() => 0;

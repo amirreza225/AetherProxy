@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'settings_failure.freezed.dart';
 
+@freezed
 sealed class SettingsFailure with _$SettingsFailure, Failure {
   const SettingsFailure._();
 

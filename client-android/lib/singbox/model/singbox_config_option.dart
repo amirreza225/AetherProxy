@@ -10,6 +10,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 part 'singbox_config_option.freezed.dart';
 part 'singbox_config_option.g.dart';
 
+@freezed
 class SingboxConfigOption with _$SingboxConfigOption {
   const SingboxConfigOption._();
 

@@ -8,6 +8,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'auto_start_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class AutoStartNotifier extends _$AutoStartNotifier with InfraLogger {
   Timer? _timer;
 

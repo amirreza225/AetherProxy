@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'log_failure.freezed.dart';
 
+@freezed
 sealed class LogFailure with _$LogFailure, Failure {
   const LogFailure._();
 

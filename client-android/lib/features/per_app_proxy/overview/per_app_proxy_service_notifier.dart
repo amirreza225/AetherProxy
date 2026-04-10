@@ -11,6 +11,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'per_app_proxy_service_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class PerAppProxyService extends _$PerAppProxyService {
   StreamSubscription? _includeSubscription;
   StreamSubscription? _excludeSubscription;

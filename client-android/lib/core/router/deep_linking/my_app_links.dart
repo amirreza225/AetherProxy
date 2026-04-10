@@ -6,6 +6,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'my_app_links.g.dart';
 
+@Riverpod(keepAlive: true)
 Stream<String> myAppLinks(Ref ref) async* {
   if (PlatformUtils.isWindows) {
     for (final protocol in LinkParser.protocols) {

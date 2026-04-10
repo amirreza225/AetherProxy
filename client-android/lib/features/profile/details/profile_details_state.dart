@@ -4,6 +4,7 @@ import 'package:hooks_riverpod/hooks_riverpod.dart';
 
 part 'profile_details_state.freezed.dart';
 
+@freezed
 class ProfileDetailsState with _$ProfileDetailsState {
   const ProfileDetailsState._();
 

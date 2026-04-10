@@ -9,6 +9,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'android_apps_notifier.g.dart';
 
+@riverpod
 Future<List<AppInfo>> apps(Ref ref) async {
   if (!PlatformUtils.isAndroid) return [];
   return await InstalledApps.getInstalledApps(false, true);

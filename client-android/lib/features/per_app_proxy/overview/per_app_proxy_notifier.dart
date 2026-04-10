@@ -23,6 +23,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'per_app_proxy_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class PerAppProxy extends _$PerAppProxy with AppLogger {
   late final AppProxyMode? _mode;
 

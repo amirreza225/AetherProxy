@@ -9,6 +9,7 @@ import 'package:drift_flutter/drift_flutter.dart';
 
 part 'db.g.dart';
 
+@DriftDatabase(tables: [ProfileEntries, AppProxyEntries])
 class Db extends _$Db with InfraLogger {
   Db([QueryExecutor? executor]) : super(executor ?? _openConnection());
 

@@ -15,6 +15,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'profile_details_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class ProfileDetailsNotifier extends _$ProfileDetailsNotifier with AppLogger {
   ProfileRepository get _profilesRepo => ref.read(profileRepositoryProvider).requireValue;
 

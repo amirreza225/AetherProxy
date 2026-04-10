@@ -6,6 +6,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'async_mutation.freezed.dart';
 
+@freezed
 class AsyncMutation with _$AsyncMutation {
   const AsyncMutation._();
 

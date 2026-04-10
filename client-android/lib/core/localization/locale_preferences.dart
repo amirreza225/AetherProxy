@@ -5,6 +5,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'locale_preferences.g.dart';
 
+@Riverpod(keepAlive: true)
 class LocalePreferences extends _$LocalePreferences with AppLogger {
   @override
   AppLocale build() {

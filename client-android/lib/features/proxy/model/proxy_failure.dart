@@ -4,6 +4,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 
 part 'proxy_failure.freezed.dart';
 
+@freezed
 sealed class ProxyFailure with _$ProxyFailure, Failure {
   const ProxyFailure._();
 

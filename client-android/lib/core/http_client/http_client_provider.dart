@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'http_client_provider.g.dart';
 
+@Riverpod(keepAlive: true)
 DioHttpClient httpClient(Ref ref) {
   final client = DioHttpClient(
     timeout: const Duration(seconds: 15),

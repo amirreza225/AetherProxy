@@ -13,6 +13,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 part 'rules_notifier.g.dart';
 
+@Riverpod(keepAlive: true)
 class RulesNotifier extends _$RulesNotifier with AppLogger {
   late File file;
 
