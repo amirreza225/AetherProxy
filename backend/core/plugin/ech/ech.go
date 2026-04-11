@@ -96,14 +96,17 @@ func (p *ECHPlugin) Apply(outboundJSON json.RawMessage, cfgJSON json.RawMessage)
 
 	// Inject ECH.
 	tlsObj["ech"] = map[string]interface{}{
-		"enabled":        true,
-		"pq_signature_schemes_enabled": true,
+		"enabled":                        true,
+		"pq_signature_schemes_enabled":   true,
 		"dynamic_record_sizing_disabled": false,
 	}
 
-	// Set the outer public name if configured.
+	// Set the outer public name only when the outbound does not already specify
+	// a server_name, to avoid overriding an explicit user configuration.
 	if cfg.ECHPublicName != "" {
-		obj["server_name"] = cfg.ECHPublicName
+		if _, hasServerName := obj["server_name"]; !hasServerName {
+			obj["server_name"] = cfg.ECHPublicName
+		}
 	}
 
 	obj["tls"] = tlsObj

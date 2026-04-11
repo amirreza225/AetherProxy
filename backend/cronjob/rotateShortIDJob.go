@@ -84,7 +84,8 @@ func (j *RotateShortIDJob) rotateIfReality(db *gorm.DB, profile *model.Tls) erro
 }
 
 // generateShortIDs returns n random Reality short-ID strings.
-// Each is a hex string of 8–16 lowercase hex characters (4–8 random bytes).
+// Each is a hex string of 8–16 lowercase hex characters (4–8 random bytes),
+// matching the Reality protocol's accepted short-ID format.
 func generateShortIDs(n int) []string {
 	ids := make([]string, n)
 	for i := range ids {

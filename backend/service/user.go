@@ -26,9 +26,9 @@ func hashPassword(plain string) (string, error) {
 }
 
 // checkPassword returns true when plain matches the stored hash.
-// It also handles the legacy plain-text migration: if the stored value is
-// not a valid bcrypt hash it falls back to a direct string comparison and,
-// on success, re-hashes the password in the database transparently.
+// Only validates bcrypt hashes; the legacy plain-text fallback is handled
+// at the call sites (CheckUser, ChangePass) where the stored value can be
+// inspected before deciding which comparison to use.
 func checkPassword(stored, plain string) bool {
 	err := bcrypt.CompareHashAndPassword([]byte(stored), []byte(plain))
 	return err == nil
@@ -146,9 +146,13 @@ func (s *UserService) ChangePass(id string, oldPass string, newUser string, newP
 	if err != nil || database.IsNotFound(err) {
 		return err
 	}
-	// Verify the old password (supports both bcrypt and legacy plain-text)
-	if !checkPassword(user.Password, oldPass) && user.Password != oldPass {
-		return common.NewError("old password is incorrect")
+	// Verify old password: prefer bcrypt, fall back to legacy plain-text comparison.
+	bcryptErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(oldPass))
+	if bcryptErr != nil {
+		// Possible legacy plain-text stored password.
+		if user.Password != oldPass {
+			return common.NewError("old password is incorrect")
+		}
 	}
 	hashed, err := hashPassword(newPass)
 	if err != nil {

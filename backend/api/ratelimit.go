@@ -52,10 +52,9 @@ func checkLoginRateLimit(c *gin.Context) bool {
 
 	if e.blocked {
 		remaining := e.blockedAt.Add(loginBlockDur).Sub(now).Truncate(time.Second)
+		msg := "too many login attempts, try again in " + remaining.String()
 		loginLimiterMu.Unlock()
-		c.JSON(http.StatusTooManyRequests, gin.H{
-			"error": "too many login attempts, try again in " + remaining.String(),
-		})
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": msg})
 		return false
 	}
 
