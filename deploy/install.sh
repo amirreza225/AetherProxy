@@ -24,6 +24,7 @@ ENV_FILE="$INSTALL_DIR/deploy/.env"
 AUTO_YES=0
 NON_INTERACTIVE=0
 LOW_RAM_MODE=0
+RESOLVED_COMPOSE_FILE=""
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 info() { echo -e "${CYAN}[INFO]${PLAIN}  $*"; }
@@ -116,6 +117,48 @@ set_env_value() {
     sed -i "s|^${key}=.*|${key}=${value}|" "$file"
   else
     echo "${key}=${value}" >> "$file"
+  fi
+}
+
+get_env_value() {
+  local key="$1"
+  local file="$2"
+  grep -m1 "^${key}=" "$file" 2>/dev/null | cut -d= -f2- || true
+}
+
+is_truthy() {
+  local raw="${1:-}"
+  raw="${raw,,}"
+  case "$raw" in
+    1|true|yes|y|on)
+      return 0
+      ;;
+    *)
+      return 1
+      ;;
+  esac
+}
+
+resolve_compose_file() {
+  local preferred="$1"
+  local legacy="$2"
+
+  if [[ -f "$preferred" ]]; then
+    RESOLVED_COMPOSE_FILE="$preferred"
+    return 0
+  fi
+  if [[ -n "$legacy" && -f "$legacy" ]]; then
+    warn "Preferred compose path missing; using legacy path: $legacy"
+    RESOLVED_COMPOSE_FILE="$legacy"
+    return 0
+  fi
+  die "Compose file not found: $preferred. Run 'git -C $INSTALL_DIR pull --ff-only' and retry."
+}
+
+validate_compose_file() {
+  local compose_file="$1"
+  if ! docker compose --env-file "$ENV_FILE" -f "$compose_file" config >/dev/null; then
+    die "Compose validation failed for: $compose_file"
   fi
 }
 
@@ -266,13 +309,22 @@ if [[ "$LOW_RAM_MODE" -eq 1 ]]; then
 fi
 
 compose_file="$COMPOSE_FILE"
+resolve_compose_file "$INSTALL_DIR/deploy/docker-compose.yml" "$INSTALL_DIR/docker-compose.yml"
+compose_file="$RESOLVED_COMPOSE_FILE"
 
-_hostnet=$(grep -m1 '^AETHER_DOCKER_HOSTNET=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
-_api_upstream=$(grep -m1 '^API_UPSTREAM=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
-_sub_upstream=$(grep -m1 '^SUB_UPSTREAM=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
-if [[ "${_hostnet:-0}" == "1" ]]; then
-  compose_file="$INSTALL_DIR/deploy/docker-compose.hostnet.yml"
+_hostnet=$(get_env_value "AETHER_DOCKER_HOSTNET" "$ENV_FILE")
+_api_upstream=$(get_env_value "API_UPSTREAM" "$ENV_FILE")
+_sub_upstream=$(get_env_value "SUB_UPSTREAM" "$ENV_FILE")
+_local_sync=$(get_env_value "AETHER_PORT_SYNC_LOCAL_ENABLED" "$ENV_FILE")
+if is_truthy "${_hostnet:-0}"; then
+  resolve_compose_file "$INSTALL_DIR/deploy/docker-compose.hostnet.yml" "$INSTALL_DIR/docker-compose.hostnet.yml"
+  compose_file="$RESOLVED_COMPOSE_FILE"
   info "Host-network backend mode is enabled."
+
+  if ! is_truthy "${_local_sync:-}"; then
+    set_env_value "AETHER_PORT_SYNC_LOCAL_ENABLED" "true" "$ENV_FILE"
+    info "AETHER_PORT_SYNC_LOCAL_ENABLED set to true for host-network mode."
+  fi
 
   # Keep custom upstreams untouched; only switch bridge defaults.
   if [[ -z "${_api_upstream:-}" || "${_api_upstream}" == "backend:2095" ]]; then
@@ -286,6 +338,13 @@ if [[ "${_hostnet:-0}" == "1" ]]; then
 else
   info "Bridge backend mode is enabled."
 
+  if [[ -z "${_local_sync:-}" ]]; then
+    set_env_value "AETHER_PORT_SYNC_LOCAL_ENABLED" "false" "$ENV_FILE"
+    info "AETHER_PORT_SYNC_LOCAL_ENABLED set to false for bridge mode."
+  elif is_truthy "$_local_sync"; then
+    warn "AETHER_PORT_SYNC_LOCAL_ENABLED is true in bridge mode; host firewall updates may fail in containerized bridge deployments."
+  fi
+
   # If values were auto-switched previously, restore bridge defaults.
   if [[ "${_api_upstream:-}" == "host.docker.internal:2095" ]]; then
     set_env_value "API_UPSTREAM" "backend:2095" "$ENV_FILE"
@@ -295,10 +354,15 @@ else
     set_env_value "SUB_UPSTREAM" "backend:2096" "$ENV_FILE"
     info "SUB_UPSTREAM restored to backend:2096 for bridge mode."
   fi
+
+  warn "Bridge mode only exposes published container ports. Use host-network mode for dynamic inbound ports."
 fi
 
 compose_args=(--env-file "$ENV_FILE" -f "$compose_file")
 compose_cmd="docker compose --env-file $ENV_FILE -f $compose_file"
+
+info "Validating compose configuration (${compose_file}) ..."
+validate_compose_file "$compose_file"
 
 docker compose "${compose_args[@]}" up -d --build
 
