@@ -423,6 +423,8 @@ All endpoints except `/api/login` require a valid JWT via:
 | `POST` | `/api/portsyncRetry` | Process due retry tasks immediately (`limit`, default 30) |
 | `POST` | `/api/portsyncClear` | Clear queued tasks (`scope` optional: `local`/`node`, `nodeId` optional) |
 
+Manual end-to-end validation checklist: [`docs/portsync-validation.md`](docs/portsync-validation.md)
+
 ### Routing (Phase 2)
 
 | Method | Path | Description |

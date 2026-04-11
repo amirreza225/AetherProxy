@@ -1,6 +1,93 @@
 package service
 
-import "testing"
+import (
+	"encoding/json"
+	"errors"
+	"path/filepath"
+	"strings"
+	"sync"
+	"testing"
+	"time"
+
+	"github.com/aetherproxy/backend/database"
+	"github.com/aetherproxy/backend/database/model"
+	"github.com/aetherproxy/backend/logger"
+	"github.com/op/go-logging"
+	"golang.org/x/crypto/ssh"
+)
+
+var portSyncTestLoggerOnce sync.Once
+
+type fakeFirewallBackend struct {
+	capOK            bool
+	capNote          string
+	localRules       []managedUFWRule
+	allowLocalErrors []error
+	allowLocalCalls  int
+}
+
+func (f *fakeFirewallBackend) localCapabilityState() (bool, string) {
+	if f.capNote == "" {
+		f.capNote = "ready"
+	}
+	return f.capOK, f.capNote
+}
+
+func (f *fakeFirewallBackend) listManagedLocalRules() ([]managedUFWRule, error) {
+	out := make([]managedUFWRule, len(f.localRules))
+	copy(out, f.localRules)
+	return out, nil
+}
+
+func (f *fakeFirewallBackend) allowLocal(rule portRule) error {
+	f.allowLocalCalls++
+	if len(f.allowLocalErrors) > 0 {
+		err := f.allowLocalErrors[0]
+		f.allowLocalErrors = f.allowLocalErrors[1:]
+		if err != nil {
+			return err
+		}
+	}
+	f.localRules = append(f.localRules, managedUFWRule{Number: 1000 + f.allowLocalCalls, Rule: rule})
+	return nil
+}
+
+func (f *fakeFirewallBackend) deleteLocal(number int) error {
+	for i := range f.localRules {
+		if f.localRules[i].Number == number {
+			f.localRules = append(f.localRules[:i], f.localRules[i+1:]...)
+			break
+		}
+	}
+	return nil
+}
+
+func (f *fakeFirewallBackend) listManagedRemoteRules(_ *ssh.Client) ([]managedUFWRule, error) {
+	return nil, nil
+}
+
+func (f *fakeFirewallBackend) allowRemote(_ *ssh.Client, _ portRule) error {
+	return nil
+}
+
+func (f *fakeFirewallBackend) deleteRemote(_ *ssh.Client, _ int) error {
+	return nil
+}
+
+func setupPortSyncDB(t *testing.T) {
+	t.Helper()
+	portSyncTestLoggerOnce.Do(func() {
+		logger.InitLogger(logging.ERROR)
+	})
+	t.Setenv("AETHER_DB_DSN", "")
+	dbPath := filepath.Join(t.TempDir(), "portsync_test.db")
+	if err := database.OpenDB(dbPath); err != nil {
+		t.Fatalf("open db: %v", err)
+	}
+	if err := database.Migrate(); err != nil {
+		t.Fatalf("migrate db: %v", err)
+	}
+}
 
 func TestRuleFromComment(t *testing.T) {
 	rule, ok := ruleFromComment("aetherproxy:tcp:443")
@@ -71,5 +158,155 @@ func TestDiffRules(t *testing.T) {
 	}
 	if len(toAdd) != 1 || toAdd[0].key() != "tcp:9000" {
 		t.Fatalf("unexpected add list: %#v", toAdd)
+	}
+}
+
+func TestPortSyncRetryLifecycle(t *testing.T) {
+	setupPortSyncDB(t)
+	t.Setenv("AETHER_PORT_SYNC_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_LOCAL_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_REMOTE_ENABLED", "false")
+	t.Setenv("AETHER_PORT_SYNC_RETRY_SECONDS", "1")
+
+	db := database.GetDB()
+	if err := db.Create(&model.Inbound{
+		Type:    "vless",
+		Tag:     "retry-life-in",
+		Options: json.RawMessage(`{"listen":"0.0.0.0","listen_port":443}`),
+	}).Error; err != nil {
+		t.Fatalf("seed inbound: %v", err)
+	}
+
+	fw := &fakeFirewallBackend{
+		capOK:            true,
+		capNote:          "ready",
+		allowLocalErrors: []error{errors.New("simulated allow failure")},
+	}
+	svc := &PortSyncService{firewall: fw}
+	svc.upsertFailedTask(portSyncScopeLocal, 0, "seed", errors.New("initial failure"))
+
+	var task model.PortSyncTask
+	if err := db.First(&task).Error; err != nil {
+		t.Fatalf("load seeded task: %v", err)
+	}
+	if task.Attempts != 1 || task.Status != portSyncTaskPending {
+		t.Fatalf("unexpected initial task state: attempts=%d status=%s", task.Attempts, task.Status)
+	}
+
+	if err := db.Model(&task).Update("next_run_at", time.Now().Unix()-1).Error; err != nil {
+		t.Fatalf("mark task due: %v", err)
+	}
+	if err := svc.ProcessDueTasks(10); err != nil {
+		t.Fatalf("process due tasks (failure pass): %v", err)
+	}
+
+	if err := db.First(&task).Error; err != nil {
+		t.Fatalf("task should remain queued after failure: %v", err)
+	}
+	if task.Attempts != 2 {
+		t.Fatalf("expected attempts=2 after first retry failure, got %d", task.Attempts)
+	}
+	if task.Status != portSyncTaskPending {
+		t.Fatalf("expected pending status after failure, got %s", task.Status)
+	}
+	if !strings.Contains(task.LastError, "simulated allow failure") {
+		t.Fatalf("expected failure reason to be persisted, got %q", task.LastError)
+	}
+	if fw.allowLocalCalls != 1 {
+		t.Fatalf("expected one allowLocal call, got %d", fw.allowLocalCalls)
+	}
+
+	if err := db.Model(&task).Update("next_run_at", time.Now().Unix()-1).Error; err != nil {
+		t.Fatalf("mark task due for success retry: %v", err)
+	}
+	if err := svc.ProcessDueTasks(10); err != nil {
+		t.Fatalf("process due tasks (success pass): %v", err)
+	}
+
+	var count int64
+	if err := db.Model(&model.PortSyncTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected task queue to be empty after successful retry, got %d", count)
+	}
+	if fw.allowLocalCalls != 2 {
+		t.Fatalf("expected second allowLocal call on successful retry, got %d", fw.allowLocalCalls)
+	}
+}
+
+func TestUpsertFailedTaskDedupSameError(t *testing.T) {
+	setupPortSyncDB(t)
+	svc := &PortSyncService{firewall: &fakeFirewallBackend{capOK: true}}
+
+	svc.upsertFailedTask(portSyncScopeLocal, 0, "first", errors.New("same error"))
+
+	db := database.GetDB()
+	var task model.PortSyncTask
+	if err := db.First(&task).Error; err != nil {
+		t.Fatalf("load first task: %v", err)
+	}
+	firstAttempts := task.Attempts
+	firstNextRunAt := task.NextRunAt
+
+	svc.upsertFailedTask(portSyncScopeLocal, 0, "second", errors.New("same error"))
+
+	if err := db.First(&task).Error; err != nil {
+		t.Fatalf("load updated task: %v", err)
+	}
+	if task.Attempts != firstAttempts {
+		t.Fatalf("expected attempts to stay %d for duplicate queued error, got %d", firstAttempts, task.Attempts)
+	}
+	if task.NextRunAt != firstNextRunAt {
+		t.Fatalf("expected next_run_at to remain %d, got %d", firstNextRunAt, task.NextRunAt)
+	}
+	if task.Reason != "second" {
+		t.Fatalf("expected reason to update to second, got %q", task.Reason)
+	}
+	if task.Status != portSyncTaskPending {
+		t.Fatalf("expected pending status, got %s", task.Status)
+	}
+}
+
+func TestCollectDesiredRulesDeduplicatesPorts(t *testing.T) {
+	setupPortSyncDB(t)
+	db := database.GetDB()
+
+	inbounds := []model.Inbound{
+		{
+			Type:    "vless",
+			Tag:     "dedup-a",
+			Options: json.RawMessage(`{"listen_port":443}`),
+		},
+		{
+			Type:    "vless",
+			Tag:     "dedup-b",
+			Options: json.RawMessage(`{"listen_port":"443"}`),
+		},
+		{
+			Type:    "hysteria2",
+			Tag:     "dedup-c",
+			Options: json.RawMessage(`{"listen_port":443}`),
+		},
+	}
+	if err := db.Create(&inbounds).Error; err != nil {
+		t.Fatalf("seed inbounds: %v", err)
+	}
+
+	rules, err := (&PortSyncService{}).collectDesiredRules()
+	if err != nil {
+		t.Fatalf("collect desired rules: %v", err)
+	}
+
+	if len(rules) != 2 {
+		t.Fatalf("expected 2 deduplicated rules (tcp+udp on 443), got %d: %#v", len(rules), rules)
+	}
+
+	keys := map[string]bool{}
+	for _, r := range rules {
+		keys[r.key()] = true
+	}
+	if !keys["tcp:443"] || !keys["udp:443"] {
+		t.Fatalf("expected tcp:443 and udp:443, got keys=%#v", keys)
 	}
 }
