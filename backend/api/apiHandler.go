@@ -69,6 +69,10 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 		a.DeleteNode(c)
 	case "deployNode":
 		a.DeployNode(c)
+	case "portsyncSync":
+		a.TriggerPortSync(c)
+	case "portsyncRetry":
+		a.RetryPortSync(c)
 	case "saveRouting":
 		a.SaveRouting(c)
 	case "setPluginEnabled":
@@ -130,6 +134,8 @@ func (a *APIHandler) getHandler(c *gin.Context) {
 		a.GetCheckOutbound(c)
 	case "nodes":
 		a.GetNodes(c)
+	case "portsyncStatus":
+		a.GetPortSyncStatus(c)
 	case "routing":
 		a.GetRouting(c)
 	case "analytics":

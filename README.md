@@ -413,6 +413,14 @@ All endpoints except `/api/login` require a valid JWT via:
 | `POST` | `/api/deleteNode` | Delete a node (stops health check) |
 | `POST` | `/api/deployNode` | SSH-deploy current sing-box config to node |
 
+### Port Sync Operations
+
+| Method | Path | Description |
+|---|---|---|
+| `GET` | `/api/portsyncStatus?limit=30` | PortSync queue and capability snapshot (pending tasks, retries, local capability note) |
+| `POST` | `/api/portsyncSync` | Queue immediate reconcile (`reason`, optional `nodeId`) |
+| `POST` | `/api/portsyncRetry` | Process due retry tasks immediately (`limit`, default 30) |
+
 ### Routing (Phase 2)
 
 | Method | Path | Description |

@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"os"
 	"os/exec"
 	"sort"
 	"strconv"
@@ -42,6 +43,22 @@ type managedUFWRule struct {
 	Rule   portRule
 }
 
+// PortSyncStatus is an operational snapshot for inbound firewall reconciliation.
+type PortSyncStatus struct {
+	Enabled             bool                 `json:"enabled"`
+	LocalEnabled        bool                 `json:"localEnabled"`
+	RemoteEnabled       bool                 `json:"remoteEnabled"`
+	RetrySeconds        int                  `json:"retrySeconds"`
+	UFWBinary           string               `json:"ufwBinary"`
+	LocalCapabilityOK   bool                 `json:"localCapabilityOk"`
+	LocalCapabilityNote string               `json:"localCapabilityNote"`
+	PendingTasks        int64                `json:"pendingTasks"`
+	PendingLocal        int64                `json:"pendingLocal"`
+	PendingNode         int64                `json:"pendingNode"`
+	NextRunAt           int64                `json:"nextRunAt"`
+	Tasks               []model.PortSyncTask `json:"tasks"`
+}
+
 // PortSyncService reconciles inbound ports with managed UFW rules.
 type PortSyncService struct{}
 
@@ -53,6 +70,49 @@ func GetPortSyncService() *PortSyncService {
 		globalPortSyncService = &PortSyncService{}
 	})
 	return globalPortSyncService
+}
+
+// GetStatus returns queue and capability state for PortSync operations.
+func (s *PortSyncService) GetStatus(limit int) (*PortSyncStatus, error) {
+	if limit <= 0 {
+		limit = 30
+	}
+	if limit > 200 {
+		limit = 200
+	}
+
+	db := database.GetDB()
+	status := &PortSyncStatus{
+		Enabled:       config.GetPortSyncEnabled(),
+		LocalEnabled:  config.GetPortSyncLocalEnabled(),
+		RemoteEnabled: config.GetPortSyncRemoteEnabled(),
+		RetrySeconds:  config.GetPortSyncRetrySeconds(),
+		UFWBinary:     config.GetPortSyncUFWBinary(),
+	}
+	status.LocalCapabilityOK, status.LocalCapabilityNote = s.localCapabilityState()
+
+	if err := db.Model(&model.PortSyncTask{}).Count(&status.PendingTasks).Error; err != nil {
+		return nil, err
+	}
+	if err := db.Model(&model.PortSyncTask{}).Where("scope = ?", portSyncScopeLocal).Count(&status.PendingLocal).Error; err != nil {
+		return nil, err
+	}
+	if err := db.Model(&model.PortSyncTask{}).Where("scope = ?", portSyncScopeNode).Count(&status.PendingNode).Error; err != nil {
+		return nil, err
+	}
+
+	var nextTask model.PortSyncTask
+	if err := db.Order("next_run_at asc").First(&nextTask).Error; err == nil {
+		status.NextRunAt = nextTask.NextRunAt
+	} else if !database.IsNotFound(err) {
+		return nil, err
+	}
+
+	if err := db.Order("next_run_at asc").Limit(limit).Find(&status.Tasks).Error; err != nil {
+		return nil, err
+	}
+
+	return status, nil
 }
 
 // TriggerImmediateSync starts an async full reconciliation run.
@@ -188,6 +248,19 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 	}
 
 	return nil
+}
+
+func (s *PortSyncService) localCapabilityState() (bool, string) {
+	if !config.GetPortSyncLocalEnabled() {
+		return false, "local sync disabled"
+	}
+	if _, err := exec.LookPath(config.GetPortSyncUFWBinary()); err != nil {
+		return false, "ufw binary not found"
+	}
+	if os.Geteuid() != 0 {
+		return false, "process is not running as root"
+	}
+	return true, "ready"
 }
 
 func (s *PortSyncService) updateTaskFailure(task *model.PortSyncTask, reason string, cause error) {

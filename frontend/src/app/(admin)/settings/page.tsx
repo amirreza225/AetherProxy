@@ -2,7 +2,15 @@
 
 import useSWR from "swr";
 import { useState, useEffect } from "react";
-import { getSettings, saveSettings, changePass } from "@/lib/api";
+import {
+  getSettings,
+  saveSettings,
+  changePass,
+  getPortSyncStatus,
+  triggerPortSync,
+  retryPortSync,
+  type PortSyncStatus,
+} from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,10 +35,21 @@ export default function SettingsPage() {
   const { data, isLoading, error, mutate } = useSWR("/api/settings", () =>
     getSettings().then((r) => r.obj ?? {})
   );
+  const {
+    data: portSyncStatus,
+    isLoading: portSyncLoading,
+    error: portSyncError,
+    mutate: mutatePortSync,
+  } = useSWR("/api/portsyncStatus", () =>
+    getPortSyncStatus(20).then((r) => r.obj as PortSyncStatus)
+  );
 
   const [form, setForm] = useState<Record<string, unknown>>({});
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [portSyncMsg, setPortSyncMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [syncNowBusy, setSyncNowBusy] = useState(false);
+  const [retryBusy, setRetryBusy] = useState(false);
 
   // Change password form state
   const [passForm, setPassForm] = useState({ oldPass: "", newUsername: "", newPass: "" });
@@ -77,6 +96,42 @@ export default function SettingsPage() {
       setPassMsg({ ok: false, text: t("changePasswordError") });
     } finally {
       setPassSaving(false);
+    }
+  }
+
+  async function handlePortSyncNow() {
+    setSyncNowBusy(true);
+    setPortSyncMsg(null);
+    try {
+      const res = await triggerPortSync("manual-ui");
+      if (res.success) {
+        setPortSyncMsg({ ok: true, text: "Port sync queued" });
+        mutatePortSync();
+      } else {
+        setPortSyncMsg({ ok: false, text: res.msg || "Failed to queue port sync" });
+      }
+    } catch {
+      setPortSyncMsg({ ok: false, text: "Failed to queue port sync" });
+    } finally {
+      setSyncNowBusy(false);
+    }
+  }
+
+  async function handlePortSyncRetry() {
+    setRetryBusy(true);
+    setPortSyncMsg(null);
+    try {
+      const res = await retryPortSync(30);
+      if (res.success) {
+        setPortSyncMsg({ ok: true, text: "Retry batch completed" });
+        mutatePortSync();
+      } else {
+        setPortSyncMsg({ ok: false, text: res.msg || "Retry batch failed" });
+      }
+    } catch {
+      setPortSyncMsg({ ok: false, text: "Retry batch failed" });
+    } finally {
+      setRetryBusy(false);
     }
   }
 
@@ -185,6 +240,75 @@ export default function SettingsPage() {
               </Button>
             </div>
           </form>
+        </CardContent>
+      </Card>
+
+      <Card className="max-w-3xl">
+        <CardHeader>
+          <CardTitle className="text-base">Port Sync Status</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          {portSyncLoading ? (
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
+          ) : portSyncError ? (
+            <p className="text-sm text-destructive">Failed to load port sync status</p>
+          ) : (
+            <>
+              <div className="grid gap-2 text-sm md:grid-cols-2">
+                <p><span className="font-medium">Enabled:</span> {String(portSyncStatus?.enabled)}</p>
+                <p><span className="font-medium">Local enabled:</span> {String(portSyncStatus?.localEnabled)}</p>
+                <p><span className="font-medium">Remote enabled:</span> {String(portSyncStatus?.remoteEnabled)}</p>
+                <p><span className="font-medium">Retry seconds:</span> {portSyncStatus?.retrySeconds ?? 0}</p>
+                <p><span className="font-medium">Pending tasks:</span> {portSyncStatus?.pendingTasks ?? 0}</p>
+                <p><span className="font-medium">Local capability:</span> {portSyncStatus?.localCapabilityNote ?? "n/a"}</p>
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                <Button type="button" onClick={handlePortSyncNow} disabled={syncNowBusy}>
+                  {syncNowBusy ? "Queuing..." : "Run Full Sync"}
+                </Button>
+                <Button type="button" variant="outline" onClick={handlePortSyncRetry} disabled={retryBusy}>
+                  {retryBusy ? "Running..." : "Run Retry Batch"}
+                </Button>
+                <Button type="button" variant="ghost" onClick={() => mutatePortSync()}>
+                  Refresh
+                </Button>
+              </div>
+
+              {portSyncMsg && (
+                <p className={`text-sm ${portSyncMsg.ok ? "text-emerald-600" : "text-destructive"}`}>
+                  {portSyncMsg.text}
+                </p>
+              )}
+
+              <div className="space-y-2">
+                <p className="text-sm font-medium">Pending Task Queue</p>
+                {(portSyncStatus?.tasks?.length ?? 0) === 0 ? (
+                  <p className="text-sm text-muted-foreground">No pending tasks.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {portSyncStatus?.tasks.map((task) => (
+                      <div key={task.id} className="rounded-md border p-2 text-xs">
+                        <p>
+                          <span className="font-medium">#{task.id}</span>
+                          {" "}scope={task.scope}
+                          {" "}node={task.nodeId}
+                          {" "}attempts={task.attempts}
+                        </p>
+                        <p className="text-muted-foreground">reason: {task.reason || "-"}</p>
+                        {task.lastError ? (
+                          <p className="text-destructive">last error: {task.lastError}</p>
+                        ) : null}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -529,6 +529,57 @@ export async function deployNode(id: number) {
   });
 }
 
+// ── Port Sync ────────────────────────────────────────────────────────────────
+
+export interface PortSyncTask {
+  id: number;
+  scope: "local" | "node";
+  nodeId: number;
+  reason: string;
+  attempts: number;
+  lastError: string;
+  nextRunAt: number;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface PortSyncStatus {
+  enabled: boolean;
+  localEnabled: boolean;
+  remoteEnabled: boolean;
+  retrySeconds: number;
+  ufwBinary: string;
+  localCapabilityOk: boolean;
+  localCapabilityNote: string;
+  pendingTasks: number;
+  pendingLocal: number;
+  pendingNode: number;
+  nextRunAt: number;
+  tasks: PortSyncTask[];
+}
+
+export async function getPortSyncStatus(limit = 30, headers?: HeadersInit) {
+  return apiFetch<PortSyncStatus>(`/api/portsyncStatus?limit=${limit}`, { headers });
+}
+
+export async function triggerPortSync(reason = "manual-ui", nodeId?: number) {
+  const body = new URLSearchParams({ reason });
+  if (typeof nodeId === "number" && Number.isFinite(nodeId) && nodeId > 0) {
+    body.set("nodeId", String(nodeId));
+  }
+  return apiFetch<{ queued: boolean; nodeId: number; reason: string }>("/api/portsyncSync", {
+    method: "POST",
+    body,
+  });
+}
+
+export async function retryPortSync(limit = 30) {
+  return apiFetch("/api/portsyncRetry", {
+    method: "POST",
+    body: new URLSearchParams({ limit: String(limit) }),
+  });
+}
+
 // ── Routing ───────────────────────────────────────────────────────────────────
 
 export interface RouteRule {

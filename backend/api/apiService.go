@@ -477,6 +477,45 @@ func (a *ApiService) DeployNode(c *gin.Context) {
 	jsonMsg(c, "deploy", err)
 }
 
+func (a *ApiService) GetPortSyncStatus(c *gin.Context) {
+	limit, err := strconv.Atoi(c.DefaultQuery("limit", "30"))
+	if err != nil || limit <= 0 {
+		limit = 30
+	}
+	status, err := service.GetPortSyncService().GetStatus(limit)
+	jsonObj(c, status, err)
+}
+
+func (a *ApiService) TriggerPortSync(c *gin.Context) {
+	var req struct {
+		NodeId uint   `form:"nodeId"`
+		Reason string `form:"reason"`
+	}
+	if err := c.ShouldBind(&req); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	reason := req.Reason
+	if reason == "" {
+		reason = "manual-api"
+	}
+	if req.NodeId > 0 {
+		service.GetPortSyncService().TriggerNodeImmediateSync(req.NodeId, reason)
+	} else {
+		service.GetPortSyncService().TriggerImmediateSync(reason)
+	}
+	jsonObj(c, gin.H{"queued": true, "nodeId": req.NodeId, "reason": reason}, nil)
+}
+
+func (a *ApiService) RetryPortSync(c *gin.Context) {
+	limit, err := strconv.Atoi(c.DefaultPostForm("limit", "30"))
+	if err != nil || limit <= 0 {
+		limit = 30
+	}
+	err = service.GetPortSyncService().ProcessDueTasks(limit)
+	jsonMsg(c, "portsyncRetry", err)
+}
+
 // ── Routing ───────────────────────────────────────────────────────────────────
 
 func (a *ApiService) GetRouting(c *gin.Context) {
