@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
@@ -206,16 +205,18 @@ func (s *NodeService) sshDial(node *model.Node) (*ssh.Client, error) {
 // buildHostKeyCallback returns a host-key callback that implements TOFU.
 func (s *NodeService) buildHostKeyCallback(node *model.Node) ssh.HostKeyCallback {
 	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
-		fp := base64.StdEncoding.EncodeToString(key.Marshal())
+		// Use the standard OpenSSH SHA-256 fingerprint format ("SHA256:<base64>").
+		fp := ssh.FingerprintSHA256(key)
 
 		db := database.GetDB()
 		// First connection: trust and store the key.
 		if node.SshKnownKey == "" {
-			logger.Infof("NodeService: TOFU – storing host key for %s: %s %s", hostname, key.Type(), fp[:16]+"...")
-			if err := db.Model(node).Update("ssh_known_key", key.Type()+" "+fp).Error; err != nil {
+			logger.Infof("NodeService: TOFU – storing host key for %s: %s %s", hostname, key.Type(), fp)
+			stored := key.Type() + " " + fp
+			if err := db.Model(node).Update("ssh_known_key", stored).Error; err != nil {
 				logger.Warning("NodeService: failed to persist host key:", err)
 			}
-			node.SshKnownKey = key.Type() + " " + fp
+			node.SshKnownKey = stored
 			return nil
 		}
 
@@ -227,7 +228,7 @@ func (s *NodeService) buildHostKeyCallback(node *model.Node) ssh.HostKeyCallback
 		}
 		storedFP := parts[1]
 		if storedFP != fp {
-			return fmt.Errorf("SSH host key mismatch for %s: expected %s, got %s – possible MITM attack", hostname, storedFP[:16]+"...", fp[:16]+"...")
+			return fmt.Errorf("SSH host key mismatch for %s: expected %s, got %s – possible MITM attack", hostname, storedFP, fp)
 		}
 		return nil
 	}

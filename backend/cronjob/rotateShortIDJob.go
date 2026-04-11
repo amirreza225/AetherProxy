@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
+	"math/big"
 	"time"
 
 	"github.com/aetherproxy/backend/database"
@@ -89,24 +90,19 @@ func (j *RotateShortIDJob) rotateIfReality(db *gorm.DB, profile *model.Tls) erro
 func generateShortIDs(n int) []string {
 	ids := make([]string, n)
 	for i := range ids {
-		// Choose a random length between 4 and 8 bytes.
-		lenBytes := 4 + randomInt(5) // 4,5,6,7,8
+		// Uniform random length in [4, 8] bytes (inclusive).
+		lenBig, err := rand.Int(rand.Reader, big.NewInt(5)) // [0, 4]
+		if err != nil {
+			lenBig = big.NewInt(0)
+		}
+		lenBytes := int(lenBig.Int64()) + 4 // [4, 8]
 		b := make([]byte, lenBytes)
 		if _, err := rand.Read(b); err != nil {
-			// Fallback: use zeros (should never happen).
+			// rand.Read should never fail, but keep the zero-bytes fallback.
 			ids[i] = hex.EncodeToString(b)
 			continue
 		}
 		ids[i] = hex.EncodeToString(b)
 	}
 	return ids
-}
-
-func randomInt(n int) int {
-	if n <= 0 {
-		return 0
-	}
-	b := make([]byte, 1)
-	_, _ = rand.Read(b)
-	return int(b[0]) % n
 }

@@ -108,6 +108,7 @@
     "sshKeyNotPinned": "Not pinned",
     "resetHostKey": "Reset Host Key",
     "resetHostKeyConfirm": "Clear the stored SSH host key for this node? The next connection will re-learn and pin the server's public key (Trust-On-First-Use).",
+    "resetHostKeyConfirmButton": "Reset Key",
     "resetHostKeySuccess": "Host key cleared. The next deploy will re-pin the server's key.",
     "resetHostKeyError": "Failed to reset host key."
   },

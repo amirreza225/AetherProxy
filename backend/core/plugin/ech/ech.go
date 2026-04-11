@@ -101,11 +101,11 @@ func (p *ECHPlugin) Apply(outboundJSON json.RawMessage, cfgJSON json.RawMessage)
 		"dynamic_record_sizing_disabled": false,
 	}
 
-	// Set the outer public name only when the outbound does not already specify
-	// a server_name, to avoid overriding an explicit user configuration.
+	// Set the outer public name inside the TLS block only when not already set,
+	// to avoid overriding an explicit user configuration.
 	if cfg.ECHPublicName != "" {
-		if _, hasServerName := obj["server_name"]; !hasServerName {
-			obj["server_name"] = cfg.ECHPublicName
+		if _, hasServerName := tlsObj["server_name"]; !hasServerName {
+			tlsObj["server_name"] = cfg.ECHPublicName
 		}
 	}
 

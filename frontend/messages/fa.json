@@ -108,6 +108,7 @@
     "sshKeyNotPinned": "ذخیره نشده",
     "resetHostKey": "بازنشانی کلید هاست",
     "resetHostKeyConfirm": "کلید SSH ذخیره‌شده این نود پاک شود؟ اتصال بعدی کلید عمومی سرور را دوباره یاد می‌گیرد و ذخیره می‌کند (TOFU).",
+    "resetHostKeyConfirmButton": "بازنشانی کلید",
     "resetHostKeySuccess": "کلید هاست پاک شد. استقرار بعدی کلید جدید را ذخیره خواهد کرد.",
     "resetHostKeyError": "بازنشانی کلید هاست ناموفق بود."
   },

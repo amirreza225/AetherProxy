@@ -347,7 +347,7 @@ export default function NodesPage() {
                         {node.sshKnownKey && (
                           <ConfirmDialog
                             title={t("resetHostKeyConfirm")}
-                            confirmLabel={t("resetHostKey")}
+                            confirmLabel={t("resetHostKeyConfirmButton")}
                             cancelLabel={tc("cancel")}
                             onConfirm={() => handleResetHostKey(node)}
                           >
