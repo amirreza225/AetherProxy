@@ -9,6 +9,7 @@ type PortSyncTask struct {
 	NodeId uint   `json:"nodeId" gorm:"index:idx_port_sync_target,priority:2"`
 
 	Reason    string `json:"reason" gorm:"size:128"`
+	Status    string `json:"status" gorm:"size:16;index;default:pending"`
 	Attempts  int    `json:"attempts" gorm:"default:0"`
 	LastError string `json:"lastError" gorm:"size:1024"`
 

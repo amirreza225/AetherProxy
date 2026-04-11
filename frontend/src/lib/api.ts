@@ -536,6 +536,7 @@ export interface PortSyncTask {
   scope: "local" | "node";
   nodeId: number;
   reason: string;
+  status: string;
   attempts: number;
   lastError: string;
   nextRunAt: number;
@@ -547,6 +548,8 @@ export interface PortSyncStatus {
   enabled: boolean;
   localEnabled: boolean;
   remoteEnabled: boolean;
+  dockerHostnet: boolean;
+  runningInContainer: boolean;
   retrySeconds: number;
   ufwBinary: string;
   localCapabilityOk: boolean;

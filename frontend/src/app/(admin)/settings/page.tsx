@@ -282,6 +282,8 @@ export default function SettingsPage() {
                 <p><span className="font-medium">{t("portSyncEnabled")}:</span> {String(portSyncStatus?.enabled)}</p>
                 <p><span className="font-medium">{t("portSyncLocalEnabled")}:</span> {String(portSyncStatus?.localEnabled)}</p>
                 <p><span className="font-medium">{t("portSyncRemoteEnabled")}:</span> {String(portSyncStatus?.remoteEnabled)}</p>
+                <p><span className="font-medium">{t("portSyncDockerHostnet")}:</span> {String(portSyncStatus?.dockerHostnet)}</p>
+                <p><span className="font-medium">{t("portSyncRunningInContainer")}:</span> {String(portSyncStatus?.runningInContainer)}</p>
                 <p><span className="font-medium">{t("portSyncRetrySeconds")}:</span> {portSyncStatus?.retrySeconds ?? 0}</p>
                 <p><span className="font-medium">{t("portSyncPendingTasks")}:</span> {portSyncStatus?.pendingTasks ?? 0}</p>
                 <p><span className="font-medium">{t("portSyncLocalCapability")}:</span> {portSyncStatus?.localCapabilityNote ?? "n/a"}</p>
@@ -320,6 +322,7 @@ export default function SettingsPage() {
                           <span className="font-medium">#{task.id}</span>
                           {" "}{t("portSyncQueueScope")}={task.scope}
                           {" "}{t("portSyncQueueNode")}={task.nodeId}
+                          {" "}{t("portSyncQueueStatus")}={task.status || "pending"}
                           {" "}{t("portSyncQueueAttempts")}={task.attempts}
                         </p>
                         <p className="text-muted-foreground">{t("portSyncQueueReason")}: {task.reason || "-"}</p>

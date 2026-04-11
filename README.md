@@ -206,6 +206,7 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
 | `AETHER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 | `AETHER_DEBUG` | – | Set to `true` for verbose GORM query logging |
+| `AETHER_DOCKER_HOSTNET` | `false` | Signals backend runtime is host-networked (used by local firewall capability checks) |
 | `AETHER_PORT_SYNC_ENABLED` | `true` | Enable inbound port/firewall automation |
 | `AETHER_PORT_SYNC_LOCAL_ENABLED` | `true` | Reconcile local host firewall rules |
 | `AETHER_PORT_SYNC_REMOTE_ENABLED` | `true` | Reconcile remote node firewall rules over SSH |

@@ -146,6 +146,7 @@ See `core/plugin/sample/` for a reference implementation.
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000`     | CORS allowed origin for admin panel          |
 | `AETHER_LOG_LEVEL`    | `info`                      | Log level: debug / info / warn / error       |
 | `AETHER_DEBUG`        | –                           | Set to `true` to enable GORM query logging   |
+| `AETHER_DOCKER_HOSTNET` | `false`                  | Signals backend is running in host-network mode |
 | `AETHER_PORT_SYNC_ENABLED` | `true`                | Enable inbound firewall reconciliation        |
 | `AETHER_PORT_SYNC_LOCAL_ENABLED` | `true`          | Local-host UFW reconciliation toggle          |
 | `AETHER_PORT_SYNC_REMOTE_ENABLED` | `true`         | Remote-node UFW reconciliation toggle         |

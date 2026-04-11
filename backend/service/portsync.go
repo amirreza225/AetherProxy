@@ -3,8 +3,6 @@ package service
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/exec"
 	"sort"
 	"strconv"
 	"strings"
@@ -15,7 +13,6 @@ import (
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
 	"github.com/aetherproxy/backend/logger"
-	"golang.org/x/crypto/ssh"
 )
 
 const (
@@ -23,6 +20,8 @@ const (
 	portSyncScopeNode       = "node"
 	portSyncCommentPrefix   = "aetherproxy"
 	portSyncMaxLastErrorLen = 1000
+	portSyncTaskPending     = "pending"
+	portSyncTaskRunning     = "running"
 )
 
 type portRule struct {
@@ -48,6 +47,8 @@ type PortSyncStatus struct {
 	Enabled             bool                 `json:"enabled"`
 	LocalEnabled        bool                 `json:"localEnabled"`
 	RemoteEnabled       bool                 `json:"remoteEnabled"`
+	DockerHostnet       bool                 `json:"dockerHostnet"`
+	RunningInContainer  bool                 `json:"runningInContainer"`
 	RetrySeconds        int                  `json:"retrySeconds"`
 	UFWBinary           string               `json:"ufwBinary"`
 	LocalCapabilityOK   bool                 `json:"localCapabilityOk"`
@@ -60,14 +61,16 @@ type PortSyncStatus struct {
 }
 
 // PortSyncService reconciles inbound ports with managed UFW rules.
-type PortSyncService struct{}
+type PortSyncService struct {
+	firewall firewallBackend
+}
 
 var portSyncOnce sync.Once
 var globalPortSyncService *PortSyncService
 
 func GetPortSyncService() *PortSyncService {
 	portSyncOnce.Do(func() {
-		globalPortSyncService = &PortSyncService{}
+		globalPortSyncService = &PortSyncService{firewall: newUFWFirewallBackend()}
 	})
 	return globalPortSyncService
 }
@@ -83,11 +86,13 @@ func (s *PortSyncService) GetStatus(limit int) (*PortSyncStatus, error) {
 
 	db := database.GetDB()
 	status := &PortSyncStatus{
-		Enabled:       config.GetPortSyncEnabled(),
-		LocalEnabled:  config.GetPortSyncLocalEnabled(),
-		RemoteEnabled: config.GetPortSyncRemoteEnabled(),
-		RetrySeconds:  config.GetPortSyncRetrySeconds(),
-		UFWBinary:     config.GetPortSyncUFWBinary(),
+		Enabled:            config.GetPortSyncEnabled(),
+		LocalEnabled:       config.GetPortSyncLocalEnabled(),
+		RemoteEnabled:      config.GetPortSyncRemoteEnabled(),
+		DockerHostnet:      config.GetDockerHostnetEnabled(),
+		RunningInContainer: isLikelyContainerized(),
+		RetrySeconds:       config.GetPortSyncRetrySeconds(),
+		UFWBinary:          config.GetPortSyncUFWBinary(),
 	}
 	status.LocalCapabilityOK, status.LocalCapabilityNote = s.localCapabilityState()
 
@@ -209,14 +214,15 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 
 	desired, err := s.collectDesiredRules()
 	if err != nil {
-		for _, task := range tasks {
-			s.updateTaskFailure(&task, "recompute", err)
+		for i := range tasks {
+			s.updateTaskFailure(&tasks[i], "recompute", err)
 		}
 		return err
 	}
 
 	for i := range tasks {
-		task := tasks[i]
+		task := &tasks[i]
+		s.setTaskStatus(task, portSyncTaskRunning)
 		var runErr error
 		switch task.Scope {
 		case portSyncScopeLocal:
@@ -239,12 +245,12 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 		}
 
 		if runErr == nil {
-			if err := db.Delete(&task).Error; err != nil {
+			if err := db.Delete(task).Error; err != nil {
 				logger.Warningf("PortSync: failed to delete completed task %d: %v", task.Id, err)
 			}
 			continue
 		}
-		s.updateTaskFailure(&task, task.Reason, runErr)
+		s.updateTaskFailure(task, task.Reason, runErr)
 	}
 
 	return nil
@@ -286,19 +292,31 @@ func (s *PortSyncService) localCapabilityState() (bool, string) {
 	if !config.GetPortSyncLocalEnabled() {
 		return false, "local sync disabled"
 	}
-	if _, err := exec.LookPath(config.GetPortSyncUFWBinary()); err != nil {
-		return false, "ufw binary not found"
+	if s.firewall == nil {
+		return false, "firewall backend unavailable"
 	}
-	if os.Geteuid() != 0 {
-		return false, "process is not running as root"
+	return s.firewall.localCapabilityState()
+}
+
+func (s *PortSyncService) setTaskStatus(task *model.PortSyncTask, status string) {
+	if task.Status == status {
+		return
 	}
-	return true, "ready"
+	now := time.Now().Unix()
+	task.Status = status
+	task.UpdatedAt = now
+	if err := database.GetDB().
+		Model(task).
+		Updates(map[string]interface{}{"status": status, "updated_at": now}).Error; err != nil {
+		logger.Warningf("PortSync: failed to set task %d status=%s: %v", task.Id, status, err)
+	}
 }
 
 func (s *PortSyncService) updateTaskFailure(task *model.PortSyncTask, reason string, cause error) {
 	db := database.GetDB()
 	now := time.Now().Unix()
 	task.Reason = reason
+	task.Status = portSyncTaskPending
 	task.Attempts++
 	task.LastError = truncateString(cause.Error(), portSyncMaxLastErrorLen)
 	task.NextRunAt = now + int64(s.retryDelaySeconds(task.Attempts))
@@ -324,6 +342,7 @@ func (s *PortSyncService) upsertFailedTask(scope string, nodeID uint, reason str
 			Scope:     scope,
 			NodeId:    nodeID,
 			Reason:    reason,
+			Status:    portSyncTaskPending,
 			Attempts:  1,
 			LastError: errText,
 			NextRunAt: now + int64(s.retryDelaySeconds(1)),
@@ -339,6 +358,7 @@ func (s *PortSyncService) upsertFailedTask(scope string, nodeID uint, reason str
 	// Avoid inflating retries when the same failure is already queued for future retry.
 	if task.NextRunAt > now && task.LastError == errText {
 		task.Reason = reason
+		task.Status = portSyncTaskPending
 		task.UpdatedAt = now
 		if saveErr := db.Save(&task).Error; saveErr != nil {
 			logger.Warning("PortSync: update queued task failed:", saveErr)
@@ -347,6 +367,7 @@ func (s *PortSyncService) upsertFailedTask(scope string, nodeID uint, reason str
 	}
 
 	task.Reason = reason
+	task.Status = portSyncTaskPending
 	task.Attempts++
 	task.LastError = errText
 	task.NextRunAt = now + int64(s.retryDelaySeconds(task.Attempts))
@@ -414,7 +435,14 @@ func (s *PortSyncService) collectDesiredRules() ([]portRule, error) {
 }
 
 func (s *PortSyncService) reconcileLocal(desired []portRule) error {
-	existing, err := s.listManagedLocalRules()
+	ok, note := s.localCapabilityState()
+	if !ok {
+		return fmt.Errorf("%s", note)
+	}
+	if s.firewall == nil {
+		return fmt.Errorf("firewall backend unavailable")
+	}
+	existing, err := s.firewall.listManagedLocalRules()
 	if err != nil {
 		return err
 	}
@@ -423,14 +451,14 @@ func (s *PortSyncService) reconcileLocal(desired []portRule) error {
 
 	for _, del := range toDelete {
 		logger.Infof("PortSync: scope=local op=delete proto=%s port=%d rule_number=%d", del.Rule.Proto, del.Rule.Port, del.Number)
-		if out, err := runLocalUFW("--force", "delete", strconv.Itoa(del.Number)); err != nil {
-			return fmt.Errorf("delete rule #%d: %w (%s)", del.Number, err, strings.TrimSpace(out))
+		if err := s.firewall.deleteLocal(del.Number); err != nil {
+			return err
 		}
 	}
 	for _, r := range toAdd {
 		logger.Infof("PortSync: scope=local op=allow proto=%s port=%d", r.Proto, r.Port)
-		if out, err := runLocalUFW("--force", "allow", fmt.Sprintf("%d/%s", r.Port, r.Proto), "comment", r.comment()); err != nil {
-			return fmt.Errorf("allow %s: %w (%s)", r.key(), err, strings.TrimSpace(out))
+		if err := s.firewall.allowLocal(r); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -448,7 +476,10 @@ func (s *PortSyncService) reconcileNode(nodeID uint, desired []portRule) error {
 	}
 	defer func() { _ = client.Close() }()
 
-	existing, err := s.listManagedRemoteRules(client)
+	if s.firewall == nil {
+		return fmt.Errorf("firewall backend unavailable")
+	}
+	existing, err := s.firewall.listManagedRemoteRules(client)
 	if err != nil {
 		return err
 	}
@@ -457,63 +488,17 @@ func (s *PortSyncService) reconcileNode(nodeID uint, desired []portRule) error {
 
 	for _, del := range toDelete {
 		logger.Infof("PortSync: scope=node node=%d op=delete proto=%s port=%d rule_number=%d", nodeID, del.Rule.Proto, del.Rule.Port, del.Number)
-		cmd := fmt.Sprintf("%s --force delete %d", shellQuote(config.GetPortSyncUFWBinary()), del.Number)
-		if out, err := runSSHCommandOutput(client, cmd); err != nil {
-			return fmt.Errorf("delete remote rule #%d: %w (%s)", del.Number, err, strings.TrimSpace(out))
+		if err := s.firewall.deleteRemote(client, del.Number); err != nil {
+			return err
 		}
 	}
 	for _, r := range toAdd {
 		logger.Infof("PortSync: scope=node node=%d op=allow proto=%s port=%d", nodeID, r.Proto, r.Port)
-		cmd := fmt.Sprintf("%s --force allow %d/%s comment %s",
-			shellQuote(config.GetPortSyncUFWBinary()),
-			r.Port,
-			r.Proto,
-			shellQuote(r.comment()),
-		)
-		if out, err := runSSHCommandOutput(client, cmd); err != nil {
-			return fmt.Errorf("allow remote %s: %w (%s)", r.key(), err, strings.TrimSpace(out))
+		if err := s.firewall.allowRemote(client, r); err != nil {
+			return err
 		}
 	}
 	return nil
-}
-
-func (s *PortSyncService) listManagedLocalRules() ([]managedUFWRule, error) {
-	out, err := runLocalUFW("status", "numbered")
-	if err != nil {
-		return nil, fmt.Errorf("ufw status: %w (%s)", err, strings.TrimSpace(out))
-	}
-	if err := ensureUFWActive(out); err != nil {
-		return nil, err
-	}
-	return parseManagedUFWRules(out), nil
-}
-
-func (s *PortSyncService) listManagedRemoteRules(client *ssh.Client) ([]managedUFWRule, error) {
-	cmd := fmt.Sprintf("%s status numbered", shellQuote(config.GetPortSyncUFWBinary()))
-	out, err := runSSHCommandOutput(client, cmd)
-	if err != nil {
-		return nil, fmt.Errorf("remote ufw status: %w (%s)", err, strings.TrimSpace(out))
-	}
-	if err := ensureUFWActive(out); err != nil {
-		return nil, err
-	}
-	return parseManagedUFWRules(out), nil
-}
-
-func runLocalUFW(args ...string) (string, error) {
-	cmd := exec.Command(config.GetPortSyncUFWBinary(), args...)
-	out, err := cmd.CombinedOutput()
-	return string(out), err
-}
-
-func runSSHCommandOutput(client *ssh.Client, cmd string) (string, error) {
-	sess, err := client.NewSession()
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = sess.Close() }()
-	out, err := sess.CombinedOutput(cmd)
-	return string(out), err
 }
 
 func diffRules(existing []managedUFWRule, desired []portRule) ([]managedUFWRule, []portRule) {

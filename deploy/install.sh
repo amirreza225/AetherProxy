@@ -107,6 +107,18 @@ prompt_input() {
   printf -v "$var_name" '%s' "$value"
 }
 
+set_env_value() {
+  local key="$1"
+  local value="$2"
+  local file="$3"
+
+  if grep -qE "^${key}=" "$file"; then
+    sed -i "s|^${key}=.*|${key}=${value}|" "$file"
+  else
+    echo "${key}=${value}" >> "$file"
+  fi
+}
+
 echo -e ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════════╗${PLAIN}"
 echo -e "${GREEN}${BOLD}║        AetherProxy — Docker Installer            ║${PLAIN}"
@@ -256,11 +268,33 @@ fi
 compose_file="$COMPOSE_FILE"
 
 _hostnet=$(grep -m1 '^AETHER_DOCKER_HOSTNET=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
+_api_upstream=$(grep -m1 '^API_UPSTREAM=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
+_sub_upstream=$(grep -m1 '^SUB_UPSTREAM=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
 if [[ "${_hostnet:-0}" == "1" ]]; then
   compose_file="$INSTALL_DIR/deploy/docker-compose.hostnet.yml"
   info "Host-network backend mode is enabled."
+
+  # Keep custom upstreams untouched; only switch bridge defaults.
+  if [[ -z "${_api_upstream:-}" || "${_api_upstream}" == "backend:2095" ]]; then
+    set_env_value "API_UPSTREAM" "host.docker.internal:2095" "$ENV_FILE"
+    info "API_UPSTREAM set to host.docker.internal:2095 for host-network mode."
+  fi
+  if [[ -z "${_sub_upstream:-}" || "${_sub_upstream}" == "backend:2096" ]]; then
+    set_env_value "SUB_UPSTREAM" "host.docker.internal:2096" "$ENV_FILE"
+    info "SUB_UPSTREAM set to host.docker.internal:2096 for host-network mode."
+  fi
 else
   info "Bridge backend mode is enabled."
+
+  # If values were auto-switched previously, restore bridge defaults.
+  if [[ "${_api_upstream:-}" == "host.docker.internal:2095" ]]; then
+    set_env_value "API_UPSTREAM" "backend:2095" "$ENV_FILE"
+    info "API_UPSTREAM restored to backend:2095 for bridge mode."
+  fi
+  if [[ "${_sub_upstream:-}" == "host.docker.internal:2096" ]]; then
+    set_env_value "SUB_UPSTREAM" "backend:2096" "$ENV_FILE"
+    info "SUB_UPSTREAM restored to backend:2096 for bridge mode."
+  fi
 fi
 
 compose_args=(--env-file "$ENV_FILE" -f "$compose_file")

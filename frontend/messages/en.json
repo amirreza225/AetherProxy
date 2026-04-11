@@ -283,6 +283,8 @@
     "portSyncEnabled": "Enabled",
     "portSyncLocalEnabled": "Local enabled",
     "portSyncRemoteEnabled": "Remote enabled",
+    "portSyncDockerHostnet": "Docker host-network",
+    "portSyncRunningInContainer": "Running in container",
     "portSyncRetrySeconds": "Retry seconds",
     "portSyncPendingTasks": "Pending tasks",
     "portSyncLocalCapability": "Local capability",
@@ -302,6 +304,7 @@
     "portSyncQueueEmpty": "No pending tasks.",
     "portSyncQueueScope": "scope",
     "portSyncQueueNode": "node",
+    "portSyncQueueStatus": "status",
     "portSyncQueueAttempts": "attempts",
     "portSyncQueueReason": "reason",
     "portSyncQueueLastError": "last error"

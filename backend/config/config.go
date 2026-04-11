@@ -205,6 +205,20 @@ func GetPortSyncEnabled() bool {
 	return v
 }
 
+// GetDockerHostnetEnabled indicates whether backend container is expected to
+// run with host networking. Defaults to false.
+func GetDockerHostnetEnabled() bool {
+	raw := os.Getenv("AETHER_DOCKER_HOSTNET")
+	if raw == "" {
+		return false
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return false
+	}
+	return v
+}
+
 // GetPortSyncLocalEnabled controls local-host firewall reconciliation.
 // Defaults to true.
 func GetPortSyncLocalEnabled() bool {

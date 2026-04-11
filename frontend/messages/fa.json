@@ -283,6 +283,8 @@
     "portSyncEnabled": "فعال",
     "portSyncLocalEnabled": "محلی فعال",
     "portSyncRemoteEnabled": "ریموت فعال",
+    "portSyncDockerHostnet": "حالت Host-Network داکر",
+    "portSyncRunningInContainer": "در حال اجرا در کانتینر",
     "portSyncRetrySeconds": "ثانیه بازتلاش",
     "portSyncPendingTasks": "تسک‌های معلق",
     "portSyncLocalCapability": "قابلیت محلی",
@@ -302,6 +304,7 @@
     "portSyncQueueEmpty": "تسک معلقی وجود ندارد.",
     "portSyncQueueScope": "دامنه",
     "portSyncQueueNode": "نود",
+    "portSyncQueueStatus": "وضعیت",
     "portSyncQueueAttempts": "تعداد تلاش",
     "portSyncQueueReason": "دلیل",
     "portSyncQueueLastError": "آخرین خطا"
