@@ -43,6 +43,12 @@ export default function SubscriptionsPage() {
   const selectedClashUrl = selectedUrl ? `${selectedUrl}?format=clash` : "";
   const selectedJsonUrl  = selectedUrl ? `${selectedUrl}?format=json`  : "";
 
+  // sing-box app requires a deep-link URI to import a remote profile.
+  // Plain https:// URLs are rejected with "not a valid sing-box remote profile uri".
+  const selectedSingboxQrUrl = selectedJsonUrl
+    ? `sing-box://import-remote-profile?url=${encodeURIComponent(selectedJsonUrl)}#${encodeURIComponent(selectedClientName)}`
+    : "";
+
   async function handleClientCopyLink() {
     if (!selectedUrl) return;
     try {
@@ -162,7 +168,7 @@ export default function SubscriptionsPage() {
                   [
                     { label: t("qrDefault"), value: selectedUrl },
                     { label: t("qrClash"),   value: selectedClashUrl },
-                    { label: t("qrSingbox"), value: selectedJsonUrl },
+                    { label: t("qrSingbox"), value: selectedSingboxQrUrl },
                   ] as { label: string; value: string }[]
                 ).map(({ label, value }) => (
                   <div key={label} className="flex flex-col items-center gap-2">
