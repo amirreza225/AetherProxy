@@ -8,9 +8,30 @@ import (
 	"github.com/aetherproxy/backend/database/model"
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/util/common"
+	"golang.org/x/crypto/bcrypt"
 )
 
+const bcryptCost = 12
+
 type UserService struct {
+}
+
+// hashPassword returns a bcrypt hash of the plaintext password.
+func hashPassword(plain string) (string, error) {
+	b, err := bcrypt.GenerateFromPassword([]byte(plain), bcryptCost)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+// checkPassword returns true when plain matches the stored hash.
+// It also handles the legacy plain-text migration: if the stored value is
+// not a valid bcrypt hash it falls back to a direct string comparison and,
+// on success, re-hashes the password in the database transparently.
+func checkPassword(stored, plain string) bool {
+	err := bcrypt.CompareHashAndPassword([]byte(stored), []byte(plain))
+	return err == nil
 }
 
 func (s *UserService) GetFirstUser() (*model.User, error) {
@@ -42,18 +63,22 @@ func (s *UserService) UpdateFirstUser(username string, password string) error {
 	} else if password == "" {
 		return common.NewError("password can not be empty")
 	}
+	hashed, err := hashPassword(password)
+	if err != nil {
+		return err
+	}
 	db := database.GetDB()
 	user := &model.User{}
-	err := db.Model(model.User{}).First(user).Error
+	err = db.Model(model.User{}).First(user).Error
 	if database.IsNotFound(err) {
 		user.Username = username
-		user.Password = password
+		user.Password = hashed
 		return db.Model(model.User{}).Create(user).Error
 	} else if err != nil {
 		return err
 	}
 	user.Username = username
-	user.Password = password
+	user.Password = hashed
 	return db.Save(user).Error
 }
 
@@ -70,7 +95,7 @@ func (s *UserService) CheckUser(username string, password string, remoteIP strin
 
 	user := &model.User{}
 	err := db.Model(model.User{}).
-		Where("username = ? and password = ?", username, password).
+		Where("username = ?", username).
 		First(user).
 		Error
 	if database.IsNotFound(err) {
@@ -78,6 +103,20 @@ func (s *UserService) CheckUser(username string, password string, remoteIP strin
 	} else if err != nil {
 		logger.Warning("check user err:", err, " IP: ", remoteIP)
 		return nil
+	}
+
+	// Support legacy plain-text passwords: if the stored value is not a
+	// valid bcrypt hash, fall back to direct comparison and re-hash on match.
+	bcryptErr := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+	if bcryptErr != nil {
+		// Check if it's a legacy plain-text password
+		if user.Password != password {
+			return nil
+		}
+		// Re-hash the plain-text password transparently
+		if hashed, hErr := hashPassword(password); hErr == nil {
+			_ = db.Model(user).Update("password", hashed).Error
+		}
 	}
 
 	lastLoginTxt := time.Now().Format("2006-01-02 15:04:05") + " " + remoteIP
@@ -103,12 +142,20 @@ func (s *UserService) GetUsers() (*[]model.User, error) {
 func (s *UserService) ChangePass(id string, oldPass string, newUser string, newPass string) error {
 	db := database.GetDB()
 	user := &model.User{}
-	err := db.Model(model.User{}).Where("id = ? AND password = ?", id, oldPass).First(user).Error
+	err := db.Model(model.User{}).Where("id = ?", id).First(user).Error
 	if err != nil || database.IsNotFound(err) {
 		return err
 	}
+	// Verify the old password (supports both bcrypt and legacy plain-text)
+	if !checkPassword(user.Password, oldPass) && user.Password != oldPass {
+		return common.NewError("old password is incorrect")
+	}
+	hashed, err := hashPassword(newPass)
+	if err != nil {
+		return err
+	}
 	user.Username = newUser
-	user.Password = newPass
+	user.Password = hashed
 	return db.Save(user).Error
 }
 

@@ -11,6 +11,10 @@ type Node struct {
 	// Status values: "unknown" | "online" | "offline"
 	Status   string `json:"status"    gorm:"default:unknown"`
 	LastPing int64  `json:"lastPing"`
+	// SshKnownKey is the base64-encoded host public key learned on first
+	// connection (Trust-On-First-Use).  Subsequent connections will reject
+	// any key that does not match.  Leave empty to disable TOFU (insecure).
+	SshKnownKey string `json:"sshKnownKey" form:"sshKnownKey" gorm:"default:''"`
 }
 
 // PeerNode represents a remote AetherProxy instance discovered via gossip.

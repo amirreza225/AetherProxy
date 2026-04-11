@@ -37,6 +37,9 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 
 	switch action {
 	case "login":
+		if !checkLoginRateLimit(c) {
+			return
+		}
 		a.Login(c)
 	case "changePass":
 		a.ChangePass(c)

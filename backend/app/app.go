@@ -9,8 +9,10 @@ import (
 	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/core"
 	coreplugin "github.com/aetherproxy/backend/core/plugin"
+	"github.com/aetherproxy/backend/core/plugin/ech"
 	"github.com/aetherproxy/backend/core/plugin/grpcobfs"
 	"github.com/aetherproxy/backend/core/plugin/h2disguise"
+	"github.com/aetherproxy/backend/core/plugin/mux"
 	"github.com/aetherproxy/backend/core/plugin/wscdn"
 	"github.com/aetherproxy/backend/cronjob"
 	"github.com/aetherproxy/backend/database"
@@ -98,6 +100,15 @@ func (a *APP) Start() error {
 	// Start multi-node health checks
 	service.GetNodeService().StartAllHealthChecks()
 
+	// Auto-start decentralized discovery when bootstrap peers are configured.
+	if len(config.GetGossipBootstrap()) > 0 || config.GetGossipManifestURL() != "" {
+		if err := service.GetDiscoveryService().Start(); err != nil {
+			logger.Warning("Discovery auto-start failed:", err)
+		} else {
+			logger.Info("Discovery service auto-started")
+		}
+	}
+
 	// Start evasion watcher (censorship monitor)
 	service.GetEvasionWatcher().Start()
 
@@ -141,6 +152,8 @@ func (a *APP) registerBuiltinPlugins() {
 	coreplugin.RegisterPlugin(h2disguise.Plugin)
 	coreplugin.RegisterPlugin(wscdn.Plugin)
 	coreplugin.RegisterPlugin(grpcobfs.Plugin)
+	coreplugin.RegisterPlugin(ech.Plugin)
+	coreplugin.RegisterPlugin(mux.Plugin)
 }
 
 func (a *APP) loadPlugins() {

@@ -2,9 +2,11 @@ package service
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"net"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -172,6 +174,9 @@ func (s *NodeService) DeployConfig(nodeID uint, configJSON []byte) error {
 	return nil
 }
 
+// sshDial opens an SSH connection to the given node, implementing Trust-On-First-Use
+// (TOFU) host key verification.  On the first connection the server's public key is
+// stored in node.SshKnownKey; subsequent connections reject any key mismatch.
 func (s *NodeService) sshDial(node *model.Node) (*ssh.Client, error) {
 	auth := []ssh.AuthMethod{}
 	if node.SshKeyPath != "" {
@@ -186,14 +191,46 @@ func (s *NodeService) sshDial(node *model.Node) (*ssh.Client, error) {
 		auth = append(auth, ssh.PublicKeys(signer))
 	}
 
+	hostKeyCallback := s.buildHostKeyCallback(node)
+
 	cfg := &ssh.ClientConfig{
 		User:            "root",
 		Auth:            auth,
-		HostKeyCallback: ssh.InsecureIgnoreHostKey(), //nolint:gosec // operator-managed nodes
+		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
 	}
 	addr := net.JoinHostPort(node.Host, fmt.Sprintf("%d", node.SshPort))
 	return ssh.Dial("tcp", addr, cfg)
+}
+
+// buildHostKeyCallback returns a host-key callback that implements TOFU.
+func (s *NodeService) buildHostKeyCallback(node *model.Node) ssh.HostKeyCallback {
+	return func(hostname string, remote net.Addr, key ssh.PublicKey) error {
+		fp := base64.StdEncoding.EncodeToString(key.Marshal())
+
+		db := database.GetDB()
+		// First connection: trust and store the key.
+		if node.SshKnownKey == "" {
+			logger.Infof("NodeService: TOFU – storing host key for %s: %s %s", hostname, key.Type(), fp[:16]+"...")
+			if err := db.Model(node).Update("ssh_known_key", key.Type()+" "+fp).Error; err != nil {
+				logger.Warning("NodeService: failed to persist host key:", err)
+			}
+			node.SshKnownKey = key.Type() + " " + fp
+			return nil
+		}
+
+		// Subsequent connections: verify the stored key.
+		parts := strings.SplitN(node.SshKnownKey, " ", 2)
+		if len(parts) != 2 {
+			// Stored key is malformed – fall through and trust.
+			return nil
+		}
+		storedFP := parts[1]
+		if storedFP != fp {
+			return fmt.Errorf("SSH host key mismatch for %s: expected %s, got %s – possible MITM attack", hostname, storedFP[:16]+"...", fp[:16]+"...")
+		}
+		return nil
+	}
 }
 
 func (s *NodeService) sshRun(client *ssh.Client, cmd string) error {
@@ -205,6 +242,9 @@ func (s *NodeService) sshRun(client *ssh.Client, cmd string) error {
 	return sess.Run(cmd)
 }
 
+// sshWriteFile transfers data to remotePath on the SSH server.
+// It uses a simple `cat >` pipe which works on any POSIX host without
+// requiring the scp binary to be present on the remote side.
 func (s *NodeService) sshWriteFile(client *ssh.Client, remotePath string, data []byte) error {
 	sess, err := client.NewSession()
 	if err != nil {
@@ -217,14 +257,23 @@ func (s *NodeService) sshWriteFile(client *ssh.Client, remotePath string, data [
 		return err
 	}
 
-	// Use scp protocol to transfer the file
-	go func() {
-		defer func() { _ = stdin.Close() }()
-		_, _ = fmt.Fprintf(stdin, "C0644 %d config.json\n", len(data))
-		_, _ = stdin.Write(data)
-		_, _ = fmt.Fprintf(stdin, "\x00")
-	}()
+	// Extract the parent directory from the remote path.
+	dir := remotePath
+	if idx := strings.LastIndex(remotePath, "/"); idx >= 0 {
+		dir = remotePath[:idx]
+	}
 
-	dir := remotePath[:len(remotePath)-len("/config.json")]
-	return sess.Run(fmt.Sprintf("mkdir -p %s && scp -t %s", dir, dir))
+	// Start the remote command before writing to stdin.
+	cmd := fmt.Sprintf("mkdir -p '%s' && cat > '%s'", dir, remotePath)
+	if err := sess.Start(cmd); err != nil {
+		_ = stdin.Close()
+		return err
+	}
+
+	if _, err := stdin.Write(data); err != nil {
+		_ = stdin.Close()
+		return err
+	}
+	_ = stdin.Close()
+	return sess.Wait()
 }

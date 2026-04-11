@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
 	"github.com/aetherproxy/backend/logger"
@@ -78,12 +79,17 @@ const (
 	// maxResponseBodyBytes caps the response body read from external scraper endpoints.
 	maxResponseBodyBytes = 1 << 20 // 1 MB
 )
-// Currently uses a simple JSON probe endpoint; replace/extend with real
-// Javid Network Watch API when available.
-func (w *EvasionWatcher) scrape() {
-	logger.Info("EvasionWatcher: scraping censorship data")
 
-	events := w.fetchJavidData()
+func (w *EvasionWatcher) scrape() {
+	apiURL := config.GetEvasionAPIURL()
+	if apiURL == "" {
+		// No source configured; skip silently.
+		return
+	}
+
+	logger.Info("EvasionWatcher: scraping censorship data from", apiURL)
+
+	events := w.fetchData(apiURL)
 	if len(events) == 0 {
 		return
 	}
@@ -94,12 +100,40 @@ func (w *EvasionWatcher) scrape() {
 		// Determine auto-action
 		if isRealityBlock(events[i]) {
 			events[i].AutoAction = "promote_hysteria2"
-			logger.Info("EvasionWatcher: Reality block detected – promoting Hysteria2")
+			logger.Warning("EvasionWatcher: Reality/VLESS block detected – promoting Hysteria2 in subscription order")
+			// Execute the auto-action: persist preferred protocol so that
+			// subscription generators order links accordingly.
+			w.executeAutoAction("hysteria2")
 		}
 		if err := db.Create(&events[i]).Error; err != nil {
 			logger.Warning("EvasionWatcher: failed to save event:", err)
 		}
 	}
+}
+
+// executeAutoAction stores the preferred protocol in the settings table so
+// that the subscription generator can re-order links by preference.
+// action is the protocol name to boost (e.g. "hysteria2").
+func (w *EvasionWatcher) executeAutoAction(preferredProtocol string) {
+	var ss SettingService
+	if err := ss.saveSetting("evasionPreferredProtocol", preferredProtocol); err != nil {
+		logger.Warning("EvasionWatcher: failed to persist preferred protocol:", err)
+		return
+	}
+	logger.Infof("EvasionWatcher: preferred protocol set to %q – clients will receive updated subscription on next fetch", preferredProtocol)
+	// Bump LastUpdate so subscribed clients know to re-fetch.
+	LastUpdate = time.Now().Unix()
+}
+
+// GetEvasionPreferredProtocol returns the current auto-promoted protocol
+// (e.g. "hysteria2") or an empty string when no preference has been set.
+func GetEvasionPreferredProtocol() string {
+	var ss SettingService
+	val, err := ss.getString("evasionPreferredProtocol")
+	if err != nil {
+		return ""
+	}
+	return val
 }
 
 // isRealityBlock returns true when the event suggests a Reality/VLESS block.
@@ -108,15 +142,13 @@ func isRealityBlock(e model.EvasionEvent) bool {
 		strings.Contains(strings.ToLower(e.Protocol), "vless")
 }
 
-// fetchJavidData attempts to retrieve structured blocking data.
+// fetchData retrieves structured blocking events from the configured API URL.
 // Falls back gracefully if the endpoint is unreachable.
-func (w *EvasionWatcher) fetchJavidData() []model.EvasionEvent {
+func (w *EvasionWatcher) fetchData(apiURL string) []model.EvasionEvent {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	// Use public endpoint when available; self-hosted endpoint otherwise.
-	url := "https://javidnetworkwatch.com/api/events.json"
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL, nil)
 	if err != nil {
 		return nil
 	}
@@ -155,7 +187,7 @@ func (w *EvasionWatcher) fetchJavidData() []model.EvasionEvent {
 	events := make([]model.EvasionEvent, 0, len(payload.Events))
 	for _, e := range payload.Events {
 		events = append(events, model.EvasionEvent{
-			Source:   "javidnetworkwatch.com",
+			Source:   apiURL,
 			Protocol: e.Protocol,
 			Port:     e.Port,
 			Domain:   e.Domain,
@@ -181,3 +213,4 @@ func GetEvasionEventsSince(sinceTS int64) ([]model.EvasionEvent, error) {
 	err := db.Where("date_time > ?", sinceTS).Order("date_time asc").Find(&events).Error
 	return events, err
 }
+

@@ -280,16 +280,16 @@ func (s *ConfigService) CheckChanges(lu string) (bool, error) {
 
 func (s *ConfigService) GetChanges(actor string, chngKey string, count string) []model.Changes {
 	c, _ := strconv.Atoi(count)
-	whereString := "`id`>0"
+	db := database.GetDB()
+	q := db.Model(model.Changes{})
 	if len(actor) > 0 {
-		whereString += " and `actor`='" + actor + "'"
+		q = q.Where("actor = ?", actor)
 	}
 	if len(chngKey) > 0 {
-		whereString += " and `key`='" + chngKey + "'"
+		q = q.Where("key = ?", chngKey)
 	}
-	db := database.GetDB()
 	var chngs []model.Changes
-	err := db.Model(model.Changes{}).Where(whereString).Order("`id` desc").Limit(c).Scan(&chngs).Error
+	err := q.Order("id desc").Limit(c).Scan(&chngs).Error
 	if err != nil {
 		logger.Warning(err)
 	}

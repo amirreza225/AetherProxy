@@ -178,3 +178,14 @@ func GetGossipManifestPubKey() string {
 	}
 	return BootstrapManifestPubKey
 }
+
+// GetEvasionAPIURL returns the URL of the external censorship-monitoring API.
+// The API must return JSON with the structure:
+//
+//	{ "events": [{ "protocol": "vless", "port": 443, "domain": "...", "detail": "..." }] }
+//
+// Leave empty (default) to disable the evasion watcher's remote scraping.
+// Example: AETHER_EVASION_API_URL=https://mymonitor.example.com/api/events.json
+func GetEvasionAPIURL() string {
+	return os.Getenv("AETHER_EVASION_API_URL")
+}
