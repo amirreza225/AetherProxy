@@ -56,7 +56,7 @@ const ProxyGroups = `- name: Proxy
 - name: Auto
   type: url-test
   proxies: []
-  url: http://www.gstatic.com/generate_204
+  url: https://www.gstatic.com/generate_204
   interval: 300
   tolerance: 50
 `
