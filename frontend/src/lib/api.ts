@@ -580,6 +580,20 @@ export async function retryPortSync(limit = 30) {
   });
 }
 
+export async function clearPortSync(scope = "", nodeId?: number) {
+  const body = new URLSearchParams();
+  if (scope) {
+    body.set("scope", scope);
+  }
+  if (typeof nodeId === "number" && Number.isFinite(nodeId) && nodeId > 0) {
+    body.set("nodeId", String(nodeId));
+  }
+  return apiFetch<{ deleted: number; scope: string; nodeId: number }>("/api/portsyncClear", {
+    method: "POST",
+    body,
+  });
+}
+
 // ── Routing ───────────────────────────────────────────────────────────────────
 
 export interface RouteRule {

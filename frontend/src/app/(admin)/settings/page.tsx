@@ -9,6 +9,7 @@ import {
   getPortSyncStatus,
   triggerPortSync,
   retryPortSync,
+  clearPortSync,
   type PortSyncStatus,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
@@ -50,6 +51,7 @@ export default function SettingsPage() {
   const [portSyncMsg, setPortSyncMsg] = useState<{ ok: boolean; text: string } | null>(null);
   const [syncNowBusy, setSyncNowBusy] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
+  const [clearBusy, setClearBusy] = useState(false);
 
   // Change password form state
   const [passForm, setPassForm] = useState({ oldPass: "", newUsername: "", newPass: "" });
@@ -105,13 +107,13 @@ export default function SettingsPage() {
     try {
       const res = await triggerPortSync("manual-ui");
       if (res.success) {
-        setPortSyncMsg({ ok: true, text: "Port sync queued" });
+        setPortSyncMsg({ ok: true, text: t("portSyncQueued") });
         mutatePortSync();
       } else {
-        setPortSyncMsg({ ok: false, text: res.msg || "Failed to queue port sync" });
+        setPortSyncMsg({ ok: false, text: res.msg || t("portSyncQueueError") });
       }
     } catch {
-      setPortSyncMsg({ ok: false, text: "Failed to queue port sync" });
+      setPortSyncMsg({ ok: false, text: t("portSyncQueueError") });
     } finally {
       setSyncNowBusy(false);
     }
@@ -123,15 +125,34 @@ export default function SettingsPage() {
     try {
       const res = await retryPortSync(30);
       if (res.success) {
-        setPortSyncMsg({ ok: true, text: "Retry batch completed" });
+        setPortSyncMsg({ ok: true, text: t("portSyncRetrySuccess") });
         mutatePortSync();
       } else {
-        setPortSyncMsg({ ok: false, text: res.msg || "Retry batch failed" });
+        setPortSyncMsg({ ok: false, text: res.msg || t("portSyncRetryError") });
       }
     } catch {
-      setPortSyncMsg({ ok: false, text: "Retry batch failed" });
+      setPortSyncMsg({ ok: false, text: t("portSyncRetryError") });
     } finally {
       setRetryBusy(false);
+    }
+  }
+
+  async function handlePortSyncClear() {
+    setClearBusy(true);
+    setPortSyncMsg(null);
+    try {
+      const res = await clearPortSync();
+      if (res.success) {
+        const deleted = Number((res.obj as { deleted?: number })?.deleted ?? 0);
+        setPortSyncMsg({ ok: true, text: `${t("portSyncClearSuccess")}: ${deleted}` });
+        mutatePortSync();
+      } else {
+        setPortSyncMsg({ ok: false, text: res.msg || t("portSyncClearError") });
+      }
+    } catch {
+      setPortSyncMsg({ ok: false, text: t("portSyncClearError") });
+    } finally {
+      setClearBusy(false);
     }
   }
 
@@ -245,7 +266,7 @@ export default function SettingsPage() {
 
       <Card className="max-w-3xl">
         <CardHeader>
-          <CardTitle className="text-base">Port Sync Status</CardTitle>
+          <CardTitle className="text-base">{t("portSyncTitle")}</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           {portSyncLoading ? (
@@ -254,27 +275,30 @@ export default function SettingsPage() {
               <Skeleton className="h-8 w-full" />
             </div>
           ) : portSyncError ? (
-            <p className="text-sm text-destructive">Failed to load port sync status</p>
+            <p className="text-sm text-destructive">{t("portSyncLoadError")}</p>
           ) : (
             <>
               <div className="grid gap-2 text-sm md:grid-cols-2">
-                <p><span className="font-medium">Enabled:</span> {String(portSyncStatus?.enabled)}</p>
-                <p><span className="font-medium">Local enabled:</span> {String(portSyncStatus?.localEnabled)}</p>
-                <p><span className="font-medium">Remote enabled:</span> {String(portSyncStatus?.remoteEnabled)}</p>
-                <p><span className="font-medium">Retry seconds:</span> {portSyncStatus?.retrySeconds ?? 0}</p>
-                <p><span className="font-medium">Pending tasks:</span> {portSyncStatus?.pendingTasks ?? 0}</p>
-                <p><span className="font-medium">Local capability:</span> {portSyncStatus?.localCapabilityNote ?? "n/a"}</p>
+                <p><span className="font-medium">{t("portSyncEnabled")}:</span> {String(portSyncStatus?.enabled)}</p>
+                <p><span className="font-medium">{t("portSyncLocalEnabled")}:</span> {String(portSyncStatus?.localEnabled)}</p>
+                <p><span className="font-medium">{t("portSyncRemoteEnabled")}:</span> {String(portSyncStatus?.remoteEnabled)}</p>
+                <p><span className="font-medium">{t("portSyncRetrySeconds")}:</span> {portSyncStatus?.retrySeconds ?? 0}</p>
+                <p><span className="font-medium">{t("portSyncPendingTasks")}:</span> {portSyncStatus?.pendingTasks ?? 0}</p>
+                <p><span className="font-medium">{t("portSyncLocalCapability")}:</span> {portSyncStatus?.localCapabilityNote ?? "n/a"}</p>
               </div>
 
               <div className="flex flex-wrap gap-2">
                 <Button type="button" onClick={handlePortSyncNow} disabled={syncNowBusy}>
-                  {syncNowBusy ? "Queuing..." : "Run Full Sync"}
+                  {syncNowBusy ? t("portSyncQueuing") : t("portSyncRunFull")}
                 </Button>
                 <Button type="button" variant="outline" onClick={handlePortSyncRetry} disabled={retryBusy}>
-                  {retryBusy ? "Running..." : "Run Retry Batch"}
+                  {retryBusy ? t("portSyncRunning") : t("portSyncRunRetry")}
+                </Button>
+                <Button type="button" variant="destructive" onClick={handlePortSyncClear} disabled={clearBusy}>
+                  {clearBusy ? t("portSyncRunning") : t("portSyncClearQueue")}
                 </Button>
                 <Button type="button" variant="ghost" onClick={() => mutatePortSync()}>
-                  Refresh
+                  {t("portSyncRefresh")}
                 </Button>
               </div>
 
@@ -285,22 +309,22 @@ export default function SettingsPage() {
               )}
 
               <div className="space-y-2">
-                <p className="text-sm font-medium">Pending Task Queue</p>
+                <p className="text-sm font-medium">{t("portSyncQueueTitle")}</p>
                 {(portSyncStatus?.tasks?.length ?? 0) === 0 ? (
-                  <p className="text-sm text-muted-foreground">No pending tasks.</p>
+                  <p className="text-sm text-muted-foreground">{t("portSyncQueueEmpty")}</p>
                 ) : (
                   <div className="space-y-2">
                     {portSyncStatus?.tasks.map((task) => (
                       <div key={task.id} className="rounded-md border p-2 text-xs">
                         <p>
                           <span className="font-medium">#{task.id}</span>
-                          {" "}scope={task.scope}
-                          {" "}node={task.nodeId}
-                          {" "}attempts={task.attempts}
+                          {" "}{t("portSyncQueueScope")}={task.scope}
+                          {" "}{t("portSyncQueueNode")}={task.nodeId}
+                          {" "}{t("portSyncQueueAttempts")}={task.attempts}
                         </p>
-                        <p className="text-muted-foreground">reason: {task.reason || "-"}</p>
+                        <p className="text-muted-foreground">{t("portSyncQueueReason")}: {task.reason || "-"}</p>
                         {task.lastError ? (
-                          <p className="text-destructive">last error: {task.lastError}</p>
+                          <p className="text-destructive">{t("portSyncQueueLastError")}: {task.lastError}</p>
                         ) : null}
                       </div>
                     ))}

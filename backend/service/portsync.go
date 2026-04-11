@@ -250,6 +250,38 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 	return nil
 }
 
+// ClearTasks deletes queued PortSync tasks filtered by optional scope and node ID.
+// scope can be "local", "node", or empty for both.
+func (s *PortSyncService) ClearTasks(scope string, nodeID uint) (int64, error) {
+	scope = strings.TrimSpace(strings.ToLower(scope))
+	if scope != "" && scope != portSyncScopeLocal && scope != portSyncScopeNode {
+		return 0, fmt.Errorf("invalid scope: %s", scope)
+	}
+
+	db := database.GetDB()
+	q := db.Model(&model.PortSyncTask{})
+	if scope != "" {
+		q = q.Where("scope = ?", scope)
+	}
+	if nodeID > 0 {
+		q = q.Where("node_id = ?", nodeID)
+	}
+
+	var count int64
+	if err := q.Count(&count).Error; err != nil {
+		return 0, err
+	}
+	if count == 0 {
+		return 0, nil
+	}
+	if err := q.Delete(&model.PortSyncTask{}).Error; err != nil {
+		return 0, err
+	}
+
+	logger.Infof("PortSync: cleared tasks deleted=%d scope=%q node=%d", count, scope, nodeID)
+	return count, nil
+}
+
 func (s *PortSyncService) localCapabilityState() (bool, string) {
 	if !config.GetPortSyncLocalEnabled() {
 		return false, "local sync disabled"
@@ -279,6 +311,7 @@ func (s *PortSyncService) updateTaskFailure(task *model.PortSyncTask, reason str
 func (s *PortSyncService) upsertFailedTask(scope string, nodeID uint, reason string, cause error) {
 	db := database.GetDB()
 	now := time.Now().Unix()
+	errText := truncateString(cause.Error(), portSyncMaxLastErrorLen)
 
 	var task model.PortSyncTask
 	err := db.Where("scope = ? AND node_id = ?", scope, nodeID).First(&task).Error
@@ -292,7 +325,7 @@ func (s *PortSyncService) upsertFailedTask(scope string, nodeID uint, reason str
 			NodeId:    nodeID,
 			Reason:    reason,
 			Attempts:  1,
-			LastError: truncateString(cause.Error(), portSyncMaxLastErrorLen),
+			LastError: errText,
 			NextRunAt: now + int64(s.retryDelaySeconds(1)),
 			CreatedAt: now,
 			UpdatedAt: now,
@@ -303,9 +336,19 @@ func (s *PortSyncService) upsertFailedTask(scope string, nodeID uint, reason str
 		return
 	}
 
+	// Avoid inflating retries when the same failure is already queued for future retry.
+	if task.NextRunAt > now && task.LastError == errText {
+		task.Reason = reason
+		task.UpdatedAt = now
+		if saveErr := db.Save(&task).Error; saveErr != nil {
+			logger.Warning("PortSync: update queued task failed:", saveErr)
+		}
+		return
+	}
+
 	task.Reason = reason
 	task.Attempts++
-	task.LastError = truncateString(cause.Error(), portSyncMaxLastErrorLen)
+	task.LastError = errText
 	task.NextRunAt = now + int64(s.retryDelaySeconds(task.Attempts))
 	task.UpdatedAt = now
 	if saveErr := db.Save(&task).Error; saveErr != nil {

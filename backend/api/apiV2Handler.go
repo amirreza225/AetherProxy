@@ -71,6 +71,8 @@ func (a *APIv2Handler) postHandler(c *gin.Context) {
 		a.TriggerPortSync(c)
 	case "portsyncRetry":
 		a.RetryPortSync(c)
+	case "portsyncClear":
+		a.ClearPortSync(c)
 	case "saveRouting":
 		a.SaveRouting(c)
 	case "setPluginEnabled":

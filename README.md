@@ -420,6 +420,7 @@ All endpoints except `/api/login` require a valid JWT via:
 | `GET` | `/api/portsyncStatus?limit=30` | PortSync queue and capability snapshot (pending tasks, retries, local capability note) |
 | `POST` | `/api/portsyncSync` | Queue immediate reconcile (`reason`, optional `nodeId`) |
 | `POST` | `/api/portsyncRetry` | Process due retry tasks immediately (`limit`, default 30) |
+| `POST` | `/api/portsyncClear` | Clear queued tasks (`scope` optional: `local`/`node`, `nodeId` optional) |
 
 ### Routing (Phase 2)
 

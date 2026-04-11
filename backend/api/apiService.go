@@ -516,6 +516,19 @@ func (a *ApiService) RetryPortSync(c *gin.Context) {
 	jsonMsg(c, "portsyncRetry", err)
 }
 
+func (a *ApiService) ClearPortSync(c *gin.Context) {
+	var req struct {
+		Scope  string `form:"scope"`
+		NodeId uint   `form:"nodeId"`
+	}
+	if err := c.ShouldBind(&req); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	deleted, err := service.GetPortSyncService().ClearTasks(req.Scope, req.NodeId)
+	jsonObj(c, gin.H{"deleted": deleted, "scope": req.Scope, "nodeId": req.NodeId}, err)
+}
+
 // ── Routing ───────────────────────────────────────────────────────────────────
 
 func (a *ApiService) GetRouting(c *gin.Context) {
