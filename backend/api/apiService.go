@@ -705,15 +705,20 @@ func (a *ApiService) GetDiscoveryPeers(c *gin.Context) {
 func (a *ApiService) DiscoveryJoin(c *gin.Context) {
 	svc := service.GetDiscoveryService()
 	if svc.IsRunning() {
+		service.GetPortSyncService().TriggerImmediateSync("discovery-join")
 		jsonMsg(c, "discovery", nil)
 		return
 	}
 	err := svc.Start()
+	if err == nil {
+		service.GetPortSyncService().TriggerImmediateSync("discovery-join")
+	}
 	jsonMsg(c, "discovery", err)
 }
 
 func (a *ApiService) DiscoveryLeave(c *gin.Context) {
 	service.GetDiscoveryService().Stop()
+	service.GetPortSyncService().TriggerImmediateSync("discovery-leave")
 	jsonMsg(c, "discovery", nil)
 }
 

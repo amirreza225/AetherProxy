@@ -421,6 +421,14 @@ func (s *PortSyncService) collectDesiredRules() ([]portRule, error) {
 		}
 	}
 
+	if shouldExposeGossipRules() {
+		gossipPort := config.GetGossipPort()
+		for _, proto := range []string{"tcp", "udp"} {
+			r := portRule{Port: gossipPort, Proto: proto}
+			uniq[r.key()] = r
+		}
+	}
+
 	rules := make([]portRule, 0, len(uniq))
 	for _, r := range uniq {
 		rules = append(rules, r)
@@ -432,6 +440,16 @@ func (s *PortSyncService) collectDesiredRules() ([]portRule, error) {
 		return rules[i].Proto < rules[j].Proto
 	})
 	return rules, nil
+}
+
+func shouldExposeGossipRules() bool {
+	if GetDiscoveryService().IsRunning() {
+		return true
+	}
+	if len(config.GetGossipBootstrap()) > 0 {
+		return true
+	}
+	return strings.TrimSpace(config.GetGossipManifestURL()) != ""
 }
 
 func (s *PortSyncService) reconcileLocal(desired []portRule) error {

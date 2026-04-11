@@ -80,6 +80,10 @@ func setupPortSyncDB(t *testing.T) {
 		logger.InitLogger(logging.ERROR)
 	})
 	t.Setenv("AETHER_DB_DSN", "")
+	t.Setenv("AETHER_GOSSIP_BOOTSTRAP", "")
+	t.Setenv("AETHER_GOSSIP_MANIFEST_URL", "")
+	t.Setenv("AETHER_GOSSIP_PORT", "7946")
+	setDiscoveryRunningForTest(t, false)
 	dbPath := filepath.Join(t.TempDir(), "portsync_test.db")
 	if err := database.OpenDB(dbPath); err != nil {
 		t.Fatalf("open db: %v", err)
@@ -87,6 +91,20 @@ func setupPortSyncDB(t *testing.T) {
 	if err := database.Migrate(); err != nil {
 		t.Fatalf("migrate db: %v", err)
 	}
+}
+
+func setDiscoveryRunningForTest(t *testing.T, running bool) {
+	t.Helper()
+	d := GetDiscoveryService()
+	d.mu.Lock()
+	prev := d.isRunning
+	d.isRunning = running
+	d.mu.Unlock()
+	t.Cleanup(func() {
+		d.mu.Lock()
+		d.isRunning = prev
+		d.mu.Unlock()
+	})
 }
 
 func TestRuleFromComment(t *testing.T) {
@@ -308,5 +326,24 @@ func TestCollectDesiredRulesDeduplicatesPorts(t *testing.T) {
 	}
 	if !keys["tcp:443"] || !keys["udp:443"] {
 		t.Fatalf("expected tcp:443 and udp:443, got keys=%#v", keys)
+	}
+}
+
+func TestCollectDesiredRulesIncludesGossipWhenDiscoveryRunning(t *testing.T) {
+	setupPortSyncDB(t)
+	setDiscoveryRunningForTest(t, true)
+	t.Setenv("AETHER_GOSSIP_PORT", "7946")
+
+	rules, err := (&PortSyncService{}).collectDesiredRules()
+	if err != nil {
+		t.Fatalf("collect desired rules: %v", err)
+	}
+
+	keys := map[string]bool{}
+	for _, r := range rules {
+		keys[r.key()] = true
+	}
+	if !keys["tcp:7946"] || !keys["udp:7946"] {
+		t.Fatalf("expected gossip rules tcp:7946 and udp:7946, got keys=%#v", keys)
 	}
 }

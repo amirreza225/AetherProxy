@@ -206,6 +206,7 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
 | `AETHER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 | `AETHER_DEBUG` | – | Set to `true` for verbose GORM query logging |
+| `AETHER_GOSSIP_PORT` | `7946` | Memberlist discovery port (TCP/UDP) |
 | `AETHER_DOCKER_HOSTNET` | `false` | Signals backend runtime is host-networked (used by local firewall capability checks) |
 | `AETHER_PORT_SYNC_ENABLED` | `true` | Enable inbound port/firewall automation |
 | `AETHER_PORT_SYNC_LOCAL_ENABLED` | `true` | Reconcile local host firewall rules |
@@ -216,6 +217,7 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `NEXT_PUBLIC_SUB_URL` | `http://localhost:2096` | Frontend subscription base URL |
 
 Port sync automation manages only AetherProxy-tagged UFW rules. In containerized deployments, full host-firewall control requires host-network mode and container network capabilities (NET_ADMIN).
+When discovery gossip is active (or bootstrap/manifest discovery is configured), PortSync also manages `AETHER_GOSSIP_PORT` for both TCP and UDP.
 
 ---
 

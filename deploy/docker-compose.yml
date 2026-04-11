@@ -31,6 +31,8 @@ services:
       - "2095:2095"
       - "2096:2096"
       - "8443:8443"
+      - "7946:7946"
+      - "7946:7946/udp"
     # For host-level firewall control from inside the backend container,
     # run backend with host networking and NET_ADMIN capability in your environment.
     networks:
