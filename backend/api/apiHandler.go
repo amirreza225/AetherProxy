@@ -81,6 +81,10 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 		a.DiscoveryLeave(c)
 	case "discoveryAddPeer":
 		a.DiscoveryAddPeer(c)
+	case "issueCert":
+		a.IssueCert(c)
+	case "saveCert":
+		a.SaveCert(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}

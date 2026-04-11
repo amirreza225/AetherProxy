@@ -10,6 +10,8 @@ import {
   createTlsProfile,
   updateTlsProfile,
   getKeypairs,
+  issueLetsEncryptCert,
+  savePastedCert,
   type Inbound,
   type TlsProfile,
 } from "@/lib/api";
@@ -230,6 +232,161 @@ function VlessSection({ form, setForm, generatingKeys, onGenerateKeys }: {
   );
 }
 
+// ── Certificate Setup Widget ──────────────────────────────────────────────────
+
+/**
+ * CertSetupWidget — lets the user obtain TLS certificates in two ways:
+ *   A) Let's Encrypt  — auto-issues via HTTP-01 ACME (port 80 must be open)
+ *   B) Paste / Cloudflare Origin Certificate — user pastes PEM content
+ *
+ * Once a cert is obtained either way the parent's cert_path / key_path are
+ * auto-filled, but remain editable so the user can override them.
+ */
+function CertSetupWidget({
+  tag,
+  certPath,
+  keyPath,
+  onCertReady,
+}: {
+  tag: string;
+  certPath: string;
+  keyPath: string;
+  onCertReady: (certPath: string, keyPath: string) => void;
+}) {
+  type Mode = "letsencrypt" | "paste";
+  const [mode, setMode] = useState<Mode>("letsencrypt");
+  const [domain, setDomain] = useState("");
+  const [email, setEmail]   = useState("");
+  const [certPem, setCertPem] = useState("");
+  const [keyPem, setKeyPem]   = useState("");
+  const [busy, setBusy]       = useState(false);
+  const [certErr, setCertErr] = useState<string | null>(null);
+  const [certOk, setCertOk]   = useState(false);
+
+  async function handleIssue() {
+    setCertErr(null); setCertOk(false); setBusy(true);
+    try {
+      const res = await issueLetsEncryptCert(domain.trim(), email.trim());
+      if (!res.success || !res.obj) { setCertErr(res.msg || "Issuance failed"); return; }
+      onCertReady(res.obj.cert_path, res.obj.key_path);
+      setCertOk(true);
+    } catch (e) {
+      setCertErr(String(e));
+    } finally { setBusy(false); }
+  }
+
+  async function handleSavePaste() {
+    setCertErr(null); setCertOk(false); setBusy(true);
+    try {
+      const effectiveTag = tag.trim() || "custom";
+      const res = await savePastedCert(effectiveTag, certPem.trim(), keyPem.trim());
+      if (!res.success || !res.obj) { setCertErr(res.msg || "Save failed"); return; }
+      onCertReady(res.obj.cert_path, res.obj.key_path);
+      setCertOk(true);
+    } catch (e) {
+      setCertErr(String(e));
+    } finally { setBusy(false); }
+  }
+
+  return (
+    <div className="space-y-3">
+      {/* Mode selector */}
+      <div className="flex gap-1 rounded-lg border p-1 text-sm w-fit">
+        <button type="button"
+          className={`rounded-md px-3 py-1 transition-colors ${mode === "letsencrypt" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          onClick={() => { setMode("letsencrypt"); setCertErr(null); setCertOk(false); }}>
+          Let&apos;s Encrypt
+        </button>
+        <button type="button"
+          className={`rounded-md px-3 py-1 transition-colors ${mode === "paste" ? "bg-primary text-primary-foreground" : "hover:bg-muted"}`}
+          onClick={() => { setMode("paste"); setCertErr(null); setCertOk(false); }}>
+          Paste Certificate
+        </button>
+      </div>
+
+      {mode === "letsencrypt" && (
+        <div className="space-y-3">
+          {/* Cloudflare note */}
+          <div className="rounded-md border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-400 space-y-1">
+            <p className="font-medium">Using Cloudflare? Read this first</p>
+            <p>
+              Hysteria2 uses <strong>QUIC/UDP</strong> — Cloudflare&apos;s proxy only handles TCP.
+              Set your DNS record to <strong>DNS only</strong> (grey cloud) before issuing.
+            </p>
+            <p>
+              Port <strong>80</strong> must be reachable from the internet for the HTTP challenge.
+            </p>
+          </div>
+          <Field label="Domain" hint="e.g. proxy.example.com">
+            <Input value={domain} placeholder="proxy.example.com" onChange={(e) => setDomain(e.target.value)} />
+          </Field>
+          <Field label="Email" hint="optional — used for expiry notifications">
+            <Input type="email" value={email} placeholder="you@example.com" onChange={(e) => setEmail(e.target.value)} />
+          </Field>
+          <Button type="button" size="sm" disabled={busy || !domain.trim()} onClick={handleIssue}>
+            {busy ? "Issuing…" : "Issue Certificate"}
+          </Button>
+        </div>
+      )}
+
+      {mode === "paste" && (
+        <div className="space-y-3">
+          {/* Cloudflare Origin Certificate note */}
+          <div className="rounded-md border border-blue-500/40 bg-blue-500/10 px-3 py-2 text-xs text-blue-700 dark:text-blue-400 space-y-1">
+            <p className="font-medium">Cloudflare Origin Certificate</p>
+            <p>
+              Go to <strong>Cloudflare → SSL/TLS → Origin Server → Create Certificate</strong>,
+              choose PEM format, copy both the certificate and the private key below.
+            </p>
+            <p>
+              Keep the DNS record on <strong>DNS only</strong> (grey cloud) — Cloudflare cannot
+              proxy QUIC/UDP traffic used by Hysteria2.
+            </p>
+          </div>
+          <Field label="Certificate (PEM)" hint="paste the -----BEGIN CERTIFICATE----- block">
+            <textarea
+              className="mt-1 w-full rounded-md border bg-background px-3 py-2 font-mono text-xs"
+              rows={5}
+              value={certPem}
+              placeholder={"-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----"}
+              onChange={(e) => setCertPem(e.target.value)}
+            />
+          </Field>
+          <Field label="Private Key (PEM)" hint="paste the -----BEGIN PRIVATE KEY----- block">
+            <textarea
+              className="mt-1 w-full rounded-md border bg-background px-3 py-2 font-mono text-xs"
+              rows={5}
+              value={keyPem}
+              placeholder={"-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----"}
+              onChange={(e) => setKeyPem(e.target.value)}
+            />
+          </Field>
+          <Button type="button" size="sm" disabled={busy || !certPem.trim() || !keyPem.trim()} onClick={handleSavePaste}>
+            {busy ? "Saving…" : "Save Certificate"}
+          </Button>
+        </div>
+      )}
+
+      {certErr && (
+        <p className="text-xs text-destructive">{certErr}</p>
+      )}
+      {certOk && (
+        <p className="text-xs text-green-600 dark:text-green-400">Certificate saved — paths filled below.</p>
+      )}
+
+      {/* Always-visible path fields — auto-filled but still editable */}
+      <Field label="Certificate Path" hint="absolute path on server">
+        <Input value={certPath} placeholder="/path/to/fullchain.pem" required
+          onChange={(e) => onCertReady(e.target.value, keyPath)} />
+      </Field>
+      <Field label="Private Key Path" hint="absolute path on server">
+        <Input value={keyPath} placeholder="/path/to/privkey.pem" required
+          onChange={(e) => onCertReady(certPath, e.target.value)} />
+      </Field>
+    </div>
+  );
+}
+
 function Hy2Section({ form, setForm }: { form: Hy2Form; setForm: React.Dispatch<React.SetStateAction<Hy2Form>> }) {
   return (
     <div className="space-y-3">
@@ -256,14 +413,12 @@ function Hy2Section({ form, setForm }: { form: Hy2Form; setForm: React.Dispatch<
         </Field>
       )}
       <SectionHead>TLS Certificate</SectionHead>
-      <Field label="Certificate Path" hint="absolute path on server">
-        <Input value={form.cert_path} placeholder="/etc/letsencrypt/live/your.domain/fullchain.pem" required
-          onChange={(e) => setForm((f) => ({ ...f, cert_path: e.target.value }))} />
-      </Field>
-      <Field label="Private Key Path" hint="absolute path on server">
-        <Input value={form.key_path} placeholder="/etc/letsencrypt/live/your.domain/privkey.pem" required
-          onChange={(e) => setForm((f) => ({ ...f, key_path: e.target.value }))} />
-      </Field>
+      <CertSetupWidget
+        tag={form.tag}
+        certPath={form.cert_path}
+        keyPath={form.key_path}
+        onCertReady={(cp, kp) => setForm((f) => ({ ...f, cert_path: cp, key_path: kp }))}
+      />
     </div>
   );
 }
@@ -279,14 +434,12 @@ function TrojanSection({ form, setForm }: { form: TrojanForm; setForm: React.Dis
         onListen={(v) => setForm((f) => ({ ...f, listen: v }))}
         onPort={(v) => setForm((f) => ({ ...f, listen_port: v }))} />
       <SectionHead>TLS Certificate</SectionHead>
-      <Field label="Certificate Path" hint="absolute path on server">
-        <Input value={form.cert_path} placeholder="/etc/letsencrypt/live/your.domain/fullchain.pem" required
-          onChange={(e) => setForm((f) => ({ ...f, cert_path: e.target.value }))} />
-      </Field>
-      <Field label="Private Key Path" hint="absolute path on server">
-        <Input value={form.key_path} placeholder="/etc/letsencrypt/live/your.domain/privkey.pem" required
-          onChange={(e) => setForm((f) => ({ ...f, key_path: e.target.value }))} />
-      </Field>
+      <CertSetupWidget
+        tag={form.tag}
+        certPath={form.cert_path}
+        keyPath={form.key_path}
+        onCertReady={(cp, kp) => setForm((f) => ({ ...f, cert_path: cp, key_path: kp }))}
+      />
     </div>
   );
 }

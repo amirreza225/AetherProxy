@@ -288,6 +288,32 @@ export async function getKeypairs(k: string): Promise<string[]> {
   return Array.isArray(res.obj) ? (res.obj as string[]) : [];
 }
 
+// ── Certificate provisioning ──────────────────────────────────────────────────
+
+/**
+ * Requests a Let's Encrypt certificate for a domain via HTTP-01 ACME challenge.
+ * The server must be reachable on port 80 from the public internet.
+ * Returns the absolute paths where the cert and key were saved.
+ */
+export async function issueLetsEncryptCert(domain: string, email: string) {
+  return apiFetch<{ cert_path: string; key_path: string }>("/api/issueCert", {
+    method: "POST",
+    body: new URLSearchParams({ domain, email }),
+  });
+}
+
+/**
+ * Saves pasted PEM certificate + key content to files on the server.
+ * Useful for Cloudflare Origin Certificates or any externally-obtained cert.
+ * Returns the absolute paths where the cert and key were saved.
+ */
+export async function savePastedCert(tag: string, cert: string, key: string) {
+  return apiFetch<{ cert_path: string; key_path: string }>("/api/saveCert", {
+    method: "POST",
+    body: new URLSearchParams({ tag, cert, key }),
+  });
+}
+
 // ── Inbounds ──────────────────────────────────────────────────────────────────
 
 export interface Inbound {

@@ -30,6 +30,7 @@ type ApiService struct {
 	service.StatsService
 	service.ServerService
 	service.RoutingService
+	service.CertService
 }
 
 func (a *ApiService) LoadData(c *gin.Context) {
@@ -593,6 +594,37 @@ func (a *ApiService) SetPluginConfig(c *gin.Context) {
 		logger.Warning("failed to persist plugin config:", err)
 	}
 	jsonMsg(c, "plugin", nil)
+}
+
+// ── Certificate provisioning ──────────────────────────────────────────────────
+
+// IssueCert triggers a Let's Encrypt HTTP-01 ACME challenge for a domain and
+// writes the resulting certificate and private key to disk.
+// POST /api/issueCert  form-fields: domain, email (optional)
+func (a *ApiService) IssueCert(c *gin.Context) {
+	domain := c.Request.FormValue("domain")
+	email := c.Request.FormValue("email")
+	certPath, keyPath, err := a.IssueLetsEncrypt(domain, email)
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	jsonObj(c, gin.H{"cert_path": certPath, "key_path": keyPath}, nil)
+}
+
+// SaveCert persists PEM-encoded certificate and key content submitted by the
+// user (e.g. a Cloudflare Origin Certificate) and returns the file paths.
+// POST /api/saveCert  form-fields: tag, cert, key
+func (a *ApiService) SaveCert(c *gin.Context) {
+	tag := c.Request.FormValue("tag")
+	cert := c.Request.FormValue("cert")
+	key := c.Request.FormValue("key")
+	certPath, keyPath, err := a.SavePastedCert(tag, cert, key)
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	jsonObj(c, gin.H{"cert_path": certPath, "key_path": keyPath}, nil)
 }
 
 // ── Decentralized Node Discovery ──────────────────────────────────────────────

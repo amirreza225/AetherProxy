@@ -25,14 +25,6 @@ func hashPassword(plain string) (string, error) {
 	return string(b), nil
 }
 
-// checkPassword returns true when plain matches the stored hash.
-// Only validates bcrypt hashes; the legacy plain-text fallback is handled
-// at the call sites (CheckUser, ChangePass) where the stored value can be
-// inspected before deciding which comparison to use.
-func checkPassword(stored, plain string) bool {
-	err := bcrypt.CompareHashAndPassword([]byte(stored), []byte(plain))
-	return err == nil
-}
 
 func (s *UserService) GetFirstUser() (*model.User, error) {
 	db := database.GetDB()
