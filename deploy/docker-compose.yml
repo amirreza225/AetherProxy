@@ -17,6 +17,7 @@ services:
       AETHER_JWT_SECRET: "${AETHER_JWT_SECRET}"
       AETHER_ADMIN_ORIGIN: "${AETHER_ADMIN_ORIGIN:-http://localhost:3000}"
       AETHER_LOG_LEVEL: "${AETHER_LOG_LEVEL:-info}"
+      AETHER_DOCKER_HOSTNET: "${AETHER_DOCKER_HOSTNET:-0}"
       # Inbound port/firewall automation
       AETHER_PORT_SYNC_ENABLED: "${AETHER_PORT_SYNC_ENABLED:-true}"
       # In bridge-mode containers this is typically false because host firewall cannot
