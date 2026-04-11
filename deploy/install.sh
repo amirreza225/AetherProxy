@@ -211,6 +211,14 @@ AETHER_JWT_SECRET=${JWT_SECRET}
 # ── Logging ───────────────────────────────────────────────────────────────────
 AETHER_LOG_LEVEL=info
 
+# ── Inbound port/firewall automation ──────────────────────────────────────────
+AETHER_PORT_SYNC_ENABLED=true
+AETHER_PORT_SYNC_LOCAL_ENABLED=true
+AETHER_PORT_SYNC_REMOTE_ENABLED=true
+AETHER_PORT_SYNC_RETRY_SECONDS=30
+# Override only if ufw is installed at a non-standard path.
+# AETHER_PORT_SYNC_UFW_BIN=ufw
+
 # ── Optional: PostgreSQL ──────────────────────────────────────────────────────
 # Uncomment and fill in to use PostgreSQL instead of the default SQLite:
 # AETHER_DB_DSN=postgres://aether:secret@postgres:5432/aether?sslmode=disable

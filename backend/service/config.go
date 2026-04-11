@@ -188,12 +188,17 @@ func (s *ConfigService) CheckOutbound(tag string, link string) core.CheckOutboun
 func (s *ConfigService) Save(obj string, act string, data json.RawMessage, initUsers string, loginUser string, hostname string) ([]string, error) {
 	var err error
 	objs := []string{obj}
+	triggerPortSync := false
+	portSyncReason := ""
 
 	db := database.GetDB()
 	tx := db.Begin()
 	defer func() {
 		if err == nil {
 			tx.Commit()
+			if triggerPortSync {
+				GetPortSyncService().TriggerImmediateSync(portSyncReason)
+			}
 			// Try to start core if it is not running
 			if !corePtr.IsRunning() {
 				_ = s.StartCore()
@@ -220,6 +225,8 @@ func (s *ConfigService) Save(obj string, act string, data json.RawMessage, initU
 	case "inbounds":
 		err = s.InboundService.Save(tx, act, data, initUsers, hostname)
 		objs = append(objs, "clients")
+		triggerPortSync = true
+		portSyncReason = "inbounds:" + act
 	case "outbounds":
 		err = s.OutboundService.Save(tx, act, data)
 	case "services":

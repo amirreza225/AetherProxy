@@ -471,6 +471,9 @@ func (a *ApiService) DeployNode(c *gin.Context) {
 		return
 	}
 	err = service.GetNodeService().DeployConfig(req.Id, *rawConfig)
+	if err == nil {
+		service.GetPortSyncService().TriggerNodeImmediateSync(req.Id, "deploy-node")
+	}
 	jsonMsg(c, "deploy", err)
 }
 

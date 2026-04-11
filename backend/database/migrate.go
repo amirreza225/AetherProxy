@@ -24,6 +24,7 @@ func Migrate() error {
 		&model.Client{},
 		&model.Changes{},
 		&model.Node{},
+		&model.PortSyncTask{},
 		&model.EvasionEvent{},
 		&model.PeerNode{},
 	)

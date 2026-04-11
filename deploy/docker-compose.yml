@@ -17,12 +17,20 @@ services:
       AETHER_JWT_SECRET: "${AETHER_JWT_SECRET}"
       AETHER_ADMIN_ORIGIN: "${AETHER_ADMIN_ORIGIN:-http://localhost:3000}"
       AETHER_LOG_LEVEL: "${AETHER_LOG_LEVEL:-info}"
+      # Inbound port/firewall automation
+      AETHER_PORT_SYNC_ENABLED: "${AETHER_PORT_SYNC_ENABLED:-true}"
+      AETHER_PORT_SYNC_LOCAL_ENABLED: "${AETHER_PORT_SYNC_LOCAL_ENABLED:-true}"
+      AETHER_PORT_SYNC_REMOTE_ENABLED: "${AETHER_PORT_SYNC_REMOTE_ENABLED:-true}"
+      AETHER_PORT_SYNC_RETRY_SECONDS: "${AETHER_PORT_SYNC_RETRY_SECONDS:-30}"
+      AETHER_PORT_SYNC_UFW_BIN: "${AETHER_PORT_SYNC_UFW_BIN:-ufw}"
     volumes:
       - aether_data:/data
     ports:
       - "2095:2095"
       - "2096:2096"
       - "8443:8443"
+    # For host-level firewall control from inside the backend container,
+    # run backend with host networking and NET_ADMIN capability in your environment.
     networks:
       - aether_net
     depends_on:

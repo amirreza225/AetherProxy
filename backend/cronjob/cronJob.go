@@ -31,6 +31,8 @@ func (c *CronJob) Start(loc *time.Location, trafficAge int) error {
 		_, _ = c.cron.AddJob("@every 5s", NewCheckCoreJob())
 		// database WAL checkpoint
 		_, _ = c.cron.AddJob("@every 10m", NewWALCheckpointJob())
+		// Retry failed inbound port/firewall sync tasks.
+		_, _ = c.cron.AddJob("@every 30s", NewPortSyncJob())
 		// Rotate Reality short-IDs daily to prevent CGFW fingerprinting
 		_, _ = c.cron.AddJob("@daily", NewRotateShortIDJob())
 	}()

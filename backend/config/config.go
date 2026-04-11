@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 )
 
@@ -188,4 +189,70 @@ func GetGossipManifestPubKey() string {
 // Example: AETHER_EVASION_API_URL=https://mymonitor.example.com/api/events.json
 func GetEvasionAPIURL() string {
 	return os.Getenv("AETHER_EVASION_API_URL")
+}
+
+// GetPortSyncEnabled controls automatic firewall reconciliation for inbound ports.
+// Defaults to true.
+func GetPortSyncEnabled() bool {
+	raw := os.Getenv("AETHER_PORT_SYNC_ENABLED")
+	if raw == "" {
+		return true
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return true
+	}
+	return v
+}
+
+// GetPortSyncLocalEnabled controls local-host firewall reconciliation.
+// Defaults to true.
+func GetPortSyncLocalEnabled() bool {
+	raw := os.Getenv("AETHER_PORT_SYNC_LOCAL_ENABLED")
+	if raw == "" {
+		return true
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return true
+	}
+	return v
+}
+
+// GetPortSyncRemoteEnabled controls remote-node firewall reconciliation over SSH.
+// Defaults to true.
+func GetPortSyncRemoteEnabled() bool {
+	raw := os.Getenv("AETHER_PORT_SYNC_REMOTE_ENABLED")
+	if raw == "" {
+		return true
+	}
+	v, err := strconv.ParseBool(raw)
+	if err != nil {
+		return true
+	}
+	return v
+}
+
+// GetPortSyncRetrySeconds controls retry base interval for failed port sync tasks.
+// Defaults to 30 seconds.
+func GetPortSyncRetrySeconds() int {
+	raw := os.Getenv("AETHER_PORT_SYNC_RETRY_SECONDS")
+	if raw == "" {
+		return 30
+	}
+	v, err := strconv.Atoi(raw)
+	if err != nil || v <= 0 {
+		return 30
+	}
+	return v
+}
+
+// GetPortSyncUFWBinary returns the ufw command path used by reconciliation.
+// Defaults to "ufw".
+func GetPortSyncUFWBinary() string {
+	b := os.Getenv("AETHER_PORT_SYNC_UFW_BIN")
+	if b == "" {
+		return "ufw"
+	}
+	return b
 }

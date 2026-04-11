@@ -99,6 +99,7 @@ func (a *APP) Start() error {
 
 	// Start multi-node health checks
 	service.GetNodeService().StartAllHealthChecks()
+	service.GetPortSyncService().TriggerImmediateSync("startup")
 
 	// Auto-start decentralized discovery when bootstrap peers are configured.
 	if len(config.GetGossipBootstrap()) > 0 || config.GetGossipManifestURL() != "" {
