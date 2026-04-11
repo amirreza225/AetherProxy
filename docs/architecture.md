@@ -77,7 +77,7 @@ Browser / Client
       ▼
   Caddy (reverse proxy + auto-TLS)
       │
-      ├── /api/*  ──────────►  backend:2095  (Gin API server)
+    ├── /api/*  ──────────►  {$API_UPSTREAM}  (Gin API server)
       │                            │
       │                            ├── JWT middleware (httpOnly cookie + Bearer)
       │                            ├── ApiHandler (GET/POST switch)
@@ -89,7 +89,7 @@ Browser / Client
       │                            └── WebSocket /api/ws/stats (2s live push)
       │                                   └── evasion alerts + onlines + status
       │
-      ├── /sub/*  ──────────►  backend:2096  (Subscription server)
+    ├── /sub/*  ──────────►  {$SUB_UPSTREAM}  (Subscription server)
       │                            ├── GET /:subid        – base64 link list
       │                            ├── GET /:subid?format=clash  – Clash YAML
       │                            ├── GET /:subid?format=json   – sing-box JSON
@@ -146,3 +146,13 @@ See `core/plugin/sample/` for a reference implementation.
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000`     | CORS allowed origin for admin panel          |
 | `AETHER_LOG_LEVEL`    | `info`                      | Log level: debug / info / warn / error       |
 | `AETHER_DEBUG`        | –                           | Set to `true` to enable GORM query logging   |
+| `AETHER_PORT_SYNC_ENABLED` | `true`                | Enable inbound firewall reconciliation        |
+| `AETHER_PORT_SYNC_LOCAL_ENABLED` | `true`          | Local-host UFW reconciliation toggle          |
+| `AETHER_PORT_SYNC_REMOTE_ENABLED` | `true`         | Remote-node UFW reconciliation toggle         |
+| `AETHER_PORT_SYNC_RETRY_SECONDS` | `30`            | Base retry delay for failed sync tasks        |
+| `AETHER_PORT_SYNC_UFW_BIN` | `ufw`                  | UFW binary path used by reconciliation        |
+
+Deploy layer variables used by Caddy upstream routing:
+
+- `API_UPSTREAM` (default `backend:2095`)
+- `SUB_UPSTREAM` (default `backend:2096`)

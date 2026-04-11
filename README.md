@@ -112,6 +112,30 @@ After install/update, you can restart services manually anytime with:
 docker compose -f /opt/aetherproxy/deploy/docker-compose.yml restart
 ```
 
+### Host-network backend mode (recommended for host firewall automation)
+
+If you want backend-in-container to reconcile host UFW rules for inbound ports,
+enable host-network override mode:
+
+1. Edit `deploy/.env` and set:
+
+```bash
+AETHER_DOCKER_HOSTNET=1
+AETHER_PORT_SYNC_LOCAL_ENABLED=true
+API_UPSTREAM=host.docker.internal:2095
+SUB_UPSTREAM=host.docker.internal:2096
+```
+
+2. Start with override file:
+
+```bash
+docker compose --env-file deploy/.env \
+  -f deploy/docker-compose.hostnet.yml \
+  up -d --build
+```
+
+In default bridge mode, local host-firewall sync is typically disabled while remote-node sync remains enabled.
+
 ### PostgreSQL (optional)
 
 Add the Postgres vars to `.env` and start with the `postgres` profile:
@@ -190,7 +214,7 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `NEXT_PUBLIC_API_URL` | `http://localhost:2095` | Frontend → backend API URL |
 | `NEXT_PUBLIC_SUB_URL` | `http://localhost:2096` | Frontend subscription base URL |
 
-Port sync automation manages only AetherProxy-tagged UFW rules. In containerized deployments, host-level firewall control requires running backend with host networking and sufficient network capabilities.
+Port sync automation manages only AetherProxy-tagged UFW rules. In containerized deployments, full host-firewall control requires host-network mode and container network capabilities (NET_ADMIN).
 
 ---
 

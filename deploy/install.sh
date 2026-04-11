@@ -211,9 +211,18 @@ AETHER_JWT_SECRET=${JWT_SECRET}
 # ── Logging ───────────────────────────────────────────────────────────────────
 AETHER_LOG_LEVEL=info
 
+# ── Docker networking mode ────────────────────────────────────────────────────
+# Set to 1 to enable host-network backend mode:
+# - installer uses deploy/docker-compose.hostnet.yml
+# - backend can manage host UFW when NET_ADMIN is available
+AETHER_DOCKER_HOSTNET=0
+API_UPSTREAM=backend:2095
+SUB_UPSTREAM=backend:2096
+
 # ── Inbound port/firewall automation ──────────────────────────────────────────
 AETHER_PORT_SYNC_ENABLED=true
-AETHER_PORT_SYNC_LOCAL_ENABLED=true
+# In bridge mode, host firewall is not managed by default.
+AETHER_PORT_SYNC_LOCAL_ENABLED=false
 AETHER_PORT_SYNC_REMOTE_ENABLED=true
 AETHER_PORT_SYNC_RETRY_SECONDS=30
 # Override only if ufw is installed at a non-standard path.
@@ -244,7 +253,20 @@ if [[ "$LOW_RAM_MODE" -eq 1 ]]; then
   export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
 fi
 
-docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d --build
+compose_file="$COMPOSE_FILE"
+
+_hostnet=$(grep -m1 '^AETHER_DOCKER_HOSTNET=' "$ENV_FILE" 2>/dev/null | cut -d= -f2-) || true
+if [[ "${_hostnet:-0}" == "1" ]]; then
+  compose_file="$INSTALL_DIR/deploy/docker-compose.hostnet.yml"
+  info "Host-network backend mode is enabled."
+else
+  info "Bridge backend mode is enabled."
+fi
+
+compose_args=(--env-file "$ENV_FILE" -f "$compose_file")
+compose_cmd="docker compose --env-file $ENV_FILE -f $compose_file"
+
+docker compose "${compose_args[@]}" up -d --build
 
 echo -e ""
 echo -e "${GREEN}${BOLD}╔══════════════════════════════════════════════════════╗${PLAIN}"
@@ -257,8 +279,8 @@ echo -e ""
 echo -e "  ${YELLOW}Default login: admin / admin — change it immediately!${PLAIN}"
 echo -e ""
 echo -e "  Useful commands:"
-echo -e "    ${BOLD}View logs  :${PLAIN}  docker compose -f $COMPOSE_FILE logs -f"
-echo -e "    ${BOLD}Stop       :${PLAIN}  docker compose -f $COMPOSE_FILE down"
+echo -e "    ${BOLD}View logs  :${PLAIN}  $compose_cmd logs -f"
+echo -e "    ${BOLD}Stop       :${PLAIN}  $compose_cmd down"
 echo -e "    ${BOLD}Update     :${PLAIN}  bash $INSTALL_DIR/deploy/install.sh"
 echo -e "    ${BOLD}Config file:${PLAIN}  $ENV_FILE"
 echo -e ""

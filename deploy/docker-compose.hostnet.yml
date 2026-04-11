@@ -7,38 +7,25 @@ services:
         GO_BUILD_P: "${GO_BUILD_P:-}"
         GO_BUILD_GOMAXPROCS: "${GO_BUILD_GOMAXPROCS:-}"
     restart: unless-stopped
+    network_mode: host
+    cap_add:
+      - NET_ADMIN
     environment:
       AETHER_PORT: "2095"
       AETHER_SUB_PORT: "2096"
       AETHER_DB_FOLDER: /data/db
-      # Set AETHER_DB_DSN to a postgres:// URI to use PostgreSQL instead of SQLite.
-      # Example: AETHER_DB_DSN=postgres://aether:secret@postgres:5432/aether?sslmode=disable
       AETHER_DB_DSN: "${AETHER_DB_DSN:-}"
       AETHER_JWT_SECRET: "${AETHER_JWT_SECRET}"
       AETHER_ADMIN_ORIGIN: "${AETHER_ADMIN_ORIGIN:-http://localhost:3000}"
       AETHER_LOG_LEVEL: "${AETHER_LOG_LEVEL:-info}"
-      # Inbound port/firewall automation
+      # In host mode this can safely default to true.
       AETHER_PORT_SYNC_ENABLED: "${AETHER_PORT_SYNC_ENABLED:-true}"
-      # In bridge-mode containers this is typically false because host firewall cannot
-      # be managed without elevated networking privileges.
-      AETHER_PORT_SYNC_LOCAL_ENABLED: "${AETHER_PORT_SYNC_LOCAL_ENABLED:-false}"
+      AETHER_PORT_SYNC_LOCAL_ENABLED: "${AETHER_PORT_SYNC_LOCAL_ENABLED:-true}"
       AETHER_PORT_SYNC_REMOTE_ENABLED: "${AETHER_PORT_SYNC_REMOTE_ENABLED:-true}"
       AETHER_PORT_SYNC_RETRY_SECONDS: "${AETHER_PORT_SYNC_RETRY_SECONDS:-30}"
       AETHER_PORT_SYNC_UFW_BIN: "${AETHER_PORT_SYNC_UFW_BIN:-ufw}"
     volumes:
       - aether_data:/data
-    ports:
-      - "2095:2095"
-      - "2096:2096"
-      - "8443:8443"
-    # For host-level firewall control from inside the backend container,
-    # run backend with host networking and NET_ADMIN capability in your environment.
-    networks:
-      - aether_net
-    depends_on:
-      postgres:
-        condition: service_healthy
-        required: false
 
   postgres:
     image: postgres:16-alpine
@@ -83,8 +70,8 @@ services:
     environment:
       PANEL_DOMAIN: "${PANEL_DOMAIN:-localhost}"
       API_DOMAIN: "${API_DOMAIN:-localhost}"
-      API_UPSTREAM: "${API_UPSTREAM:-backend:2095}"
-      SUB_UPSTREAM: "${SUB_UPSTREAM:-backend:2096}"
+      API_UPSTREAM: "${API_UPSTREAM:-host.docker.internal:2095}"
+      SUB_UPSTREAM: "${SUB_UPSTREAM:-host.docker.internal:2096}"
     ports:
       - "80:80"
       - "443:443"
@@ -96,7 +83,6 @@ services:
       - caddy_data:/data
       - caddy_config:/config
     depends_on:
-      - backend
       - frontend
     networks:
       - aether_net

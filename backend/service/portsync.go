@@ -77,15 +77,19 @@ func (s *PortSyncService) syncAllTargets(reason string) {
 		logger.Warning("PortSync: failed to compute desired rules:", err)
 		return
 	}
+	logger.Infof("PortSync: reconcile start reason=%q desired_rules=%d", reason, len(desired))
 
 	if config.GetPortSyncLocalEnabled() {
 		if err := s.reconcileLocal(desired); err != nil {
 			logger.Warning("PortSync: local reconcile failed:", err)
 			s.upsertFailedTask(portSyncScopeLocal, 0, reason, err)
 		}
+	} else {
+		logger.Info("PortSync: local reconciliation disabled by config")
 	}
 
 	if !config.GetPortSyncRemoteEnabled() {
+		logger.Infof("PortSync: reconcile done reason=%q nodes=%d failed_nodes=%d", reason, 0, 0)
 		return
 	}
 
@@ -94,12 +98,17 @@ func (s *PortSyncService) syncAllTargets(reason string) {
 		logger.Warning("PortSync: list nodes failed:", err)
 		return
 	}
+	nodeTotal := 0
+	nodeFailed := 0
 	for _, node := range nodes {
+		nodeTotal++
 		if err := s.reconcileNode(node.Id, desired); err != nil {
+			nodeFailed++
 			logger.Warningf("PortSync: node %d reconcile failed: %v", node.Id, err)
 			s.upsertFailedTask(portSyncScopeNode, node.Id, reason, err)
 		}
 	}
+	logger.Infof("PortSync: reconcile done reason=%q nodes=%d failed_nodes=%d", reason, nodeTotal, nodeFailed)
 }
 
 func (s *PortSyncService) syncOneNode(nodeID uint, reason string) {
@@ -108,10 +117,13 @@ func (s *PortSyncService) syncOneNode(nodeID uint, reason string) {
 		logger.Warning("PortSync: failed to compute desired rules:", err)
 		return
 	}
+	logger.Infof("PortSync: node reconcile start node=%d reason=%q desired_rules=%d", nodeID, reason, len(desired))
 	if err := s.reconcileNode(nodeID, desired); err != nil {
 		logger.Warningf("PortSync: node %d reconcile failed: %v", nodeID, err)
 		s.upsertFailedTask(portSyncScopeNode, nodeID, reason, err)
+		return
 	}
+	logger.Infof("PortSync: node reconcile done node=%d reason=%q", nodeID, reason)
 }
 
 // ProcessDueTasks retries pending failed reconciliation tasks.
@@ -133,6 +145,7 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 	if len(tasks) == 0 {
 		return nil
 	}
+	logger.Infof("PortSync: processing retry batch size=%d", len(tasks))
 
 	desired, err := s.collectDesiredRules()
 	if err != nil {
@@ -290,13 +303,16 @@ func (s *PortSyncService) reconcileLocal(desired []portRule) error {
 		return err
 	}
 	toDelete, toAdd := diffRules(existing, desired)
+	logger.Infof("PortSync: scope=local op=reconcile desired=%d existing=%d delete=%d add=%d", len(desired), len(existing), len(toDelete), len(toAdd))
 
-	for _, num := range toDelete {
-		if out, err := runLocalUFW("--force", "delete", strconv.Itoa(num)); err != nil {
-			return fmt.Errorf("delete rule #%d: %w (%s)", num, err, strings.TrimSpace(out))
+	for _, del := range toDelete {
+		logger.Infof("PortSync: scope=local op=delete proto=%s port=%d rule_number=%d", del.Rule.Proto, del.Rule.Port, del.Number)
+		if out, err := runLocalUFW("--force", "delete", strconv.Itoa(del.Number)); err != nil {
+			return fmt.Errorf("delete rule #%d: %w (%s)", del.Number, err, strings.TrimSpace(out))
 		}
 	}
 	for _, r := range toAdd {
+		logger.Infof("PortSync: scope=local op=allow proto=%s port=%d", r.Proto, r.Port)
 		if out, err := runLocalUFW("--force", "allow", fmt.Sprintf("%d/%s", r.Port, r.Proto), "comment", r.comment()); err != nil {
 			return fmt.Errorf("allow %s: %w (%s)", r.key(), err, strings.TrimSpace(out))
 		}
@@ -321,14 +337,17 @@ func (s *PortSyncService) reconcileNode(nodeID uint, desired []portRule) error {
 		return err
 	}
 	toDelete, toAdd := diffRules(existing, desired)
+	logger.Infof("PortSync: scope=node node=%d op=reconcile desired=%d existing=%d delete=%d add=%d", nodeID, len(desired), len(existing), len(toDelete), len(toAdd))
 
-	for _, num := range toDelete {
-		cmd := fmt.Sprintf("%s --force delete %d", shellQuote(config.GetPortSyncUFWBinary()), num)
+	for _, del := range toDelete {
+		logger.Infof("PortSync: scope=node node=%d op=delete proto=%s port=%d rule_number=%d", nodeID, del.Rule.Proto, del.Rule.Port, del.Number)
+		cmd := fmt.Sprintf("%s --force delete %d", shellQuote(config.GetPortSyncUFWBinary()), del.Number)
 		if out, err := runSSHCommandOutput(client, cmd); err != nil {
-			return fmt.Errorf("delete remote rule #%d: %w (%s)", num, err, strings.TrimSpace(out))
+			return fmt.Errorf("delete remote rule #%d: %w (%s)", del.Number, err, strings.TrimSpace(out))
 		}
 	}
 	for _, r := range toAdd {
+		logger.Infof("PortSync: scope=node node=%d op=allow proto=%s port=%d", nodeID, r.Proto, r.Port)
 		cmd := fmt.Sprintf("%s --force allow %d/%s comment %s",
 			shellQuote(config.GetPortSyncUFWBinary()),
 			r.Port,
@@ -381,11 +400,11 @@ func runSSHCommandOutput(client *ssh.Client, cmd string) (string, error) {
 	return string(out), err
 }
 
-func diffRules(existing []managedUFWRule, desired []portRule) ([]int, []portRule) {
+func diffRules(existing []managedUFWRule, desired []portRule) ([]managedUFWRule, []portRule) {
 	existingByKey := make(map[string]struct{})
 	desiredByKey := make(map[string]portRule)
 
-	toDelete := make([]int, 0)
+	toDelete := make([]managedUFWRule, 0)
 	for _, ex := range existing {
 		existingByKey[ex.Rule.key()] = struct{}{}
 	}
@@ -395,7 +414,7 @@ func diffRules(existing []managedUFWRule, desired []portRule) ([]int, []portRule
 
 	for _, ex := range existing {
 		if _, ok := desiredByKey[ex.Rule.key()]; !ok {
-			toDelete = append(toDelete, ex.Number)
+			toDelete = append(toDelete, ex)
 		}
 	}
 	toAdd := make([]portRule, 0)
@@ -405,7 +424,7 @@ func diffRules(existing []managedUFWRule, desired []portRule) ([]int, []portRule
 		}
 	}
 
-	sort.Slice(toDelete, func(i, j int) bool { return toDelete[i] > toDelete[j] })
+	sort.Slice(toDelete, func(i, j int) bool { return toDelete[i].Number > toDelete[j].Number })
 	return toDelete, toAdd
 }
 

@@ -63,8 +63,11 @@ func TestDiffRules(t *testing.T) {
 	}
 
 	toDelete, toAdd := diffRules(existing, desired)
-	if len(toDelete) != 1 || toDelete[0] != 5 {
+	if len(toDelete) != 1 || toDelete[0].Number != 5 {
 		t.Fatalf("unexpected delete list: %#v", toDelete)
+	}
+	if toDelete[0].Rule.key() != "udp:8443" {
+		t.Fatalf("unexpected delete rule metadata: %#v", toDelete)
 	}
 	if len(toAdd) != 1 || toAdd[0].key() != "tcp:9000" {
 		t.Fatalf("unexpected add list: %#v", toAdd)

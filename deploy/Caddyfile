@@ -7,9 +7,9 @@
 
 {$API_DOMAIN} {
     # Main API
-    reverse_proxy /api/* backend:2095
-    reverse_proxy /apiv2/* backend:2095
+    reverse_proxy /api/* {$API_UPSTREAM:backend:2095}
+    reverse_proxy /apiv2/* {$API_UPSTREAM:backend:2095}
 
     # Subscription service
-    reverse_proxy /sub/* backend:2096
+    reverse_proxy /sub/* {$SUB_UPSTREAM:backend:2096}
 }
