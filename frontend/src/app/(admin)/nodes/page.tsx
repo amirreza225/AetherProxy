@@ -7,6 +7,7 @@ import {
   getInbounds,
   getNodes,
   createNode,
+  updateNode,
   deleteNode,
   deployNode,
   getDiscoveryStatus,
@@ -280,6 +281,16 @@ export default function NodesPage() {
     }
   }
 
+  async function handleResetHostKey(node: Node) {
+    try {
+      await updateNode({ ...node, sshKnownKey: "" });
+      toast.success(t("resetHostKeySuccess"));
+      mutateNodes();
+    } catch {
+      toast.error(t("resetHostKeyError"));
+    }
+  }
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -323,10 +334,28 @@ export default function NodesPage() {
                       {node.lastPing > 0 && (
                         <p>{t("lastPing")}: {new Date(node.lastPing * 1000).toLocaleTimeString()}</p>
                       )}
+                      <p className="flex items-center gap-1">
+                        <span>{t("hostKey")}:</span>
+                        <Badge variant={node.sshKnownKey ? "default" : "secondary"} className="text-xs">
+                          {node.sshKnownKey ? t("sshKeyPinned") : t("sshKeyNotPinned")}
+                        </Badge>
+                      </p>
                       <div className="flex gap-2 pt-2">
                         <Button size="sm" variant="outline" onClick={() => handleDeploy(node.id)}>
                           {t("deploy")}
                         </Button>
+                        {node.sshKnownKey && (
+                          <ConfirmDialog
+                            title={t("resetHostKeyConfirm")}
+                            confirmLabel={t("resetHostKey")}
+                            cancelLabel={tc("cancel")}
+                            onConfirm={() => handleResetHostKey(node)}
+                          >
+                            <Button size="sm" variant="outline">
+                              {t("resetHostKey")}
+                            </Button>
+                          </ConfirmDialog>
+                        )}
                         <ConfirmDialog
                           title={t("confirmDeleteNode")}
                           confirmLabel={t("delete")}

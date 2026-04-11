@@ -102,7 +102,14 @@
     "protocol": "Protocol",
     "port": "Port",
     "active": "active",
-    "disabled": "disabled"
+    "disabled": "disabled",
+    "hostKey": "Host Key",
+    "sshKeyPinned": "Pinned",
+    "sshKeyNotPinned": "Not pinned",
+    "resetHostKey": "Reset Host Key",
+    "resetHostKeyConfirm": "Clear the stored SSH host key for this node? The next connection will re-learn and pin the server's public key (Trust-On-First-Use).",
+    "resetHostKeySuccess": "Host key cleared. The next deploy will re-pin the server's key.",
+    "resetHostKeyError": "Failed to reset host key."
   },
   "users": {
     "title": "Users",
@@ -270,6 +277,7 @@
   },
   "plugins": {
     "title": "Plugins",
+    "description": "AetherProxy outbound plugins extend sing-box with custom obfuscation. Place compiled .so plugins in the plugins/ directory. Transport plugins (h2disguise, wscdn, grpcobfs, mux) alter the TCP transport layer — only one should be enabled at a time. The ECH plugin operates at the TLS layer and can be combined with any transport plugin.",
     "noPlugins": "No plugins installed.",
     "name": "Name",
     "enabled": "Enabled",

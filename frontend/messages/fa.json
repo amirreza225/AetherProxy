@@ -102,7 +102,14 @@
     "protocol": "پروتکل",
     "port": "پورت",
     "active": "فعال",
-    "disabled": "غیرفعال"
+    "disabled": "غیرفعال",
+    "hostKey": "کلید هاست",
+    "sshKeyPinned": "ذخیره‌شده",
+    "sshKeyNotPinned": "ذخیره نشده",
+    "resetHostKey": "بازنشانی کلید هاست",
+    "resetHostKeyConfirm": "کلید SSH ذخیره‌شده این نود پاک شود؟ اتصال بعدی کلید عمومی سرور را دوباره یاد می‌گیرد و ذخیره می‌کند (TOFU).",
+    "resetHostKeySuccess": "کلید هاست پاک شد. استقرار بعدی کلید جدید را ذخیره خواهد کرد.",
+    "resetHostKeyError": "بازنشانی کلید هاست ناموفق بود."
   },
   "users": {
     "title": "کاربران",
@@ -270,6 +277,7 @@
   },
   "plugins": {
     "title": "افزونه‌ها",
+    "description": "افزونه‌های AetherProxy با اضافه کردن transport های سفارشی به sing-box، DPI را دور می‌زنند. فایل‌های .so را در پوشه plugins/ کنار باینری قرار دهید. افزونه‌های transport (h2disguise، wscdn، grpcobfs، mux) لایه TCP را تغییر می‌دهند — فقط یکی باید فعال باشد. افزونه ECH در لایه TLS عمل می‌کند و می‌توان آن را با هر افزونه transport ترکیب کرد.",
     "noPlugins": "هیچ افزونه‌ای نصب نشده است.",
     "name": "نام",
     "enabled": "فعال",

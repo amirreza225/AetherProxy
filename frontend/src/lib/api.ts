@@ -84,6 +84,18 @@ async function apiFetch<T>(
     throw new Error("UNAUTHORIZED");
   }
 
+  // The rate-limit response uses a different shape: { "error": "..." }.
+  // Normalise it into the standard ApiResponse so callers don't need to
+  // handle the raw 429 body themselves.
+  if (res.status === 429) {
+    let errorMsg = "Too many requests";
+    try {
+      const body = (await res.json()) as { error?: string };
+      if (body.error) errorMsg = body.error;
+    } catch { /* ignore – keep default message */ }
+    return { success: false, msg: errorMsg, obj: undefined as T };
+  }
+
   const data: ApiResponse<T> = await res.json();
   return data;
 }
@@ -427,6 +439,9 @@ export interface Node {
   provider: string;
   status: "online" | "offline" | "unknown";
   lastPing: number;
+  /** Base64-encoded host public-key stored on first SSH connection (TOFU).
+   *  Empty string means no key has been pinned yet.  Reset to "" to re-trust. */
+  sshKnownKey?: string;
 }
 
 function toSearchParams(
@@ -469,6 +484,7 @@ export async function updateNode(node: Node) {
       provider: node.provider,
       status: node.status,
       lastPing: node.lastPing,
+      sshKnownKey: node.sshKnownKey ?? "",
     }),
   });
 }

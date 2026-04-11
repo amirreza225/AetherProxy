@@ -139,12 +139,7 @@ export default function PluginsPage() {
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
       <p className="text-sm text-muted-foreground">
-        AetherProxy outbound plugins extend sing-box with custom obfuscation
-        transports. Compile a plugin as a Go shared object (.so) and place it in
-        the{" "}
-        <code className="rounded bg-muted px-1 text-xs">plugins/</code> directory
-        next to the backend binary. Only one transport plugin should be enabled
-        at a time.
+        {t("description")}
       </p>
 
       {error && (
