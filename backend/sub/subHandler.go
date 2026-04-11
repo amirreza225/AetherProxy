@@ -77,6 +77,7 @@ func (s *SubHandler) subHeaders(c *gin.Context) {
 // subQR serves the subscription URL as a QR code PNG image.
 // The QR code encodes the URL a client would use to import the subscription.
 // Example: GET /sub/qr/<subid>
+// Optional: GET /sub/qr/<subid>?format=clash  or  ?format=json
 func (s *SubHandler) subQR(c *gin.Context) {
 	subId := c.Param("subid")
 
@@ -86,6 +87,9 @@ func (s *SubHandler) subQR(c *gin.Context) {
 		scheme = "http"
 	}
 	subURL := scheme + "://" + c.Request.Host + "/sub/" + subId
+	if format, ok := c.GetQuery("format"); ok && format != "" {
+		subURL += "?format=" + format
+	}
 
 	png, err := qrcode.Encode(subURL, qrcode.Medium, 256)
 	if err != nil {

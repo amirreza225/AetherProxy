@@ -157,10 +157,21 @@ export default function SubscriptionsPage() {
                 </a>
               </div>
 
-              <div className="flex justify-center">
-                <div className="rounded-xl border p-3">
-                  <QRCodeCanvas value={selectedUrl} size={200} />
-                </div>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+                {(
+                  [
+                    { label: t("qrDefault"), value: selectedUrl },
+                    { label: t("qrClash"),   value: selectedClashUrl },
+                    { label: t("qrSingbox"), value: selectedJsonUrl },
+                  ] as { label: string; value: string }[]
+                ).map(({ label, value }) => (
+                  <div key={label} className="flex flex-col items-center gap-2">
+                    <p className="text-xs font-medium text-muted-foreground">{label}</p>
+                    <div className="rounded-xl border p-3">
+                      <QRCodeCanvas value={value} size={160} />
+                    </div>
+                  </div>
+                ))}
               </div>
               <p className="text-xs text-muted-foreground">{t("scanHint")}</p>
             </div>

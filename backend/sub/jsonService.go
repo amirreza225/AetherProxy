@@ -3,6 +3,7 @@ package sub
 import (
 	"encoding/json"
 	"fmt"
+	"net"
 	"strings"
 
 	"github.com/aetherproxy/backend/database"
@@ -111,6 +112,11 @@ func (j *JsonService) GetJson(subId string, format string) (*string, []string, e
 
 	// Add other objects from settings
 	_ = j.addOthers(&jsonConfig)
+
+	// Inject direct DNS rules for proxy server hostnames to prevent a circular
+	// dependency where resolving the proxy server requires the proxy to already
+	// be up (DNS bootstrap loop).
+	j.injectProxyDNSRules(&jsonConfig, outbounds)
 
 	result, _ := json.MarshalIndent(jsonConfig, "", "  ")
 	resultStr := string(result)
@@ -349,6 +355,51 @@ func (j *JsonService) addOthers(jsonConfig *map[string]interface{}) error {
 	(*jsonConfig)["route"] = route
 
 	return nil
+}
+
+// injectProxyDNSRules prepends a dns-direct rule for every proxy server hostname
+// found in the outbound list. This breaks the DNS bootstrap loop: without it,
+// sing-box tries to resolve the proxy server via dns-remote, which itself routes
+// through the proxy — a circular dependency that causes context deadline exceeded.
+func (j *JsonService) injectProxyDNSRules(jsonConfig *map[string]interface{}, outbounds *[]map[string]interface{}) {
+	skipTypes := map[string]bool{
+		"direct": true, "selector": true, "urltest": true, "dns": true,
+		"mixed": true, "socks": true, "http": true, "block": true,
+	}
+
+	seen := map[string]bool{}
+	var proxyDomains []interface{}
+	for _, ob := range *outbounds {
+		t, _ := ob["type"].(string)
+		if skipTypes[t] {
+			continue
+		}
+		server, _ := ob["server"].(string)
+		if server == "" || seen[server] {
+			continue
+		}
+		// Only add domain names, not IP literals — IPs don't need DNS resolution.
+		if net.ParseIP(server) == nil {
+			seen[server] = true
+			proxyDomains = append(proxyDomains, server)
+		}
+	}
+
+	if len(proxyDomains) == 0 {
+		return
+	}
+
+	dns, _ := (*jsonConfig)["dns"].(map[string]interface{})
+	if dns == nil {
+		return
+	}
+	directRule := map[string]interface{}{
+		"domain": proxyDomains,
+		"server": "dns-direct",
+	}
+	existingRules, _ := dns["rules"].([]interface{})
+	dns["rules"] = append([]interface{}{directRule}, existingRules...)
+	(*jsonConfig)["dns"] = dns
 }
 
 func (j *JsonService) pushMixed(outbounds *[]map[string]interface{}, outTags *[]string, out map[string]interface{}) {
