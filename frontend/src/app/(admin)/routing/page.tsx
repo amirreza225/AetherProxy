@@ -106,6 +106,31 @@ function ruleSummary(rule: RouteRule): string {
   return parts.join(" · ");
 }
 
+// ── GuidedField ──────────────────────────────────────────────────────────────
+
+function GuidedField({
+  fieldKey,
+  label,
+  guided,
+  setGuided,
+}: {
+  fieldKey: keyof GuidedState;
+  label: string;
+  guided: GuidedState;
+  setGuided: React.Dispatch<React.SetStateAction<GuidedState>>;
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs">{label}</Label>
+      <Input
+        className="h-7 text-xs"
+        value={guided[fieldKey]}
+        onChange={(e) => setGuided((g) => ({ ...g, [fieldKey]: e.target.value }))}
+      />
+    </div>
+  );
+}
+
 // ── RuleEditDialog ────────────────────────────────────────────────────────────
 
 function RuleEditDialog({
@@ -177,19 +202,6 @@ function RuleEditDialog({
     setOpen(v);
   }
 
-  function Field({ fieldKey, label }: { fieldKey: keyof GuidedState; label: string }) {
-    return (
-      <div className="space-y-1">
-        <Label className="text-xs">{label}</Label>
-        <Input
-          className="h-7 text-xs"
-          value={guided[fieldKey]}
-          onChange={(e) => setGuided((g) => ({ ...g, [fieldKey]: e.target.value }))}
-        />
-      </div>
-    );
-  }
-
   return (
     <Dialog open={open} onOpenChange={handleOpen}>
       <DialogTrigger render={children} />
@@ -209,41 +221,41 @@ function RuleEditDialog({
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("matchFields")}
               </p>
-              <Field fieldKey="inbound" label={t("fieldInbound")} />
-              <Field fieldKey="network" label={t("fieldNetwork")} />
-              <Field fieldKey="protocol" label={t("fieldProtocol")} />
+              <GuidedField fieldKey="inbound" label={t("fieldInbound")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="network" label={t("fieldNetwork")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="protocol" label={t("fieldProtocol")} guided={guided} setGuided={setGuided} />
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("domainFields")}
               </p>
-              <Field fieldKey="domain" label={t("fieldDomain")} />
-              <Field fieldKey="domain_suffix" label={t("fieldDomainSuffix")} />
-              <Field fieldKey="domain_keyword" label={t("fieldDomainKeyword")} />
+              <GuidedField fieldKey="domain" label={t("fieldDomain")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="domain_suffix" label={t("fieldDomainSuffix")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="domain_keyword" label={t("fieldDomainKeyword")} guided={guided} setGuided={setGuided} />
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("ipFields")}
               </p>
-              <Field fieldKey="geoip" label={t("fieldGeoip")} />
-              <Field fieldKey="ip_cidr" label={t("fieldIpCidr")} />
-              <Field fieldKey="source_ip_cidr" label={t("fieldSourceIpCidr")} />
+              <GuidedField fieldKey="geoip" label={t("fieldGeoip")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="ip_cidr" label={t("fieldIpCidr")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="source_ip_cidr" label={t("fieldSourceIpCidr")} guided={guided} setGuided={setGuided} />
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("portFields")}
               </p>
-              <Field fieldKey="port" label={t("fieldPort")} />
-              <Field fieldKey="port_range" label={t("fieldPortRange")} />
+              <GuidedField fieldKey="port" label={t("fieldPort")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="port_range" label={t("fieldPortRange")} guided={guided} setGuided={setGuided} />
             </div>
             <div className="space-y-2">
               <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
                 {t("actionFields")}
               </p>
-              <Field fieldKey="outbound" label={t("fieldOutbound")} />
-              <Field fieldKey="action" label={t("fieldAction")} />
-              <Field fieldKey="clash_mode" label={t("fieldClashMode")} />
-              <Field fieldKey="rule_set" label={t("fieldRuleSet")} />
+              <GuidedField fieldKey="outbound" label={t("fieldOutbound")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="action" label={t("fieldAction")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="clash_mode" label={t("fieldClashMode")} guided={guided} setGuided={setGuided} />
+              <GuidedField fieldKey="rule_set" label={t("fieldRuleSet")} guided={guided} setGuided={setGuided} />
             </div>
           </TabsContent>
 
