@@ -40,10 +40,10 @@ make plugin-test      # go test -race ./core/plugin/h2disguise/... ./core/plugin
 
 ### Docker / Deploy
 ```bash
-make deploy-up        # docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+make deploy-up        # docker compose --env-file deploy/.env -f deploy/docker-compose.hostnet.yml up -d --build
 make deploy-down      # stop all services
 # With PostgreSQL:
-docker compose -f deploy/docker-compose.yml --profile postgres up -d
+docker compose -f deploy/docker-compose.hostnet.yml --profile postgres up -d
 ```
 
 ### Pre-commit hooks (lefthook)

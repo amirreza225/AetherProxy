@@ -47,11 +47,11 @@ test: backend-test ## Run all tests
 lint: backend-lint frontend-lint ## Lint all code
 
 # ── Deploy ────────────────────────────────────────────────────────────────────
-deploy-up: ## Start all services via docker compose
-	docker compose --env-file deploy/.env -f deploy/docker-compose.yml up -d --build
+deploy-up: ## Start all services via docker compose (host networking)
+	docker compose --env-file deploy/.env -f deploy/docker-compose.hostnet.yml up -d --build
 
 deploy-down: ## Stop all services
-	docker compose -f deploy/docker-compose.yml down
+	docker compose -f deploy/docker-compose.hostnet.yml down
 
 # ── Obfuscation plugins ───────────────────────────────────────────────────────
 # Plugins must be built with the same Go toolchain and module graph as the main
