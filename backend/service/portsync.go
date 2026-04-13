@@ -259,10 +259,10 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 				runErr = nil
 			} else {
 				runErr = s.reconcileNode(task.NodeId, desired)
-				if database.IsNotFound(runErr) || isPermanentReconcileError(runErr) {
-					if isPermanentReconcileError(runErr) {
-						logger.Warningf("PortSync: node task %d discarded (permanent error): %v", task.Id, runErr)
-					}
+				if isPermanentReconcileError(runErr) {
+					logger.Warningf("PortSync: node task %d discarded (permanent error): %v", task.Id, runErr)
+					runErr = nil
+				} else if database.IsNotFound(runErr) {
 					runErr = nil
 				}
 			}

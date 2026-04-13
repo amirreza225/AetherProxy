@@ -179,7 +179,8 @@ func TestDiffRules(t *testing.T) {
 	}
 }
 
-func TestPortSyncRetryLifecycle(t *testing.T) {	setupPortSyncDB(t)
+func TestPortSyncRetryLifecycle(t *testing.T) {
+	setupPortSyncDB(t)
 	t.Setenv("AETHER_PORT_SYNC_ENABLED", "true")
 	t.Setenv("AETHER_PORT_SYNC_LOCAL_ENABLED", "true")
 	t.Setenv("AETHER_PORT_SYNC_REMOTE_ENABLED", "false")
