@@ -146,7 +146,7 @@ function ClientDialog({
           expiry: initialData.expiry,
           autoReset: initialData.autoReset,
           resetDays: initialData.resetDays,
-          inbounds: initialData.inbounds,
+          inbounds: initialData.inbounds ?? [],
           desc: initialData.desc ?? "",
           group: initialData.group ?? "",
           delayStart: initialData.delayStart ?? false,
@@ -162,7 +162,7 @@ function ClientDialog({
 
   function toggleInbound(id: number) {
     setForm((f) => {
-      const current = f.inbounds as number[];
+      const current = (f.inbounds ?? []) as number[];
       if (current.includes(id)) {
         return { ...f, inbounds: current.filter((x) => x !== id) };
       }
@@ -255,7 +255,7 @@ function ClientDialog({
             ) : (
               <div className="mt-1 space-y-1 rounded-md border p-2">
                 {inboundList.map((inb) => {
-                  const selected = (form.inbounds as number[]).includes(inb.id);
+                  const selected = ((form.inbounds ?? []) as number[]).includes(inb.id);
                   return (
                     <label key={inb.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 hover:bg-muted">
                       <input

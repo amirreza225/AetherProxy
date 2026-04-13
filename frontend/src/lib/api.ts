@@ -148,7 +148,7 @@ export interface Client {
   totalUp: number;
   autoReset: boolean;
   resetDays: number;
-  inbounds: Array<string | number>;
+  inbounds: Array<string | number> | null;
   links?: Array<Record<string, string>>;
   config?: Record<string, unknown>;
   desc?: string;
