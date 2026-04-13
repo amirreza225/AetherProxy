@@ -64,7 +64,7 @@ func moveJsonToDb(db *gorm.DB) error {
 					newTls := &model.Tls{
 						Name:   tag,
 						Server: tls_server,
-						Client: json.RawMessage("{}"),
+						Client: model.JSONRawMessage("{}"),
 					}
 					err = db.Create(newTls).Error
 					if err != nil {

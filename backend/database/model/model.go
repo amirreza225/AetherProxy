@@ -9,10 +9,10 @@ type Setting struct {
 }
 
 type Tls struct {
-	Id     uint            `json:"id" form:"id" gorm:"primaryKey;autoIncrement"`
-	Name   string          `json:"name" form:"name"`
-	Server json.RawMessage `json:"server" form:"server"`
-	Client json.RawMessage `json:"client" form:"client"`
+	Id     uint           `json:"id" form:"id" gorm:"primaryKey;autoIncrement"`
+	Name   string         `json:"name" form:"name"`
+	Server JSONRawMessage `json:"server" form:"server"`
+	Client JSONRawMessage `json:"client" form:"client"`
 }
 
 type User struct {
