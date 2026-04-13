@@ -32,13 +32,14 @@
 | 1 | JWT authentication (httpOnly cookie + Bearer) | ✅ |
 | 1 | CORS middleware (env-configurable origin) | ✅ |
 | 1 | WebSocket live stats (`/api/ws/stats`) | ✅ |
-| 1 | Admin panel – Dashboard, Nodes, Users, Subscriptions, Settings | ✅ |
+| 1 | Admin panel – Dashboard, Inbounds, Outbounds, Endpoints, Services, Nodes, Users, Subscriptions, Routing, Analytics, Plugins, Settings | ✅ |
 | 1 | i18n – English + Persian (RTL) | ✅ |
 | 1 | Docker Compose + Caddy auto-TLS deploy | ✅ |
 | 2 | Multi-node management (SSH deploy + 30s health checks) | ✅ |
 | 2 | Failover – offline nodes excluded from subscription output | ✅ |
 | 2 | PostgreSQL support (`AETHER_DB_DSN`) | ✅ |
-| 2 | Visual routing rule editor | ✅ |
+| 2 | Visual routing rule editor (guided + raw JSON) | ✅ |
+| 2 | Inbound port / UFW firewall reconciliation (PortSync) | ✅ |
 | 2 | Tauri 2.0 desktop client skeleton | ✅ |
 | 3 | EvasionWatcher – Javid scraper, auto-promotes Hysteria2 | ✅ |
 | 3 | Real-time evasion alerts via WebSocket | ✅ |
@@ -47,7 +48,9 @@
 | 3 | QR code PNG endpoint (`/sub/qr/:token`) | ✅ |
 | 3 | `Profile-Update-Interval` header in subscription responses | ✅ |
 | 4 | Plugin system (`OutboundPlugin` interface + .so loader) | ✅ |
-| 4 | Sample plugin with tag-suffix transform | ✅ |
+| 4 | Built-in DPI-evasion plugins: h2disguise, wscdn, grpcobfs, mux, ech, multisni, dynamicpadding | ✅ |
+| 4 | Gossip-based decentralised peer discovery (hashicorp/memberlist) | ✅ |
+| 4 | Signed bootstrap manifests (Ed25519) for secure peer discovery | ✅ |
 
 ---
 
@@ -222,7 +225,11 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `AETHER_LOG_THROTTLE_DISABLED` | `false` | Set to `true` to disable repeat-log throttling during deep debugging |
 | `AETHER_LOG_AUTO_THROTTLE_WINDOW_SECONDS` | `20` | Global window (seconds) for auto-throttling identical `INFO`/`WARNING`/`ERROR` logs (`0` disables) |
 | `AETHER_LOG_AUTO_THROTTLE_DEBUG` | `false` | Include `DEBUG` logs in global auto-throttling |
+| `AETHER_PLUGINS_DIR` | `<binary-dir>/plugins` | Directory scanned for third-party `.so` plugins at startup |
 | `AETHER_GOSSIP_PORT` | `7946` | Memberlist discovery port (TCP/UDP) |
+| `AETHER_GOSSIP_BOOTSTRAP` | – | Comma-separated `host:port` bootstrap peers for gossip discovery |
+| `AETHER_GOSSIP_MANIFEST_URL` | – | URL to fetch a signed JSON bootstrap-node manifest |
+| `AETHER_GOSSIP_MANIFEST_PUBKEY` | – | Base64 Ed25519 public key used to verify manifest signatures |
 | `AETHER_DOCKER_HOSTNET` | `false` | Signals backend runtime is host-networked (used by local firewall capability checks) |
 | `AETHER_PORT_SYNC_ENABLED` | `true` | Enable inbound port/firewall automation |
 | `AETHER_PORT_SYNC_LOCAL_ENABLED` | `true` | Reconcile local host firewall rules |
@@ -534,9 +541,30 @@ Artifacts: `.msi` (Windows), `.dmg`+`.app` (macOS), `.AppImage`+`.deb` (Linux).
 ## Plugin System
 
 AetherProxy supports Go outbound plugins that can modify sing-box outbound JSON
-at config-generation time.
+at config-generation time. Plugins are called via `ApplyAll()` during every
+config generation and live hot-add of outbounds.
 
-### Interface
+### Built-in DPI-evasion plugins
+
+Seven plugins ship with AetherProxy, all disabled by default. Enable and
+configure them on the **Plugins** page in the admin panel.
+
+| Plugin | What it does |
+|---|---|
+| `h2disguise` | Transforms outbound transport to HTTP/2 with browser-realistic headers |
+| `wscdn` | Routes outbound over WebSocket through a Cloudflare CDN relay (meek-style); requires the companion CF Worker in `deploy/cloudflare-worker/` |
+| `grpcobfs` | Disguises outbound as gRPC traffic mimicking real Google/Cloud API service names |
+| `mux` | Injects sing-box multiplex (smux/yamux/h2mux) with optional padding |
+| `ech` | Enables Encrypted Client Hello (ECH) on TLS outbounds to hide the real SNI |
+| `multisni` | Rotates the Reality TLS SNI and `short_id` on each reload to defeat static-SNI fingerprinting |
+| `dynamicpadding` | Randomises HTTP-upgrade early-data sizes to defeat traffic-analysis based on fixed packet lengths |
+
+> **Note:** `h2disguise`, `wscdn`, and `grpcobfs` all write to the `transport`
+> field — only one of these three should be active at a time. `ech`,
+> `multisni`, `dynamicpadding`, and `mux` operate at different layers and can
+> be combined with a transport plugin.
+
+### Plugin interface
 
 ```go
 type OutboundPlugin interface {
@@ -553,24 +581,22 @@ type OutboundPlugin interface {
 
 ```go
 import "github.com/aetherproxy/backend/core/plugin"
-import "github.com/aetherproxy/backend/core/plugin/sample"
+import "github.com/aetherproxy/backend/core/plugin/myplugin"
 
 func init() {
-    plugin.RegisterPlugin(sample.Plugin)
+    plugin.RegisterPlugin(myplugin.Plugin)
 }
 ```
 
 ### Dynamic loading (.so)
 
+Place compiled `.so` files in the directory pointed to by `AETHER_PLUGINS_DIR`
+(default `<binary-dir>/plugins`). Each file must export a `Plugin` symbol
+satisfying `OutboundPlugin`.
+
 ```bash
 # Build as shared library (Linux only)
-go build -buildmode=plugin -o my_plugin.so ./path/to/plugin/pkg
-
-# The .so must export a symbol named "Plugin" satisfying OutboundPlugin
-```
-
-```go
-plugin.LoadPlugin("/path/to/my_plugin.so")
+go build -buildmode=plugin -o plugins/my_plugin.so ./path/to/plugin/pkg
 ```
 
 See [`backend/core/plugin/sample/`](backend/core/plugin/sample/) for a reference implementation.
