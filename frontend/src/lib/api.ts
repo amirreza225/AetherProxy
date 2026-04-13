@@ -729,3 +729,126 @@ export function getOfflineBundleUrl(): string {
   const base = BASE_URL;
   return `${base}/api/offlineBundle${token ? `?token=${encodeURIComponent(token)}` : ""}`;
 }
+
+// ── Outbounds ─────────────────────────────────────────────────────────────────
+
+export interface Outbound {
+  id: number;
+  type: string;
+  tag: string;
+  [key: string]: unknown;
+}
+
+export async function getOutbounds(headers?: HeadersInit) {
+  const res = await apiFetch<{ outbounds: Outbound[] }>("/api/outbounds", { headers });
+  const obj = res.obj as unknown;
+  if (obj && typeof obj === "object" && Array.isArray((obj as { outbounds?: Outbound[] }).outbounds)) {
+    return (obj as { outbounds: Outbound[] }).outbounds;
+  }
+  return [] as Outbound[];
+}
+
+export async function saveOutbound(action: "new" | "edit" | "del", data: unknown) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "outbounds",
+      action,
+      data: JSON.stringify(data),
+    }),
+  });
+}
+
+// ── Endpoints ─────────────────────────────────────────────────────────────────
+
+export interface Endpoint {
+  id: number;
+  type: string;
+  tag: string;
+  ext?: unknown;
+  [key: string]: unknown;
+}
+
+export async function getEndpoints(headers?: HeadersInit) {
+  const res = await apiFetch<{ endpoints: Endpoint[] }>("/api/endpoints", { headers });
+  const obj = res.obj as unknown;
+  if (obj && typeof obj === "object" && Array.isArray((obj as { endpoints?: Endpoint[] }).endpoints)) {
+    return (obj as { endpoints: Endpoint[] }).endpoints;
+  }
+  return [] as Endpoint[];
+}
+
+export async function saveEndpoint(action: "new" | "edit" | "del", data: unknown) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "endpoints",
+      action,
+      data: JSON.stringify(data),
+    }),
+  });
+}
+
+// ── Services ──────────────────────────────────────────────────────────────────
+
+export interface Service {
+  id: number;
+  type: string;
+  tag: string;
+  tls_id?: number;
+  [key: string]: unknown;
+}
+
+export async function getServices(headers?: HeadersInit) {
+  const res = await apiFetch<{ services: Service[] }>("/api/services", { headers });
+  const obj = res.obj as unknown;
+  if (obj && typeof obj === "object" && Array.isArray((obj as { services?: Service[] }).services)) {
+    return (obj as { services: Service[] }).services;
+  }
+  return [] as Service[];
+}
+
+export async function saveService(action: "new" | "edit" | "del", data: unknown) {
+  return apiFetch<Record<string, unknown>>("/api/save", {
+    method: "POST",
+    body: new URLSearchParams({
+      object: "services",
+      action,
+      data: JSON.stringify(data),
+    }),
+  });
+}
+
+// ── Logs ──────────────────────────────────────────────────────────────────────
+
+export async function getLogs(level: string, count: number) {
+  return apiFetch<string[]>(`/api/logs?l=${encodeURIComponent(level)}&c=${count}`);
+}
+
+// ── Outbound connectivity check ───────────────────────────────────────────────
+
+export async function checkOutbound(tag: string) {
+  return apiFetch<{ ok: boolean; latency?: number; error?: string }>(
+    `/api/checkOutbound?tag=${encodeURIComponent(tag)}`
+  );
+}
+
+// ── App control ───────────────────────────────────────────────────────────────
+
+export async function resetEvasionPref() {
+  return apiFetch("/api/resetEvasionPref", { method: "POST", body: "" });
+}
+
+export async function restartApp() {
+  return apiFetch<{ msg: string }>("/api/restartApp", { method: "POST", body: "" });
+}
+
+export async function restartSb() {
+  return apiFetch<{ msg: string }>("/api/restartSb", { method: "POST", body: "" });
+}
+
+/** Returns the URL to download the sing-box config JSON. */
+export function getSingboxConfigUrl(): string {
+  const token = getClientAuthToken();
+  return `${BASE_URL}/api/singbox-config${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}

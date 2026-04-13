@@ -16,6 +16,9 @@ import {
   Settings,
   Puzzle,
   LogOut,
+  ArrowUpFromLine,
+  Globe,
+  Layers,
 } from "lucide-react";
 import { clearClientAuthToken, logout } from "@/lib/api";
 import { cn } from "@/lib/utils";
@@ -34,6 +37,9 @@ const navItems = [
   { href: "/dashboard",     key: "dashboard",     icon: LayoutDashboard },
   { href: "/nodes",         key: "nodes",         icon: Server },
   { href: "/inbounds",      key: "inbounds",      icon: Radio },
+  { href: "/outbounds",     key: "outbounds",     icon: ArrowUpFromLine },
+  { href: "/endpoints",     key: "endpoints",     icon: Globe },
+  { href: "/services",      key: "services",      icon: Layers },
   { href: "/users",         key: "users",         icon: Users },
   { href: "/subscriptions", key: "subscriptions", icon: BookMarked },
   { href: "/routing",       key: "routing",       icon: GitBranch },
