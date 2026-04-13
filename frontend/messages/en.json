@@ -24,6 +24,7 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "description": "Real-time overview of your AetherProxy instance — system resources, active connections, and network throughput.",
     "live": "Live",
     "connecting": "Connecting…",
     "onlineClients": "Online Clients",
@@ -55,6 +56,7 @@
   },
   "nodes": {
     "title": "Nodes",
+    "description": "Manage remote VPS nodes for multi-server deployments. AetherProxy SSH-deploys sing-box to each node and health-checks it every 30 seconds.",
     "add": "Add Node",
     "addRemoteNode": "Add Remote Node",
     "name": "Name",
@@ -129,6 +131,7 @@
   },
   "users": {
     "title": "Users",
+    "description": "Manage client accounts. Each user receives auto-generated credentials for every inbound protocol and a unique subscription URL.",
     "id": "ID",
     "username": "Username",
     "clientName": "Name",
@@ -173,6 +176,7 @@
   },
   "inbounds": {
     "title": "Inbounds",
+    "description": "Configure sing-box inbound listeners — the ports and protocols your clients connect to. Each inbound can be bound to a TLS profile for encryption.",
     "add": "Add Inbound",
     "edit": "Edit",
     "delete": "Delete",
@@ -195,6 +199,7 @@
   },
   "subscriptions": {
     "title": "Subscriptions",
+    "description": "Share connection links with your users. Each client has a unique subscription URL that bundles all configured inbound links into a single importable profile.",
     "clientSubsTitle": "Share a user's subscription",
     "clientSubsHint": "Select a user to get their subscription link and QR code. Import into Hiddify, Clash, or any compatible app.",
     "selectClient": "Select user…",
@@ -249,6 +254,7 @@
   },
   "routing": {
     "title": "Routing Rules",
+    "description": "Routing rules determine how sing-box forwards traffic between inbounds and outbounds. Rules are evaluated top-to-bottom — the first match wins.",
     "addRule": "Add Rule",
     "inbound": "Inbound",
     "network": "Network",
@@ -288,10 +294,21 @@
     "ruleCard": "→ {outbound}",
     "rawJsonInvalidJson": "Invalid JSON",
     "cancel": "Cancel",
-    "saveRule": "Save Rule"
+    "saveRule": "Save Rule",
+    "inboundHint": "Comma-separated inbound tags to match (e.g. vless-in, hy2-in)",
+    "outboundHint": "Tag of the outbound to route matched traffic to (e.g. direct, warp-out)",
+    "geoipHint": "Comma-separated ISO country codes (e.g. IR,CN,RU)",
+    "ipCidrHint": "Comma-separated CIDR blocks (e.g. 192.168.0.0/16)",
+    "domainSuffixHint": "Comma-separated domain suffixes (e.g. .ir,.cn,.google.com)",
+    "domainKeywordHint": "Comma-separated keywords found anywhere in the domain",
+    "protocolHint": "Comma-separated protocols: tls, quic, http, dns…",
+    "portHint": "Comma-separated port numbers or ranges (e.g. 80,443,8000:9000)",
+    "ruleSetHint": "Comma-separated rule-set names defined in the sing-box route.rule_set config",
+    "outboundRequiredNote": "⚠ An outbound tag is required for each rule."
   },
   "analytics": {
     "title": "Analytics",
+    "description": "Traffic and usage statistics across protocols, clients, and inbounds. Select a time window using the buttons above.",
     "range24h": "24h",
     "range7d": "7d",
     "range30d": "30d",
@@ -320,6 +337,7 @@
   },
   "settings": {
     "title": "Settings",
+    "description": "Configure AetherProxy panel parameters. Most settings take effect immediately after saving; core-level changes may require a Core restart.",
     "currentSettings": "Current settings",
     "loadError": "Failed to load settings.",
     "saveError": "Failed to save settings.",
@@ -409,6 +427,7 @@
   },
   "outbounds": {
     "title": "Outbounds",
+    "description": "Outbound proxies define how traffic exits sing-box. Add direct, block, or proxy outbounds (VLESS, Hysteria2, Trojan, etc.). Use the ⚡ Test button on each row to verify live connectivity.",
     "add": "Add Outbound",
     "tag": "Tag",
     "type": "Type",
@@ -425,10 +444,14 @@
     "deleteError": "Failed to delete outbound.",
     "saveError": "Failed to save outbound.",
     "loadError": "Failed to load outbounds.",
-    "actions": "Actions"
+    "actions": "Actions",
+    "tagHint": "Unique identifier referenced by routing rules (e.g. warp-out, cdn-relay)",
+    "typeHint": "Outbound type: direct, block, selector, urltest, vless, hysteria2, trojan, shadowsocks, socks, http…",
+    "optionsJsonHint": "Additional type-specific fields as JSON (e.g. server, port, uuid, password, tls settings). Leave {} for simple types."
   },
   "endpoints": {
     "title": "Endpoints",
+    "description": "Network-layer endpoints such as Cloudflare WARP or custom WireGuard peers that can be referenced by outbound rules.",
     "add": "Add Endpoint",
     "tag": "Tag",
     "type": "Type",
@@ -442,10 +465,14 @@
     "saveError": "Failed to save endpoint.",
     "loadError": "Failed to load endpoints.",
     "actions": "Actions",
-    "noEndpoints": "No endpoints configured."
+    "noEndpoints": "No endpoints configured.",
+    "tagHint": "Unique identifier for this endpoint (e.g. warp, wg-peer1)",
+    "typeHint": "warp for Cloudflare WARP, wireguard for a custom WireGuard peer",
+    "optionsJsonHint": "Endpoint-specific fields: local_address, private_key, peer public key, endpoint address, etc."
   },
   "services": {
     "title": "Services",
+    "description": "Supplementary sing-box service objects (e.g. DNS-over-HTTPS, custom listeners) that run alongside inbounds. Configuration uses raw JSON.",
     "add": "Add Service",
     "tag": "Tag",
     "type": "Type",
@@ -460,7 +487,11 @@
     "saveError": "Failed to save service.",
     "loadError": "Failed to load services.",
     "actions": "Actions",
-    "noServices": "No services configured."
+    "noServices": "No services configured.",
+    "tagHint": "Unique identifier for this service (e.g. dns-local, doh-service)",
+    "typeHint": "sing-box service type: dns, http, mixed, socks, tun, redirect, tproxy…",
+    "tlsIdHint": "TLS profile ID from the Inbounds TLS section. Use 0 for no TLS.",
+    "optionsJsonHint": "Service-specific fields as JSON (address, listen_port, servers, inbounds, etc.)."
   },
   "common": {
     "loading": "Loading…",

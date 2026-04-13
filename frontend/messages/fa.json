@@ -24,6 +24,7 @@
   },
   "dashboard": {
     "title": "داشبورد",
+    "description": "نمای زنده از وضعیت AetherProxy — منابع سیستم، اتصالات فعال و توان شبکه.",
     "live": "زنده",
     "connecting": "در حال اتصال…",
     "onlineClients": "کاربران آنلاین",
@@ -55,6 +56,7 @@
   },
   "nodes": {
     "title": "نودها",
+    "description": "مدیریت نودهای ریموت برای استقرار چند سروره. AetherProxy از طریق SSH، sing-box را روی هر نود نصب می‌کند و هر ۳۰ ثانیه سلامت آن را بررسی می‌کند.",
     "add": "افزودن نود",
     "addRemoteNode": "افزودن نود ریموت",
     "name": "نام",
@@ -129,6 +131,7 @@
   },
   "users": {
     "title": "کاربران",
+    "description": "مدیریت حساب‌های کاربری. هر کاربر به‌صورت خودکار اعتبارنامه برای هر پروتکل inbound و یک لینک اشتراک منحصربه‌فرد دریافت می‌کند.",
     "id": "شناسه",
     "username": "نام کاربری",
     "clientName": "نام",
@@ -173,6 +176,7 @@
   },
   "inbounds": {
     "title": "ورودی‌ها",
+    "description": "تنظیم شنوده‌های sing-box — پورت‌ها و پروتکل‌هایی که کاربران به آن‌ها متصل می‌شوند. هر inbound می‌تواند به یک پروفایل TLS متصل شود.",
     "add": "افزودن ورودی",
     "edit": "ویرایش",
     "delete": "حذف",
@@ -195,6 +199,7 @@
   },
   "subscriptions": {
     "title": "اشتراک‌ها",
+    "description": "لینک‌های اتصال را با کاربران خود به اشتراک بگذارید. هر کاربر یک URL اشتراک منحصربه‌فرد دارد که همه لینک‌های inbound را یکجا ارائه می‌دهد.",
     "generate": "ساخت لینک اشتراک",
     "token": "توکن اشتراک",
     "tokenPlaceholder": "توکن کاربر را اینجا وارد کنید",
@@ -249,6 +254,7 @@
   },
   "routing": {
     "title": "قوانین مسیریابی",
+    "description": "قوانین مسیریابی نحوه هدایت ترافیک بین inbound ها و outbound ها را تعیین می‌کنند. قوانین از بالا به پایین ارزیابی می‌شوند — اولین تطابق اعمال می‌شود.",
     "addRule": "افزودن قانون",
     "inbound": "ورودی",
     "network": "شبکه",
@@ -288,10 +294,21 @@
     "ruleCard": "→ {outbound}",
     "rawJsonInvalidJson": "JSON نامعتبر است",
     "cancel": "لغو",
-    "saveRule": "ذخیره قانون"
+    "saveRule": "ذخیره قانون",
+    "inboundHint": "برچسب‌های ورودی با کاما جدا شده (مثلاً vless-in، hy2-in)",
+    "outboundHint": "برچسب outbound برای هدایت ترافیک تطابق‌یافته (مثلاً direct، warp-out)",
+    "geoipHint": "کدهای ISO کشور با کاما جدا شده (مثلاً IR،CN،RU)",
+    "ipCidrHint": "بلوک‌های CIDR با کاما جدا شده (مثلاً 192.168.0.0/16)",
+    "domainSuffixHint": "پسوندهای دامنه با کاما جدا شده (مثلاً .ir،.cn،.google.com)",
+    "domainKeywordHint": "کلیدواژه‌هایی که در هر جایی از دامنه یافت می‌شوند",
+    "protocolHint": "پروتکل‌های با کاما جدا شده: tls، quic، http، dns…",
+    "portHint": "شماره پورت‌ها یا محدوده‌ها با کاما (مثلاً 80،443،8000:9000)",
+    "ruleSetHint": "نام‌های rule-set تعریف‌شده در route.rule_set با کاما جدا شده",
+    "outboundRequiredNote": "⚠ هر قانون باید یک برچسب outbound داشته باشد."
   },
   "analytics": {
     "title": "آمار",
+    "description": "آمار ترافیک و مصرف بر اساس پروتکل، کاربر و ورودی. بازه زمانی را با دکمه‌های بالا انتخاب کنید.",
     "range24h": "۲۴ ساعت",
     "range7d": "۷ روز",
     "range30d": "۳۰ روز",
@@ -320,6 +337,7 @@
   },
   "settings": {
     "title": "تنظیمات",
+    "description": "پارامترهای پنل AetherProxy را پیکربندی کنید. اکثر تنظیمات بلافاصله پس از ذخیره اعمال می‌شوند؛ تغییرات سطح core ممکن است نیاز به راه‌اندازی مجدد Core داشته باشند.",
     "currentSettings": "تنظیمات فعلی",
     "loadError": "خطا در بارگذاری تنظیمات.",
     "saveError": "خطا در ذخیره تنظیمات.",
@@ -409,6 +427,7 @@
   },
   "outbounds": {
     "title": "خروجی‌ها",
+    "description": "خروجی‌های پراکسی تعیین می‌کنند که ترافیک چطور از sing-box خارج شود. می‌توانید خروجی‌های direct، block یا پراکسی (VLESS، Hysteria2، Trojan و غیره) اضافه کنید. از دکمه ⚡ تست برای بررسی اتصال زنده استفاده کنید.",
     "add": "افزودن خروجی",
     "tag": "برچسب",
     "type": "نوع",
@@ -425,10 +444,14 @@
     "deleteError": "حذف خروجی ناموفق بود.",
     "saveError": "ذخیره خروجی ناموفق بود.",
     "loadError": "بارگذاری خروجی‌ها ناموفق بود.",
-    "actions": "عملیات"
+    "actions": "عملیات",
+    "tagHint": "شناسه منحصربه‌فرد که در قوانین مسیریابی ارجاع داده می‌شود (مثلاً warp-out، cdn-relay)",
+    "typeHint": "نوع outbound: direct، block، selector، urltest، vless، hysteria2، trojan، shadowsocks، socks، http…",
+    "optionsJsonHint": "فیلدهای اضافی مخصوص نوع انتخاب‌شده به‌صورت JSON (مثلاً server، port، uuid، password). برای انواع ساده {} بگذارید."
   },
   "endpoints": {
     "title": "اندپوینت‌ها",
+    "description": "اندپوینت‌های لایه شبکه مانند Cloudflare WARP یا WireGuard سفارشی که می‌توانند در قوانین خروجی ارجاع داده شوند.",
     "add": "افزودن اندپوینت",
     "tag": "برچسب",
     "type": "نوع",
@@ -442,10 +465,14 @@
     "saveError": "ذخیره اندپوینت ناموفق بود.",
     "loadError": "بارگذاری اندپوینت‌ها ناموفق بود.",
     "actions": "عملیات",
-    "noEndpoints": "هیچ اندپوینتی تنظیم نشده است."
+    "noEndpoints": "هیچ اندپوینتی تنظیم نشده است.",
+    "tagHint": "شناسه منحصربه‌فرد این اندپوینت (مثلاً warp، wg-peer1)",
+    "typeHint": "warp برای Cloudflare WARP، wireguard برای یک peer WireGuard سفارشی",
+    "optionsJsonHint": "فیلدهای مخصوص اندپوینت: local_address، private_key، کلید عمومی peer، آدرس endpoint و غیره."
   },
   "services": {
     "title": "سرویس‌ها",
+    "description": "سرویس‌های کمکی sing-box (مثل DNS-over-HTTPS یا شنوده‌های سفارشی) که در کنار inbound ها اجرا می‌شوند. پیکربندی از طریق JSON خام انجام می‌شود.",
     "add": "افزودن سرویس",
     "tag": "برچسب",
     "type": "نوع",
@@ -460,7 +487,11 @@
     "saveError": "ذخیره سرویس ناموفق بود.",
     "loadError": "بارگذاری سرویس‌ها ناموفق بود.",
     "actions": "عملیات",
-    "noServices": "هیچ سرویسی تنظیم نشده است."
+    "noServices": "هیچ سرویسی تنظیم نشده است.",
+    "tagHint": "شناسه منحصربه‌فرد این سرویس (مثلاً dns-local، doh-service)",
+    "typeHint": "نوع سرویس sing-box: dns، http، mixed، socks، tun، redirect، tproxy…",
+    "tlsIdHint": "شناسه پروفایل TLS از بخش TLS ورودی‌ها. برای بدون TLS عدد ۰ وارد کنید.",
+    "optionsJsonHint": "فیلدهای مخصوص سرویس به‌صورت JSON (address، listen_port، servers، inbounds و غیره)."
   },
   "common": {
     "loading": "در حال بارگذاری…",

@@ -335,7 +335,10 @@ export default function DashboardPage() {
 
       {/* ── Header ── */}
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("description")}</p>
+        </div>
         <Badge
           variant={connected ? "default" : "secondary"}
           className={connected ? "bg-primary/15 text-primary border-primary/30" : ""}

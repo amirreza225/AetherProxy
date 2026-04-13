@@ -233,7 +233,10 @@ export default function SubscriptionsPage() {
 
   return (
     <div className="space-y-6">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("description")}</p>
+      </div>
 
       {/* ── Client subscriptions (primary workflow) ────────────────────────── */}
       <Card>
