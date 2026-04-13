@@ -295,7 +295,7 @@ export default function SubscriptionsPage() {
             <p>AETHER_TELEGRAM_CHANNEL_ID=@yourchannel</p>
           </div>
           <p className="text-xs text-muted-foreground">
-            Create a bot via <a className="text-primary underline-offset-2 hover:underline" href="https://t.me/BotFather" target="_blank" rel="noreferrer">@BotFather</a> and
+            Create a bot via <a className="text-primary underline-offset-2 hover:underline" href="https://t.me/BotFather" target="_blank" rel="noopener noreferrer">@BotFather</a> and
             add it as an administrator to your channel. The channel ID can be
             a @username or a numeric chat ID.
           </p>

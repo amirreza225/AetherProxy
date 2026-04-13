@@ -157,7 +157,11 @@ func (w *EvasionWatcher) scrape() {
 			} else if isTuicBlock(events[i]) {
 				next := nextEvasionProtocol("tuic")
 				events[i].AutoAction = autoActionLabel(next)
-				logger.Warningf("EvasionWatcher: TUIC block detected from %s – reverting to default ordering", apiURL)
+				if next == "" {
+					logger.Warningf("EvasionWatcher: TUIC block detected from %s – reverting to default ordering", apiURL)
+				} else {
+					logger.Warningf("EvasionWatcher: TUIC block detected from %s – switching to %s", apiURL, next)
+				}
 				w.executeAutoAction(next)
 			}
 			if err := db.Create(&events[i]).Error; err != nil {
