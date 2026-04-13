@@ -158,7 +158,10 @@ export default function OutboundsPage() {
   return (
     <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <div>
+          <h1 className="text-2xl font-semibold">{t("title")}</h1>
+          <p className="text-sm text-muted-foreground">{t("description")}</p>
+        </div>
         <Button onClick={openAdd} className="gap-2">
           <PlusCircle className="size-4" />
           {t("add")}
@@ -238,10 +241,12 @@ export default function OutboundsPage() {
           <div className="space-y-4">
             <div className="space-y-1.5">
               <Label>{t("tag")}</Label>
+              <p className="text-xs text-muted-foreground">{t("tagHint")}</p>
               <Input value={tag} onChange={(e) => setTag(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <Label>{t("type")}</Label>
+              <p className="text-xs text-muted-foreground">{t("typeHint")}</p>
               <Input
                 value={type}
                 onChange={(e) => setType(e.target.value)}
@@ -250,6 +255,7 @@ export default function OutboundsPage() {
             </div>
             <div className="space-y-1.5">
               <Label>{t("optionsJson")}</Label>
+              <p className="text-xs text-muted-foreground">{t("optionsJsonHint")}</p>
               <Textarea
                 value={optionsJson}
                 onChange={(e) => setOptionsJson(e.target.value)}

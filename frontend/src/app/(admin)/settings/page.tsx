@@ -175,14 +175,14 @@ export default function SettingsPage() {
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-semibold">{t("title")}</h1>
+      <div>
+        <h1 className="text-2xl font-semibold">{t("title")}</h1>
+        <p className="text-sm text-muted-foreground">{t("description")}</p>
+      </div>
 
       {error && <p className="text-sm text-destructive">{t("loadError")}</p>}
 
       <Card className="max-w-lg">
-        <CardHeader>
-          <CardTitle className="text-base">{t("currentSettings")}</CardTitle>
-        </CardHeader>
         <CardContent>
           {isLoading ? (
             <div className="space-y-3">
