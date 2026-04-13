@@ -96,7 +96,7 @@ func (s *ConfigService) StartCore() error {
 		return nil
 	}
 	if time.Since(lastStartFailTime) < startCooldown {
-		logger.Info("start core cooldown ", startCooldown/time.Second, " seconds")
+		logger.InfofThrottled("core.start.cooldown", 30*time.Second, "start core cooldown %d seconds", startCooldown/time.Second)
 		startCoreMu.Unlock()
 		return nil
 	}
@@ -108,9 +108,10 @@ func (s *ConfigService) StartCore() error {
 		startCoreMu.Unlock()
 	}()
 
-	logger.Info("starting core")
+	logger.InfoThrottled("core.start.attempt", 20*time.Second, "starting core")
 	rawConfig, err := s.GetConfig("")
 	if err != nil {
+		logger.WarningfThrottled("core.start.config_error", 20*time.Second, "start core get config failed: %v", err)
 		return err
 	}
 	err = corePtr.Start(*rawConfig)
@@ -118,7 +119,7 @@ func (s *ConfigService) StartCore() error {
 		startCoreMu.Lock()
 		lastStartFailTime = time.Now()
 		startCoreMu.Unlock()
-		logger.Error("start sing-box err:", err.Error())
+		logger.ErrorfThrottled("core.start.failed", 20*time.Second, "start sing-box err: %v", err)
 		return err
 	}
 	logger.Info("sing-box started")

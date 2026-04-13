@@ -265,6 +265,13 @@ AETHER_JWT_SECRET=${JWT_SECRET}
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 AETHER_LOG_LEVEL=info
+# Set to true to disable all log-repeat throttling (full verbose mode).
+AETHER_LOG_THROTTLE_DISABLED=false
+# Auto-throttle identical INFO/WARNING/ERROR log messages globally.
+# 0 disables auto-throttling while keeping keyed throttled logs available.
+AETHER_LOG_AUTO_THROTTLE_WINDOW_SECONDS=20
+# Include DEBUG logs in global auto-throttling.
+AETHER_LOG_AUTO_THROTTLE_DEBUG=false
 
 # ── Docker networking mode ────────────────────────────────────────────────────
 # Set to 1 to enable host-network backend mode:

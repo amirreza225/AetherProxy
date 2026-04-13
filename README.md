@@ -206,6 +206,9 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000` | CORS allowed origin |
 | `AETHER_LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |
 | `AETHER_DEBUG` | – | Set to `true` for verbose GORM query logging |
+| `AETHER_LOG_THROTTLE_DISABLED` | `false` | Set to `true` to disable repeat-log throttling during deep debugging |
+| `AETHER_LOG_AUTO_THROTTLE_WINDOW_SECONDS` | `20` | Global window (seconds) for auto-throttling identical `INFO`/`WARNING`/`ERROR` logs (`0` disables) |
+| `AETHER_LOG_AUTO_THROTTLE_DEBUG` | `false` | Include `DEBUG` logs in global auto-throttling |
 | `AETHER_GOSSIP_PORT` | `7946` | Memberlist discovery port (TCP/UDP) |
 | `AETHER_DOCKER_HOSTNET` | `false` | Signals backend runtime is host-networked (used by local firewall capability checks) |
 | `AETHER_PORT_SYNC_ENABLED` | `true` | Enable inbound port/firewall automation |

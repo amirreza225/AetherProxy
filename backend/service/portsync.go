@@ -146,11 +146,11 @@ func (s *PortSyncService) syncAllTargets(reason string) {
 
 	if config.GetPortSyncLocalEnabled() {
 		if err := s.reconcileLocal(desired); err != nil {
-			logger.Warning("PortSync: local reconcile failed:", err)
+			logger.WarningfThrottled("portsync.local.reconcile.failed", 60*time.Second, "PortSync: local reconcile failed: %v", err)
 			s.upsertFailedTask(portSyncScopeLocal, 0, reason, err)
 		}
 	} else {
-		logger.Info("PortSync: local reconciliation disabled by config")
+		logger.InfofThrottled("portsync.local.disabled", 120*time.Second, "PortSync: local reconciliation disabled by config")
 	}
 
 	if !config.GetPortSyncRemoteEnabled() {

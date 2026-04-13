@@ -146,6 +146,9 @@ See `core/plugin/sample/` for a reference implementation.
 | `AETHER_ADMIN_ORIGIN` | `http://localhost:3000`     | CORS allowed origin for admin panel          |
 | `AETHER_LOG_LEVEL`    | `info`                      | Log level: debug / info / warn / error       |
 | `AETHER_DEBUG`        | –                           | Set to `true` to enable GORM query logging   |
+| `AETHER_LOG_THROTTLE_DISABLED` | `false`            | Set to `true` to disable repeat-log throttling |
+| `AETHER_LOG_AUTO_THROTTLE_WINDOW_SECONDS` | `20`   | Global window (seconds) for auto-throttling identical logs (`0` disables) |
+| `AETHER_LOG_AUTO_THROTTLE_DEBUG` | `false`            | Include DEBUG logs in global auto-throttling |
 | `AETHER_GOSSIP_PORT`  | `7946`                      | Memberlist discovery port (TCP/UDP)          |
 | `AETHER_DOCKER_HOSTNET` | `false`                  | Signals backend is running in host-network mode |
 | `AETHER_PORT_SYNC_ENABLED` | `true`                | Enable inbound firewall reconciliation        |
