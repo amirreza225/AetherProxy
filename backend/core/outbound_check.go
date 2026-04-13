@@ -10,9 +10,9 @@ import (
 const checkTimeout = 15 * time.Second
 
 type CheckOutboundResult struct {
-	OK    bool
-	Delay uint16
-	Error string
+	OK    bool   `json:"ok"`
+	Delay uint16 `json:"latency"`
+	Error string `json:"error,omitempty"`
 }
 
 func CheckOutbound(ctx context.Context, tag string, link string) (result CheckOutboundResult) {
