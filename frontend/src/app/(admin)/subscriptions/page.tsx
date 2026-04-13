@@ -8,6 +8,7 @@ import {
   getTokens,
   getClients,
   clientSubUrl,
+  getOfflineBundleUrl,
   type Client,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
@@ -253,6 +254,51 @@ export default function SubscriptionsPage() {
               </div>
             )}
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Offline Bundle ────────────────────────────────────────────────── */}
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-base">Offline Bundle</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Download a ZIP archive containing pre-rendered proxy configs for all
+            enabled clients. Use this bundle to distribute configs without
+            requiring clients to fetch a live subscription URL — useful before
+            planned maintenance or when the panel may be temporarily unreachable.
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            render={<a href={getOfflineBundleUrl()} download />}
+          >
+            ⬇ Download Offline Bundle
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* ── Telegram Notifications ────────────────────────────────────────── */}
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-base">Telegram Notifications</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            AetherProxy can send out-of-band alerts to a Telegram channel when
+            a censorship event triggers an automatic protocol switch. Set the
+            following environment variables on the backend to enable this:
+          </p>
+          <div className="rounded-md bg-muted p-3 font-mono text-xs space-y-1">
+            <p>AETHER_TELEGRAM_BOT_TOKEN=&lt;your-bot-token&gt;</p>
+            <p>AETHER_TELEGRAM_CHANNEL_ID=@yourchannel</p>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Create a bot via <a className="text-primary underline-offset-2 hover:underline" href="https://t.me/BotFather" target="_blank" rel="noreferrer">@BotFather</a> and
+            add it as an administrator to your channel. The channel ID can be
+            a @username or a numeric chat ID.
+          </p>
         </CardContent>
       </Card>
     </div>

@@ -39,11 +39,12 @@ import { toast } from "sonner";
 
 // ── Constants ──────────────────────────────────────────────────────────────────
 
-type Preset = "vless-reality" | "hysteria2" | "trojan" | "shadowsocks" | "custom";
+type Preset = "vless-reality" | "hysteria2" | "tuic" | "trojan" | "shadowsocks" | "custom";
 
 const PRESETS: { id: Preset; label: string; desc: string; badge: string }[] = [
   { id: "vless-reality", label: "VLESS + Reality",  badge: "Recommended", desc: "Camouflages as real HTTPS — best for high-censorship environments" },
   { id: "hysteria2",     label: "Hysteria2",         badge: "High speed",  desc: "QUIC/UDP-based — ideal for high-throughput or lossy networks" },
+  { id: "tuic",          label: "TUIC v5",           badge: "Low latency", desc: "QUIC-based with 0-RTT handshake and BBR congestion control" },
   { id: "trojan",        label: "Trojan",            badge: "Universal",   desc: "TLS-based protocol with wide client support" },
   { id: "shadowsocks",   label: "Shadowsocks",       badge: "Simple",      desc: "Simple and fast — pair with ShadowTLS for extra obfuscation" },
   { id: "custom",        label: "Custom",            badge: "Advanced",    desc: "Any sing-box inbound type — raw JSON editor for advanced config" },
@@ -72,6 +73,12 @@ interface Hy2Form {
   obfs: boolean; obfs_password: string;
   cert_path: string; key_path: string;
 }
+interface TuicForm {
+  tag: string; listen: string; listen_port: number;
+  congestion_control: string; zero_rtt_handshake: boolean;
+  heartbeat: string;
+  cert_path: string; key_path: string;
+}
 interface TrojanForm { tag: string; listen: string; listen_port: number; cert_path: string; key_path: string; }
 interface SsForm     { tag: string; listen: string; listen_port: number; method: string; password: string; network: string; }
 interface CustomForm { type: string; tag: string; listen: string; listen_port: number; tls_id: number; advJson: string; }
@@ -82,6 +89,7 @@ function detectPreset(inb: Inbound, profiles: TlsProfile[]): Preset {
   const tls = profiles.find((t) => t.id === (inb.tls_id as number));
   if (inb.type === "vless"       && (tls?.server as Record<string,unknown>|undefined)?.reality) return "vless-reality";
   if (inb.type === "hysteria2")  return "hysteria2";
+  if (inb.type === "tuic")       return "tuic";
   if (inb.type === "trojan")     return "trojan";
   if (inb.type === "shadowsocks") return "shadowsocks";
   return "custom";
@@ -113,6 +121,19 @@ function defaultHy2(inb?: Inbound, tls?: TlsProfile): Hy2Form {
     up_mbps: (inb?.up_mbps as number) ?? 0, down_mbps: (inb?.down_mbps as number) ?? 0,
     obfs: !!obfsObj.type, obfs_password: (obfsObj.password as string) ?? "",
     cert_path: (srv.certificate_path as string) ?? "", key_path: (srv.key_path as string) ?? "",
+  };
+}
+function defaultTuic(inb?: Inbound, tls?: TlsProfile): TuicForm {
+  const srv = (tls?.server ?? {}) as Record<string,unknown>;
+  return {
+    tag: (inb?.tag as string) ?? "",
+    listen: (inb?.listen as string) ?? "0.0.0.0",
+    listen_port: (inb?.listen_port as number) ?? 443,
+    congestion_control: (inb?.congestion_control as string) ?? "bbr",
+    zero_rtt_handshake: (inb?.zero_rtt_handshake as boolean) ?? true,
+    heartbeat: (inb?.heartbeat as string) ?? "10s",
+    cert_path: (srv.certificate_path as string) ?? "",
+    key_path: (srv.key_path as string) ?? "",
   };
 }
 function defaultTrojan(inb?: Inbound, tls?: TlsProfile): TrojanForm {
@@ -423,6 +444,44 @@ function Hy2Section({ form, setForm }: { form: Hy2Form; setForm: React.Dispatch<
   );
 }
 
+function TuicSection({ form, setForm }: { form: TuicForm; setForm: React.Dispatch<React.SetStateAction<TuicForm>> }) {
+  const CONGESTION = ["bbr", "cubic", "new_reno"];
+  return (
+    <div className="space-y-3">
+      <Field label="Inbound Tag" hint="unique identifier">
+        <Input value={form.tag} placeholder="tuic-v5-in" required onChange={(e) => setForm((f) => ({ ...f, tag: e.target.value }))} />
+      </Field>
+      <SectionHead>Network</SectionHead>
+      <ListenRow listen={form.listen} listenPort={form.listen_port}
+        onListen={(v) => setForm((f) => ({ ...f, listen: v }))}
+        onPort={(v) => setForm((f) => ({ ...f, listen_port: v }))} />
+      <SectionHead>QUIC Settings</SectionHead>
+      <Field label="Congestion Control">
+        <select className="w-full rounded-md border bg-background px-3 py-2 text-sm"
+          value={form.congestion_control} onChange={(e) => setForm((f) => ({ ...f, congestion_control: e.target.value }))}>
+          {CONGESTION.map((c) => <option key={c} value={c}>{c}</option>)}
+        </select>
+      </Field>
+      <div className="flex items-center gap-2">
+        <input type="checkbox" id="zero_rtt" checked={form.zero_rtt_handshake}
+          onChange={(e) => setForm((f) => ({ ...f, zero_rtt_handshake: e.target.checked }))} />
+        <label htmlFor="zero_rtt" className="text-sm">Enable 0-RTT handshake</label>
+      </div>
+      <Field label="Heartbeat Interval" hint="e.g. 10s">
+        <Input value={form.heartbeat} placeholder="10s"
+          onChange={(e) => setForm((f) => ({ ...f, heartbeat: e.target.value }))} />
+      </Field>
+      <SectionHead>TLS Certificate</SectionHead>
+      <CertSetupWidget
+        tag={form.tag}
+        certPath={form.cert_path}
+        keyPath={form.key_path}
+        onCertReady={(cp, kp) => setForm((f) => ({ ...f, cert_path: cp, key_path: kp }))}
+      />
+    </div>
+  );
+}
+
 function TrojanSection({ form, setForm }: { form: TrojanForm; setForm: React.Dispatch<React.SetStateAction<TrojanForm>> }) {
   return (
     <div className="space-y-3">
@@ -521,6 +580,7 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
   );
   const [vless,   setVless]   = useState<VlessForm>  (() => defaultVless(initialData, initTls));
   const [hy2,     setHy2]     = useState<Hy2Form>    (() => defaultHy2(initialData, initTls));
+  const [tuic,    setTuic]    = useState<TuicForm>   (() => defaultTuic(initialData, initTls));
   const [trojan,  setTrojan]  = useState<TrojanForm> (() => defaultTrojan(initialData, initTls));
   const [ss,      setSs]      = useState<SsForm>     (() => defaultSs(initialData));
   const [custom,  setCustom]  = useState<CustomForm> (() => defaultCustom(initialData));
@@ -534,6 +594,7 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
       const tls = tlsProfiles.find((t) => t.id === (initialData?.tls_id as number));
       setPreset(initialData ? detectPreset(initialData, tlsProfiles) : "vless-reality");
       setVless(defaultVless(initialData, tls)); setHy2(defaultHy2(initialData, tls));
+      setTuic(defaultTuic(initialData, tls));
       setTrojan(defaultTrojan(initialData, tls)); setSs(defaultSs(initialData));
       setCustom(defaultCustom(initialData)); setError(null);
     }
@@ -592,6 +653,22 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
           ...(isEdit ? { id: initialData!.id } : {}),
           type: "vless", tag: vless.tag, listen: vless.listen, listen_port: vless.listen_port, tls_id: tlsId,
         });
+        if (!res.success) { setError(res.msg || "Failed to save"); return; }
+
+      } else if (preset === "tuic") {
+        const tlsId = await upsertTls(tuic.tag, {
+          enabled: true, alpn: ["h3"],
+          certificate_path: tuic.cert_path, key_path: tuic.key_path,
+        });
+        const payload: Record<string, unknown> = {
+          ...(isEdit ? { id: initialData!.id } : {}),
+          type: "tuic", tag: tuic.tag, listen: tuic.listen, listen_port: tuic.listen_port,
+          tls_id: tlsId,
+          congestion_control: tuic.congestion_control,
+          zero_rtt_handshake: tuic.zero_rtt_handshake,
+          heartbeat: tuic.heartbeat,
+        };
+        const res = await saveInbound(isEdit ? "edit" : "new", payload as Parameters<typeof saveInbound>[1]);
         if (!res.success) { setError(res.msg || "Failed to save"); return; }
 
       } else if (preset === "hysteria2") {
@@ -693,6 +770,7 @@ function InboundDialog({ initialData, tlsProfiles, onSaved, trigger }: {
               generatingKeys={generatingKeys} onGenerateKeys={handleGenerateRealityKeys} />
           )}
           {preset === "hysteria2"    && <Hy2Section    form={hy2}    setForm={setHy2} />}
+          {preset === "tuic"         && <TuicSection   form={tuic}   setForm={setTuic} />}
           {preset === "trojan"       && <TrojanSection form={trojan} setForm={setTrojan} />}
           {preset === "shadowsocks"  && <SsSection     form={ss}     setForm={setSs} />}
           {preset === "custom"       && <CustomSection form={custom} setForm={setCustom} />}
