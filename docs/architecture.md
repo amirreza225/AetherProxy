@@ -11,6 +11,13 @@ AetherProxy/
 │   ├── config/               # Environment-driven configuration
 │   ├── core/                 # sing-box wrapper + plugin interface
 │   │   └── plugin/           # OutboundPlugin interface + loader
+│   │       ├── h2disguise/   # HTTP/2 browser-header disguise
+│   │       ├── wscdn/        # Cloudflare CDN WebSocket relay
+│   │       ├── grpcobfs/     # gRPC-mimic obfuscation
+│   │       ├── mux/          # Multiplexed transport with padding
+│   │       ├── ech/          # Encrypted Client Hello (hide SNI)
+│   │       ├── multisni/     # Reality SNI rotation
+│   │       ├── dynamicpadding/ # Random early-data padding
 │   │       └── sample/       # Reference plugin implementation
 │   ├── cronjob/              # Background cron jobs (stats, WAL checkpoint…)
 │   ├── database/             # GORM + SQLite/PostgreSQL, AutoMigrate
@@ -21,6 +28,7 @@ AetherProxy/
 │   ├── service/              # Business logic layer
 │   │   ├── config.go         # sing-box config generation & hot-reload
 │   │   ├── evasion.go        # EvasionWatcher – censorship monitor
+│   │   ├── discovery.go      # DiscoveryService – gossip peer discovery (memberlist)
 │   │   ├── node.go           # NodeService – remote VPS management + SSH deploy
 │   │   ├── routing.go        # RoutingService – route.rules CRUD
 │   │   └── …                 # user, client, inbound, outbound, stats…
@@ -35,14 +43,18 @@ AetherProxy/
 │       │   ├── login/        # JWT login
 │       │   └── (admin)/      # Protected admin layout
 │       │       ├── dashboard/   # Live stats (WebSocket)
-│       │       ├── nodes/       # Multi-node management
-│       │       ├── users/       # User list
+│       │       ├── nodes/       # Multi-node management (SSH deploy + health checks)
+│       │       ├── inbounds/    # Inbound protocol listeners
+│       │       ├── outbounds/   # Outbound proxy definitions (direct/block/proxy)
+│       │       ├── endpoints/   # Network-layer endpoints (WARP, WireGuard)
+│       │       ├── services/    # Supplementary sing-box services
+│       │       ├── users/       # Client accounts + subscription tokens
 │       │       ├── subscriptions/ # Subscription link + QR code
-│       │       ├── routing/     # Visual route rule editor
-│       │       ├── analytics/   # Per-protocol traffic charts
-│       │       ├── settings/    # Global settings display
-│       │       └── plugins/     # Plugin registry
-│       ├── components/ui/    # shadcn/ui component library
+│       │       ├── routing/     # Visual route rule editor (guided + raw JSON)
+│       │       ├── analytics/   # Per-protocol traffic charts + evasion events
+│       │       ├── settings/    # Global settings display + password change
+│       │       └── plugins/     # Plugin registry (enable/disable/configure)
+│       ├── components/ui/    # Base UI components (@base-ui-components/react — not standard shadcn)
 │       └── lib/api.ts        # Typed fetch wrapper for all backend endpoints
 │
 ├── client-android/           # Flutter Android/iOS client (fork of hiddify-app)
@@ -54,7 +66,9 @@ AetherProxy/
 │
 ├── deploy/                   # Docker Compose, Caddy, install script
 │   ├── docker-compose.yml    # backend + frontend + caddy + optional postgres
+│   ├── docker-compose.hostnet.yml  # Host-network override for UFW automation
 │   ├── Caddyfile             # Auto-TLS reverse proxy config
+│   ├── cloudflare-worker/    # Companion CF Worker for the wscdn plugin
 │   └── install.sh            # One-liner VPS install script
 │
 ├── docs/                     # Extended documentation
@@ -85,6 +99,7 @@ Browser / Client
       │                            │     ├── NodeService (SSH deploy, health check)
       │                            │     ├── RoutingService (route.rules)
       │                            │     ├── EvasionWatcher (Javid scraper)
+      │                            │     ├── DiscoveryService (gossip via memberlist)
       │                            │     └── plugin.ApplyAll (outbound transform)
       │                            └── WebSocket /api/ws/stats (2s live push)
       │                                   └── evasion alerts + onlines + status
@@ -124,11 +139,27 @@ restart without manual schema changes.
 
 Plugins implement `core/plugin.OutboundPlugin`. They can be:
 - **Static** – registered at startup via `plugin.RegisterPlugin()`
-- **Dynamic** – loaded from a `.so` file via `plugin.LoadPlugin(path)`
+- **Dynamic** – loaded from a `.so` file via `plugin.LoadPlugin(path)`, scanned from `AETHER_PLUGINS_DIR` at startup
 
 The `ApplyAll(outboundJSON)` function is called during config generation to
 let all enabled plugins transform outbound objects before they are written to
 the sing-box config.
+
+### Built-in plugins
+
+| Plugin | Layer | What it does |
+|---|---|---|
+| `h2disguise` | Transport | HTTP/2 with browser-realistic headers |
+| `wscdn` | Transport | WebSocket relay through Cloudflare CDN (requires `deploy/cloudflare-worker/`) |
+| `grpcobfs` | Transport | gRPC mimicking Google API service names |
+| `mux` | Transport | Multiplexed transport (smux/yamux/h2mux) + optional padding |
+| `ech` | TLS | Encrypted Client Hello – hides real SNI from DPI |
+| `multisni` | TLS | Rotates Reality SNI + `short_id` on each reload |
+| `dynamicpadding` | Transport | Randomises HTTP-upgrade early-data sizes |
+
+> Transport plugins (`h2disguise`, `wscdn`, `grpcobfs`, `mux`) all write to the `transport`
+> field — only one should be active at a time. TLS-layer plugins (`ech`, `multisni`,
+> `dynamicpadding`) can be combined with a transport plugin.
 
 See `core/plugin/sample/` for a reference implementation.
 
@@ -149,7 +180,11 @@ See `core/plugin/sample/` for a reference implementation.
 | `AETHER_LOG_THROTTLE_DISABLED` | `false`            | Set to `true` to disable repeat-log throttling |
 | `AETHER_LOG_AUTO_THROTTLE_WINDOW_SECONDS` | `20`   | Global window (seconds) for auto-throttling identical logs (`0` disables) |
 | `AETHER_LOG_AUTO_THROTTLE_DEBUG` | `false`            | Include DEBUG logs in global auto-throttling |
+| `AETHER_PLUGINS_DIR`  | `<binary-dir>/plugins`      | Directory scanned for third-party `.so` plugins |
 | `AETHER_GOSSIP_PORT`  | `7946`                      | Memberlist discovery port (TCP/UDP)          |
+| `AETHER_GOSSIP_BOOTSTRAP` | –                       | Comma-separated `host:port` bootstrap peers  |
+| `AETHER_GOSSIP_MANIFEST_URL` | –                    | URL to fetch a signed bootstrap-node manifest |
+| `AETHER_GOSSIP_MANIFEST_PUBKEY` | –                 | Base64 Ed25519 public key for manifest verification |
 | `AETHER_DOCKER_HOSTNET` | `false`                  | Signals backend is running in host-network mode |
 | `AETHER_PORT_SYNC_ENABLED` | `true`                | Enable inbound firewall reconciliation        |
 | `AETHER_PORT_SYNC_LOCAL_ENABLED` | `true`          | Local-host UFW reconciliation toggle          |
@@ -161,3 +196,5 @@ Deploy layer variables used by Caddy upstream routing:
 
 - `API_UPSTREAM` (default `backend:2095`)
 - `SUB_UPSTREAM` (default `backend:2096`)
+- `NEXT_PUBLIC_API_URL` (default `http://localhost:2095`) – embedded in the frontend build
+- `NEXT_PUBLIC_SUB_URL` (default `http://localhost:2096`) – embedded in the frontend build
