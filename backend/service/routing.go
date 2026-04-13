@@ -25,7 +25,7 @@ type RoutingService struct {
 
 // GetRules returns the current route rules from the stored config.
 func (s *RoutingService) GetRules() ([]RouteRule, error) {
-	raw, err := s.SettingService.GetConfig()
+	raw, err := s.GetConfig()
 	if err != nil {
 		return nil, err
 	}
@@ -44,7 +44,7 @@ func (s *RoutingService) GetRules() ([]RouteRule, error) {
 // SaveRules replaces the route.rules array in the stored config and
 // hot-reloads sing-box.
 func (s *RoutingService) SaveRules(rules []RouteRule) error {
-	raw, err := s.SettingService.GetConfig()
+	raw, err := s.GetConfig()
 	if err != nil {
 		return err
 	}

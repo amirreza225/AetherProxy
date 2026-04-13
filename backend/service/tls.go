@@ -5,6 +5,7 @@ import (
 
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
+	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/util/common"
 
 	"gorm.io/gorm"
@@ -36,6 +37,13 @@ func (s *TlsService) Save(tx *gorm.DB, action string, data json.RawMessage, host
 		if err != nil {
 			return err
 		}
+
+		// If the server TLS config specifies "acme_domain", obtain a Let's Encrypt
+		// certificate automatically and fill in certificate_path / key_path.
+		if err = s.applyACME(&tls); err != nil {
+			return err
+		}
+
 		err = tx.Save(&tls).Error
 		if err != nil {
 			return err
@@ -101,5 +109,41 @@ func (s *TlsService) Save(tx *gorm.DB, action string, data json.RawMessage, host
 		}
 	}
 
+	return nil
+}
+
+// applyACME checks if the TLS server config has an "acme_domain" field.
+// If so, it obtains a certificate via Let's Encrypt and rewrites the server JSON
+// to use certificate_path / key_path instead, removing acme_domain afterwards.
+func (s *TlsService) applyACME(tls *model.Tls) error {
+	if len(tls.Server) == 0 {
+		return nil
+	}
+
+	var serverCfg map[string]interface{}
+	if err := json.Unmarshal(tls.Server, &serverCfg); err != nil {
+		return err
+	}
+
+	domain, _ := serverCfg["acme_domain"].(string)
+	if domain == "" {
+		return nil
+	}
+
+	logger.Infof("TLS: obtaining Let's Encrypt certificate for domain %q", domain)
+	certPath, keyPath, err := GetACMEService().ObtainCert(domain)
+	if err != nil {
+		return common.NewError("ACME certificate failed for "+domain+": ", err.Error())
+	}
+
+	delete(serverCfg, "acme_domain")
+	serverCfg["certificate_path"] = certPath
+	serverCfg["key_path"] = keyPath
+
+	updated, err := json.Marshal(serverCfg)
+	if err != nil {
+		return err
+	}
+	tls.Server = model.JSONRawMessage(updated)
 	return nil
 }

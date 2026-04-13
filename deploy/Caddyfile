@@ -6,6 +6,9 @@
 }
 
 {$API_DOMAIN} {
+    # ACME HTTP-01 challenge — must come before the catch-all handle block
+    reverse_proxy /.well-known/acme-challenge/* {$API_UPSTREAM:backend:2095}
+
     # Main API
     reverse_proxy /api/* {$API_UPSTREAM:backend:2095}
     reverse_proxy /apiv2/* {$API_UPSTREAM:backend:2095}

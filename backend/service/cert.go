@@ -1,20 +1,13 @@
 package service
 
 import (
-	"context"
-	"crypto/tls"
-	"crypto/x509"
 	"encoding/pem"
 	"fmt"
-	"net"
-	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/aetherproxy/backend/config"
-	"golang.org/x/crypto/acme/autocert"
 )
 
 // CertService handles TLS certificate provisioning.
@@ -29,77 +22,16 @@ func certsDir() string {
 }
 
 // IssueLetsEncrypt obtains a certificate from Let's Encrypt for the given domain.
-// It temporarily binds port 80 to serve the HTTP-01 ACME challenge, then writes
-// fullchain.pem and privkey.pem into {certsDir}/{domain}/ and returns their paths.
-func (s *CertService) IssueLetsEncrypt(domain, email string) (certPath, keyPath string, err error) {
+// The HTTP-01 ACME challenge is served via the running web server at
+// /.well-known/acme-challenge/ — Caddy forwards that path to the backend, so
+// port 80 does not need to be bound directly.
+// email is accepted for API compatibility but is not used by the ACME client.
+func (s *CertService) IssueLetsEncrypt(domain, _ string) (certPath, keyPath string, err error) {
 	domain = strings.TrimSpace(domain)
 	if domain == "" {
 		return "", "", fmt.Errorf("domain is required")
 	}
-
-	domainDir := filepath.Join(certsDir(), domain)
-	if err := os.MkdirAll(domainDir, 0o700); err != nil {
-		return "", "", fmt.Errorf("create certs directory: %w", err)
-	}
-
-	certPath = filepath.Join(domainDir, "fullchain.pem")
-	keyPath = filepath.Join(domainDir, "privkey.pem")
-
-	m := &autocert.Manager{
-		Cache:      autocert.DirCache(filepath.Join(certsDir(), ".acme-cache")),
-		Prompt:     autocert.AcceptTOS,
-		HostPolicy: autocert.HostWhitelist(domain),
-	}
-	if email != "" {
-		m.Email = email
-	}
-
-	// Bind port 80 for the HTTP-01 challenge.
-	ln, listenErr := net.Listen("tcp", ":80")
-	if listenErr != nil {
-		return "", "", fmt.Errorf("cannot listen on port 80 (required for Let's Encrypt HTTP challenge): %w", listenErr)
-	}
-	srv := &http.Server{Handler: m.HTTPHandler(nil)}
-	go func() { _ = srv.Serve(ln) }()
-	defer func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-		defer cancel()
-		_ = srv.Shutdown(ctx)
-	}()
-
-	// Trigger certificate issuance. GetCertificate runs the ACME flow when no
-	// cached cert is available and blocks until it completes or fails.
-	tlsCert, issueErr := m.GetCertificate(&tls.ClientHelloInfo{ServerName: domain})
-	if issueErr != nil {
-		return "", "", fmt.Errorf("certificate issuance failed: %w", issueErr)
-	}
-
-	// Write the certificate chain as PEM.
-	certFile, err := os.Create(certPath)
-	if err != nil {
-		return "", "", fmt.Errorf("create cert file: %w", err)
-	}
-	defer func() {
-		if closeErr := certFile.Close(); closeErr != nil && err == nil {
-			err = closeErr
-		}
-	}()
-	for _, derBlock := range tlsCert.Certificate {
-		if encErr := pem.Encode(certFile, &pem.Block{Type: "CERTIFICATE", Bytes: derBlock}); encErr != nil {
-			return "", "", fmt.Errorf("write cert PEM: %w", encErr)
-		}
-	}
-
-	// Write the private key as PKCS#8 PEM.
-	keyDER, err := x509.MarshalPKCS8PrivateKey(tlsCert.PrivateKey)
-	if err != nil {
-		return "", "", fmt.Errorf("marshal private key: %w", err)
-	}
-	if err := os.WriteFile(keyPath, pem.EncodeToMemory(&pem.Block{Type: "PRIVATE KEY", Bytes: keyDER}), 0o600); err != nil {
-		return "", "", fmt.Errorf("write key file: %w", err)
-	}
-
-	return certPath, keyPath, nil
+	return GetACMEService().ObtainCert(domain)
 }
 
 // SavePastedCert validates certPEM and keyPEM, then persists them as files under

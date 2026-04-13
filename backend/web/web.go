@@ -67,6 +67,14 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 
 	engine.Use(gzip.Gzip(gzip.DefaultCompression))
 
+	// ACME HTTP-01 challenge — no auth, must be reachable before the API middleware.
+	engine.GET("/.well-known/acme-challenge/:token", func(c *gin.Context) {
+		token := c.Param("token")
+		if !service.GetACMEService().ServeChallenge(c.Writer, token) {
+			c.Status(http.StatusNotFound)
+		}
+	})
+
 	group_apiv2 := engine.Group("/apiv2")
 	apiv2 := api.NewAPIv2Handler(group_apiv2)
 

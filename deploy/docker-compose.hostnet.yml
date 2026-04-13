@@ -30,6 +30,7 @@ services:
       AETHER_PORT_SYNC_UFW_BIN: "${AETHER_PORT_SYNC_UFW_BIN:-ufw}"
     volumes:
       - aether_data:/data
+      - caddy_data:/caddy-certs:ro   # gives sing-box access to Caddy's Let's Encrypt certs
 
   postgres:
     image: postgres:16-alpine
