@@ -707,3 +707,25 @@ export async function discoveryAddPeer(addr: string) {
     body: new URLSearchParams({ addr }),
   });
 }
+
+// ── Telemetry ─────────────────────────────────────────────────────────────────
+
+export interface TelemetryStats {
+  protocol: string;
+  total: number;
+  successes: number;
+  failures: number;
+  successRate: number;
+  avgLatency: number;
+}
+
+export async function getTelemetryStats(headers?: HeadersInit) {
+  return apiFetch<TelemetryStats[]>("/api/telemetryStats", { headers });
+}
+
+/** Returns the URL to download the offline bundle ZIP for all clients. */
+export function getOfflineBundleUrl(): string {
+  const token = getClientAuthToken();
+  const base = BASE_URL;
+  return `${base}/api/offlineBundle${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+}

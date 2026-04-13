@@ -71,3 +71,18 @@ type Tokens struct {
 	UserId uint   `json:"userId" form:"userId"`
 	User   *User  `json:"user" gorm:"foreignKey:UserId;references:Id"`
 }
+
+// ClientTelemetry stores a single client-reported or synthetic connectivity
+// observation used to compute per-protocol health metrics and trigger
+// automatic evasion protocol cycling.
+type ClientTelemetry struct {
+	Id        uint   `json:"id"        gorm:"primaryKey;autoIncrement"`
+	DateTime  int64  `json:"dateTime"  gorm:"index"`
+	Protocol  string `json:"protocol"  gorm:"index"`
+	Success   bool   `json:"success"`
+	LatencyMs int    `json:"latencyMs"`
+	Throttled bool   `json:"throttled"`
+	ClientIP  string `json:"clientIP"`
+	// Source is "client" for user-reported telemetry, "synthetic" for server-side TCP checks.
+	Source string `json:"source"`
+}

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { getClientAuthToken, getNodes } from "@/lib/api";
+import { getClientAuthToken, getNodes, getTelemetryStats, type TelemetryStats } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { formatBytes } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -171,6 +171,61 @@ function StatCard({
   );
 }
 
+// ── Telemetry Card ────────────────────────────────────────────────────────────
+
+function TelemetryCard({ stats }: { stats: TelemetryStats[] | undefined }) {
+  if (!stats) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Protocol Health (last hour)</CardTitle>
+        </CardHeader>
+        <CardContent><Skeleton className="h-20 w-full" /></CardContent>
+      </Card>
+    );
+  }
+  if (stats.length === 0) {
+    return (
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">Protocol Health (last hour)</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">No telemetry data yet. Clients will report connectivity as they connect.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm font-medium text-muted-foreground">Protocol Health (last hour)</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3">
+          {stats.map((s) => {
+            const pct = Math.round(s.successRate * 100);
+            const color = pct >= 90 ? "bg-emerald-500" : pct >= 60 ? "bg-amber-500" : "bg-destructive";
+            return (
+              <div key={s.protocol} className="space-y-1">
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">{s.protocol}</span>
+                  <span className="text-muted-foreground">
+                    {pct}% success · {s.total} samples · avg {Math.round(s.avgLatency)}ms
+                  </span>
+                </div>
+                <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                  <div className={`h-full rounded-full transition-all ${color}`} style={{ width: `${pct}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function DashboardPage() {
@@ -188,6 +243,11 @@ export default function DashboardPage() {
   );
   const nodesOnline  = (nodesData ?? []).filter((n) => n.status === "online").length;
   const nodesOffline = (nodesData ?? []).filter((n) => n.status === "offline").length;
+
+  const { data: telemetryData } = useSWR("/api/telemetryStats", () =>
+    getTelemetryStats().then((r) => r.obj ?? []),
+    { refreshInterval: 60_000 }
+  );
 
   useEffect(() => {
     let reconnectTimer: number | null = null;
@@ -496,6 +556,9 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* ── Telemetry / Protocol Health ── */}
+      <TelemetryCard stats={telemetryData} />
 
     </div>
   );

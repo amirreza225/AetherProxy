@@ -27,5 +27,6 @@ func Migrate() error {
 		&model.PortSyncTask{},
 		&model.EvasionEvent{},
 		&model.PeerNode{},
+		&model.ClientTelemetry{},
 	)
 }

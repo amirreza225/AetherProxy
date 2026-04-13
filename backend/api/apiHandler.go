@@ -23,7 +23,9 @@ func NewAPIHandler(g *gin.RouterGroup, a2 *APIv2Handler) {
 func (a *APIHandler) initRouter(g *gin.RouterGroup) {
 	g.Use(func(c *gin.Context) {
 		path := c.Request.URL.Path
-		if !strings.HasSuffix(path, "login") && !strings.HasSuffix(path, "logout") {
+		if !strings.HasSuffix(path, "login") &&
+			!strings.HasSuffix(path, "logout") &&
+			!strings.HasSuffix(path, "report") {
 			checkLogin(c)
 		}
 	})
@@ -89,6 +91,8 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 		a.DiscoveryAddPeer(c)
 	case "resetEvasionPref":
 		a.ResetEvasionPreference(c)
+	case "report":
+		a.ReportTelemetry(c)
 	case "issueCert":
 		a.IssueCert(c)
 	case "saveCert":
@@ -150,6 +154,10 @@ func (a *APIHandler) getHandler(c *gin.Context) {
 		a.GetDiscoveryStatus(c)
 	case "discoveryPeers":
 		a.GetDiscoveryPeers(c)
+	case "telemetryStats":
+		a.GetTelemetryStats(c)
+	case "offlineBundle":
+		a.GetOfflineBundle(c)
 	default:
 		jsonMsg(c, "failed", common.NewError("unknown action: ", action))
 	}

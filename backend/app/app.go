@@ -9,9 +9,11 @@ import (
 	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/core"
 	coreplugin "github.com/aetherproxy/backend/core/plugin"
+	"github.com/aetherproxy/backend/core/plugin/dynamicpadding"
 	"github.com/aetherproxy/backend/core/plugin/ech"
 	"github.com/aetherproxy/backend/core/plugin/grpcobfs"
 	"github.com/aetherproxy/backend/core/plugin/h2disguise"
+	"github.com/aetherproxy/backend/core/plugin/multisni"
 	"github.com/aetherproxy/backend/core/plugin/mux"
 	"github.com/aetherproxy/backend/core/plugin/wscdn"
 	"github.com/aetherproxy/backend/cronjob"
@@ -41,6 +43,13 @@ func (a *APP) Init() error {
 	log.Printf("%v %v", config.GetName(), config.GetVersion())
 
 	a.initLog()
+
+	// Warn operators who have not changed the default JWT secret.
+	if config.GetJWTSecret() == "change-me-in-production" {
+		logger.Warning("⚠️  SECURITY WARNING: AETHER_JWT_SECRET is set to the default value.")
+		logger.Warning("⚠️  Please set a strong, unique secret via the AETHER_JWT_SECRET environment variable.")
+		logger.Warning("⚠️  Running with the default secret exposes your panel to session forgery attacks.")
+	}
 
 	err := database.InitDB(config.GetDBPath())
 	if err != nil {
@@ -156,6 +165,8 @@ func (a *APP) registerBuiltinPlugins() {
 	coreplugin.RegisterPlugin(grpcobfs.Plugin)
 	coreplugin.RegisterPlugin(ech.Plugin)
 	coreplugin.RegisterPlugin(mux.Plugin)
+	coreplugin.RegisterPlugin(multisni.Plugin)
+	coreplugin.RegisterPlugin(dynamicpadding.Plugin)
 }
 
 func (a *APP) loadPlugins() {
