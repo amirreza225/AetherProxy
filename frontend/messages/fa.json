@@ -122,7 +122,10 @@
     "resetHostKeyConfirm": "کلید SSH ذخیره‌شده این نود پاک شود؟ اتصال بعدی کلید عمومی سرور را دوباره یاد می‌گیرد و ذخیره می‌کند (TOFU).",
     "resetHostKeyConfirmButton": "بازنشانی کلید",
     "resetHostKeySuccess": "کلید هاست پاک شد. استقرار بعدی کلید جدید را ذخیره خواهد کرد.",
-    "resetHostKeyError": "بازنشانی کلید هاست ناموفق بود."
+    "resetHostKeyError": "بازنشانی کلید هاست ناموفق بود.",
+    "sshKeyHelper": "راهنمای کلید SSH",
+    "sshKeyHelperText": "برای تولید کلید: دستور ssh-keygen -t ed25519 -f ~/.ssh/aetherproxy_node را اجرا کنید. فایل .pub را به authorized_keys روی نود ریموت اضافه کنید.",
+    "sshKeyHelperCommand": "ssh-keygen -t ed25519 -f ~/.ssh/aetherproxy_node"
   },
   "users": {
     "title": "کاربران",
@@ -232,7 +235,17 @@
     "selectClient": "انتخاب کاربر…",
     "noClients": "هیچ کاربری یافت نشد. ابتدا کاربر بسازید.",
     "apiTokensTitle": "توکن‌های دسترسی API",
-    "apiTokensHint": "این توکن‌ها برای دسترسی برنامه‌نویسانه به API هستند. توکن اشتراک پراکسی نیستند."
+    "apiTokensHint": "این توکن‌ها برای دسترسی برنامه‌نویسانه به API هستند. توکن اشتراک پراکسی نیستند.",
+    "previewButton": "پیش‌نمایش",
+    "previewTitle": "پیش‌نمایش اشتراک",
+    "previewUriList": "لیست URI",
+    "previewClash": "Clash YAML",
+    "previewSingbox": "sing-box JSON",
+    "previewCopy": "کپی",
+    "previewCopied": "کپی شد!",
+    "previewLoading": "در حال بارگذاری…",
+    "previewError": "بارگذاری محتوای اشتراک ناموفق بود.",
+    "previewEmpty": "محتوایی وجود ندارد."
   },
   "routing": {
     "title": "قوانین مسیریابی",
@@ -247,7 +260,35 @@
     "save": "ذخیره قوانین",
     "saving": "در حال ذخیره…",
     "saveSuccess": "قوانین مسیریابی ذخیره شد.",
-    "saveError": "خطا در ذخیره قوانین مسیریابی."
+    "saveError": "خطا در ذخیره قوانین مسیریابی.",
+    "editRule": "ویرایش قانون",
+    "guided": "راهنما",
+    "rawJson": "JSON خام",
+    "matchFields": "تطابق",
+    "domainFields": "دامنه",
+    "ipFields": "IP",
+    "portFields": "پورت",
+    "actionFields": "اقدام",
+    "fieldInbound": "ورودی",
+    "fieldNetwork": "شبکه",
+    "fieldProtocol": "پروتکل",
+    "fieldDomain": "دامنه",
+    "fieldDomainSuffix": "پسوند دامنه",
+    "fieldDomainKeyword": "کلیدواژه دامنه",
+    "fieldGeoip": "GeoIP",
+    "fieldIpCidr": "IP CIDR",
+    "fieldSourceIpCidr": "IP CIDR مبدأ",
+    "fieldPort": "پورت",
+    "fieldPortRange": "محدوده پورت",
+    "fieldOutbound": "خروجی",
+    "fieldAction": "اقدام",
+    "fieldClashMode": "حالت Clash",
+    "fieldRuleSet": "مجموعه قوانین",
+    "noRules": "قانون مسیریابی‌ای وجود ندارد. برای ایجاد روی افزودن قانون بزنید.",
+    "ruleCard": "→ {outbound}",
+    "rawJsonInvalidJson": "JSON نامعتبر است",
+    "cancel": "لغو",
+    "saveRule": "ذخیره قانون"
   },
   "analytics": {
     "title": "آمار",
@@ -361,7 +402,10 @@
     "toggleError": "تغییر وضعیت افزونه ناموفق بود.",
     "loadError": "بارگذاری افزونه‌ها ناموفق بود.",
     "enable": "فعال‌سازی",
-    "disable": "غیرفعال‌سازی"
+    "disable": "غیرفعال‌سازی",
+    "transportConflictWarning": "چند افزونه transport فعال است ({names}). فقط یک باید فعال باشد — همه روی فیلد transport می‌نویسند.",
+    "conflictsWith": "با سایر افزونه‌های transport تعارض دارد",
+    "conflictsWithActive": "⚠ تعارض با فعال‌های کنونی: {names}"
   },
   "outbounds": {
     "title": "خروجی‌ها",

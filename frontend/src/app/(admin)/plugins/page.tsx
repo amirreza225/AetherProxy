@@ -17,11 +17,15 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 
+const TRANSPORT_PLUGINS = new Set(["h2disguise", "wscdn", "grpcobfs", "mux"]);
+
 function PluginCard({
   plugin,
+  conflictNames,
   onMutate,
 }: {
   plugin: PluginInfo;
+  conflictNames: string;
   onMutate: () => void;
 }) {
   const t = useTranslations("plugins");
@@ -32,6 +36,9 @@ function PluginCard({
   const [configError, setConfigError] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [toggling, setToggling] = useState(false);
+
+  const isTransport = TRANSPORT_PLUGINS.has(plugin.name);
+  const hasConflict = isTransport && conflictNames.length > 0;
 
   async function handleToggle() {
     setToggling(true);
@@ -74,8 +81,15 @@ function PluginCard({
   return (
     <Card>
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center justify-between">
-          {plugin.name}
+        <CardTitle className="text-sm font-medium flex items-center justify-between gap-2">
+          <span className="flex items-center gap-2">
+            {plugin.name}
+            {hasConflict && plugin.enabled && (
+              <Badge variant="secondary" className="text-amber-600 border-amber-300 bg-amber-50 text-xs">
+                {t("conflictsWith")}
+              </Badge>
+            )}
+          </span>
           <Badge variant={plugin.enabled ? "default" : "secondary"}>
             {plugin.enabled ? t("enabled") : t("disabled")}
           </Badge>
@@ -83,6 +97,12 @@ function PluginCard({
       </CardHeader>
       <CardContent className="space-y-3">
         <p className="text-xs text-muted-foreground">{plugin.description}</p>
+
+        {hasConflict && plugin.enabled && (
+          <p className="text-xs text-amber-600">
+            {t("conflictsWithActive", { names: conflictNames })}
+          </p>
+        )}
 
         <div className="space-y-1">
           <Label className="text-xs">{t("configJson")}</Label>
@@ -135,6 +155,12 @@ export default function PluginsPage() {
 
   const plugins = data ?? [];
 
+  const enabledTransportPlugins = plugins
+    .filter((p) => TRANSPORT_PLUGINS.has(p.name) && p.enabled)
+    .map((p) => p.name);
+
+  const hasTransportConflict = enabledTransportPlugins.length > 1;
+
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-semibold">{t("title")}</h1>
@@ -144,6 +170,12 @@ export default function PluginsPage() {
 
       {error && (
         <p className="text-sm text-destructive">{t("loadError")}</p>
+      )}
+
+      {hasTransportConflict && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+          ⚠ {t("transportConflictWarning", { names: enabledTransportPlugins.join(", ") })}
+        </div>
       )}
 
       {isLoading ? (
@@ -166,12 +198,21 @@ export default function PluginsPage() {
         </div>
       ) : (
         <div className="grid gap-4 md:grid-cols-2">
-          {plugins.map((p) => (
-            <PluginCard key={p.name} plugin={p} onMutate={mutate} />
-          ))}
+          {plugins.map((p) => {
+            const otherEnabled = enabledTransportPlugins.filter((n) => n !== p.name);
+            return (
+              <PluginCard
+                key={p.name}
+                plugin={p}
+                conflictNames={otherEnabled.join(", ")}
+                onMutate={mutate}
+              />
+            );
+          })}
         </div>
       )}
     </div>
   );
 }
+
 

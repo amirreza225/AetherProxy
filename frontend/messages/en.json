@@ -122,7 +122,10 @@
     "resetHostKeyConfirm": "Clear the stored SSH host key for this node? The next connection will re-learn and pin the server's public key (Trust-On-First-Use).",
     "resetHostKeyConfirmButton": "Reset Key",
     "resetHostKeySuccess": "Host key cleared. The next deploy will re-pin the server's key.",
-    "resetHostKeyError": "Failed to reset host key."
+    "resetHostKeyError": "Failed to reset host key.",
+    "sshKeyHelper": "SSH Key Help",
+    "sshKeyHelperText": "To generate a key: run ssh-keygen -t ed25519 -f ~/.ssh/aetherproxy_node on your server. Add the .pub file to authorized_keys on the remote node. Enter the private key path above.",
+    "sshKeyHelperCommand": "ssh-keygen -t ed25519 -f ~/.ssh/aetherproxy_node"
   },
   "users": {
     "title": "Users",
@@ -232,7 +235,17 @@
     "deleteTokenSuccess": "Token deleted.",
     "deleteTokenError": "Failed to delete token.",
     "expiresAt": "Expires:",
-    "neverExpires": "Never expires"
+    "neverExpires": "Never expires",
+    "previewButton": "Preview",
+    "previewTitle": "Subscription Preview",
+    "previewUriList": "URI List",
+    "previewClash": "Clash YAML",
+    "previewSingbox": "sing-box JSON",
+    "previewCopy": "Copy",
+    "previewCopied": "Copied!",
+    "previewLoading": "Loading…",
+    "previewError": "Failed to load subscription content.",
+    "previewEmpty": "No content."
   },
   "routing": {
     "title": "Routing Rules",
@@ -247,7 +260,35 @@
     "save": "Save Rules",
     "saving": "Saving…",
     "saveSuccess": "Routing rules saved.",
-    "saveError": "Failed to save routing rules."
+    "saveError": "Failed to save routing rules.",
+    "editRule": "Edit Rule",
+    "guided": "Guided",
+    "rawJson": "Raw JSON",
+    "matchFields": "Match",
+    "domainFields": "Domain",
+    "ipFields": "IP",
+    "portFields": "Port",
+    "actionFields": "Action",
+    "fieldInbound": "Inbound",
+    "fieldNetwork": "Network",
+    "fieldProtocol": "Protocol",
+    "fieldDomain": "Domain",
+    "fieldDomainSuffix": "Domain Suffix",
+    "fieldDomainKeyword": "Domain Keyword",
+    "fieldGeoip": "GeoIP",
+    "fieldIpCidr": "IP CIDR",
+    "fieldSourceIpCidr": "Source IP CIDR",
+    "fieldPort": "Port",
+    "fieldPortRange": "Port Range",
+    "fieldOutbound": "Outbound",
+    "fieldAction": "Action",
+    "fieldClashMode": "Clash Mode",
+    "fieldRuleSet": "Rule Set",
+    "noRules": "No routing rules. Click Add Rule to create one.",
+    "ruleCard": "→ {outbound}",
+    "rawJsonInvalidJson": "Invalid JSON",
+    "cancel": "Cancel",
+    "saveRule": "Save Rule"
   },
   "analytics": {
     "title": "Analytics",
@@ -361,7 +402,10 @@
     "toggleError": "Failed to toggle plugin.",
     "loadError": "Failed to load plugins.",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "transportConflictWarning": "Multiple transport plugins are enabled ({names}). Only one transport plugin should be active at a time — they all write to the same transport field.",
+    "conflictsWith": "Conflicts with other transport plugins",
+    "conflictsWithActive": "⚠ Conflicts with currently enabled: {names}"
   },
   "outbounds": {
     "title": "Outbounds",

@@ -19,6 +19,133 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+
+// ── Subscription Preview Dialog ───────────────────────────────────────────────
+
+function PreviewDialog({
+  clientName,
+  subUrl,
+  clashUrl,
+  jsonUrl,
+}: {
+  clientName: string;
+  subUrl: string;
+  clashUrl: string;
+  jsonUrl: string;
+}) {
+  const t = useTranslations("subscriptions");
+  const [open, setOpen] = useState(false);
+  const [tab, setTab] = useState("uri");
+  const [contents, setContents] = useState<Record<string, string | null>>({
+    uri: null, clash: null, json: null,
+  });
+  const [loading, setLoading] = useState<Record<string, boolean>>({
+    uri: false, clash: false, json: false,
+  });
+  const [copied, setCopied] = useState<Record<string, boolean>>({
+    uri: false, clash: false, json: false,
+  });
+
+  async function fetchTab(key: string, url: string) {
+    if (contents[key] !== null) return;
+    setLoading((l) => ({ ...l, [key]: true }));
+    try {
+      const res = await fetch(url);
+      const text = await res.text();
+      setContents((c) => ({ ...c, [key]: text }));
+    } catch {
+      setContents((c) => ({ ...c, [key]: "" }));
+    } finally {
+      setLoading((l) => ({ ...l, [key]: false }));
+    }
+  }
+
+  function handleTabChange(key: string) {
+    setTab(key);
+    const urls: Record<string, string> = { uri: subUrl, clash: clashUrl, json: jsonUrl };
+    fetchTab(key, urls[key]);
+  }
+
+  function handleOpen(v: boolean) {
+    if (v) {
+      setContents({ uri: null, clash: null, json: null });
+      setLoading({ uri: false, clash: false, json: false });
+      setCopied({ uri: false, clash: false, json: false });
+      setTab("uri");
+      fetchTab("uri", subUrl);
+    }
+    setOpen(v);
+  }
+
+  async function handleCopy(key: string) {
+    const text = contents[key];
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied((c) => ({ ...c, [key]: true }));
+      setTimeout(() => setCopied((c) => ({ ...c, [key]: false })), 2000);
+    } catch {
+      // ignore
+    }
+  }
+
+  function TabBody({ tabKey }: { tabKey: string }) {
+    const isLoading = loading[tabKey];
+    const content = contents[tabKey];
+    if (isLoading) return <p className="text-xs text-muted-foreground">{t("previewLoading")}</p>;
+    if (content === null) return null;
+    if (content === "") return <p className="text-xs text-destructive">{t("previewError")}</p>;
+    return (
+      <div className="space-y-2">
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => handleCopy(tabKey)}
+          >
+            {copied[tabKey] ? t("previewCopied") : t("previewCopy")}
+          </Button>
+        </div>
+        <pre className="overflow-x-auto rounded-md bg-muted p-3 text-xs font-mono whitespace-pre-wrap break-all max-h-72">
+          {content || t("previewEmpty")}
+        </pre>
+      </div>
+    );
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogTrigger render={<Button size="sm" variant="outline" />}>
+        {t("previewButton")}
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle>{t("previewTitle")} — {clientName}</DialogTitle>
+        </DialogHeader>
+        <Tabs value={tab} onValueChange={handleTabChange}>
+          <TabsList>
+            <TabsTrigger value="uri">{t("previewUriList")}</TabsTrigger>
+            <TabsTrigger value="clash">{t("previewClash")}</TabsTrigger>
+            <TabsTrigger value="json">{t("previewSingbox")}</TabsTrigger>
+          </TabsList>
+          <TabsContent value="uri"><TabBody tabKey="uri" /></TabsContent>
+          <TabsContent value="clash"><TabBody tabKey="clash" /></TabsContent>
+          <TabsContent value="json"><TabBody tabKey="json" /></TabsContent>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function SubscriptionsPage() {
   const t = useTranslations("subscriptions");
@@ -152,6 +279,12 @@ export default function SubscriptionsPage() {
                 <Button size="sm" variant="outline" render={<a href={selectedUrl} target="_blank" rel="noreferrer" />}>
                   {t("openLink")}
                 </Button>
+                <PreviewDialog
+                  clientName={selectedClientName}
+                  subUrl={selectedUrl}
+                  clashUrl={selectedClashUrl}
+                  jsonUrl={selectedJsonUrl}
+                />
               </div>
 
               <div className="space-y-1 rounded-md border p-3 text-xs">
@@ -304,3 +437,4 @@ export default function SubscriptionsPage() {
     </div>
   );
 }
+

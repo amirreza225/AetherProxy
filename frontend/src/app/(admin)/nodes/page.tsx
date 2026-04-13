@@ -427,6 +427,7 @@ function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
   const [form, setForm] = useState({ name: "", host: "", sshPort: "22", sshKeyPath: "", provider: "" });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showSshHelper, setShowSshHelper] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -471,6 +472,24 @@ function AddNodeDialog({ onCreated }: { onCreated: () => void }) {
           <div>
             <Label htmlFor="sshKeyPath">{t("sshKeyPath")}</Label>
             <Input id="sshKeyPath" value={form.sshKeyPath} onChange={e => setForm(f => ({ ...f, sshKeyPath: e.target.value }))} placeholder="/root/.ssh/id_rsa" />
+            <div className="mt-1">
+              <button
+                type="button"
+                className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                onClick={() => setShowSshHelper((v) => !v)}
+              >
+                <span>{showSshHelper ? "▾" : "▸"}</span>
+                {t("sshKeyHelper")}
+              </button>
+              {showSshHelper && (
+                <div className="mt-2 rounded-md border bg-muted/50 p-3 text-xs space-y-2">
+                  <p className="text-muted-foreground">{t("sshKeyHelperText")}</p>
+                  <code className="block rounded bg-muted px-2 py-1 font-mono text-xs select-all">
+                    {t("sshKeyHelperCommand")}
+                  </code>
+                </div>
+              )}
+            </div>
           </div>
           <div>
             <Label htmlFor="provider">{t("provider")}</Label>

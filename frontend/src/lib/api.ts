@@ -599,14 +599,7 @@ export async function clearPortSync(scope = "", nodeId?: number) {
 
 // ── Routing ───────────────────────────────────────────────────────────────────
 
-export interface RouteRule {
-  inbound?: string[];
-  network?: string;
-  domain_suffix?: string[];
-  geoip?: string[];
-  outbound?: string;
-  action?: string;
-}
+export type RouteRule = Record<string, unknown>;
 
 export async function getRouting(headers?: HeadersInit) {
   return apiFetch<RouteRule[]>("/api/routing", { headers });
