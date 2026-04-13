@@ -160,7 +160,11 @@ func GetEvasionPreferredProtocol() string {
 		return ""
 	}
 	ts, err := strconv.ParseInt(tsStr, 10, 64)
-	if err != nil || time.Since(time.Unix(ts, 0)) > evasionPreferenceTTL {
+	if err != nil {
+		// Unparseable timestamp – expire the preference rather than acting on stale data.
+		return ""
+	}
+	if time.Since(time.Unix(ts, 0)) > evasionPreferenceTTL {
 		return ""
 	}
 	return val

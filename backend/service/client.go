@@ -108,11 +108,18 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 			}
 		}
 		// Collect inbound IDs from ALL clients in the batch (not just clients[0]).
+		// Use a map to deduplicate in O(n) without repeated union operations.
+		allIDsSet := make(map[uint]struct{})
 		for _, client := range clients {
 			var clientInboundIds []uint
 			if err = json.Unmarshal(client.Inbounds, &clientInboundIds); err == nil {
-				inboundIds = common.UnionUintArray(inboundIds, clientInboundIds)
+				for _, id := range clientInboundIds {
+					allIDsSet[id] = struct{}{}
+				}
 			}
+		}
+		for id := range allIDsSet {
+			inboundIds = append(inboundIds, id)
 		}
 		err = s.updateLinksWithFixedInbounds(tx, clients, hostname)
 		if err != nil {
