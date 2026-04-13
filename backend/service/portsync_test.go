@@ -179,8 +179,7 @@ func TestDiffRules(t *testing.T) {
 	}
 }
 
-func TestPortSyncRetryLifecycle(t *testing.T) {
-	setupPortSyncDB(t)
+func TestPortSyncRetryLifecycle(t *testing.T) {	setupPortSyncDB(t)
 	t.Setenv("AETHER_PORT_SYNC_ENABLED", "true")
 	t.Setenv("AETHER_PORT_SYNC_LOCAL_ENABLED", "true")
 	t.Setenv("AETHER_PORT_SYNC_REMOTE_ENABLED", "false")
@@ -345,5 +344,100 @@ func TestCollectDesiredRulesIncludesGossipWhenDiscoveryRunning(t *testing.T) {
 	}
 	if !keys["tcp:7946"] || !keys["udp:7946"] {
 		t.Fatalf("expected gossip rules tcp:7946 and udp:7946, got keys=%#v", keys)
+	}
+}
+
+// fakeFirewallBackendUFWInactive simulates a firewall that runs ufw status
+// but returns "ufw is inactive".
+type fakeFirewallBackendUFWInactive struct{}
+
+func (f *fakeFirewallBackendUFWInactive) localCapabilityState() (bool, string) {
+	return true, "ready"
+}
+
+func (f *fakeFirewallBackendUFWInactive) listManagedLocalRules() ([]managedUFWRule, error) {
+	return nil, errUFWInactive
+}
+
+func (f *fakeFirewallBackendUFWInactive) allowLocal(_ portRule) error   { return nil }
+func (f *fakeFirewallBackendUFWInactive) deleteLocal(_ int) error       { return nil }
+func (f *fakeFirewallBackendUFWInactive) listManagedRemoteRules(_ *ssh.Client) ([]managedUFWRule, error) {
+	return nil, errUFWInactive
+}
+func (f *fakeFirewallBackendUFWInactive) allowRemote(_ *ssh.Client, _ portRule) error  { return nil }
+func (f *fakeFirewallBackendUFWInactive) deleteRemote(_ *ssh.Client, _ int) error      { return nil }
+
+func TestPortSyncUFWInactiveNoRetryTask(t *testing.T) {
+	setupPortSyncDB(t)
+	t.Setenv("AETHER_PORT_SYNC_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_LOCAL_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_REMOTE_ENABLED", "false")
+	t.Setenv("AETHER_PORT_SYNC_RETRY_SECONDS", "1")
+
+	svc := &PortSyncService{firewall: &fakeFirewallBackendUFWInactive{}}
+	svc.syncAllTargets("startup")
+
+	db := database.GetDB()
+	var count int64
+	if err := db.Model(&model.PortSyncTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no retry task for ufw-inactive (permanent error), got %d", count)
+	}
+}
+
+func TestPortSyncCapabilityErrorNoRetryTask(t *testing.T) {
+	setupPortSyncDB(t)
+	t.Setenv("AETHER_PORT_SYNC_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_LOCAL_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_REMOTE_ENABLED", "false")
+	t.Setenv("AETHER_PORT_SYNC_RETRY_SECONDS", "1")
+
+	svc := &PortSyncService{firewall: &fakeFirewallBackend{capOK: false, capNote: "ufw binary not found"}}
+	svc.syncAllTargets("startup")
+
+	db := database.GetDB()
+	var count int64
+	if err := db.Model(&model.PortSyncTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected no retry task for capability failure (permanent error), got %d", count)
+	}
+}
+
+func TestPortSyncProcessDueTasks_PermanentErrorDeletesTask(t *testing.T) {
+	setupPortSyncDB(t)
+	t.Setenv("AETHER_PORT_SYNC_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_LOCAL_ENABLED", "true")
+	t.Setenv("AETHER_PORT_SYNC_REMOTE_ENABLED", "false")
+	t.Setenv("AETHER_PORT_SYNC_RETRY_SECONDS", "1")
+
+	svc := &PortSyncService{firewall: &fakeFirewallBackendUFWInactive{}}
+
+	// Seed an existing retry task (simulating a task created before this fix).
+	svc.upsertFailedTask(portSyncScopeLocal, 0, "startup", errors.New("ufw is inactive"))
+
+	db := database.GetDB()
+	var task model.PortSyncTask
+	if err := db.First(&task).Error; err != nil {
+		t.Fatalf("load seeded task: %v", err)
+	}
+	// Mark it as due.
+	if err := db.Model(&task).Update("next_run_at", time.Now().Unix()-1).Error; err != nil {
+		t.Fatalf("mark task due: %v", err)
+	}
+
+	if err := svc.ProcessDueTasks(10); err != nil {
+		t.Fatalf("ProcessDueTasks: %v", err)
+	}
+
+	var count int64
+	if err := db.Model(&model.PortSyncTask{}).Count(&count).Error; err != nil {
+		t.Fatalf("count tasks: %v", err)
+	}
+	if count != 0 {
+		t.Fatalf("expected task to be deleted after permanent error, got %d tasks remaining", count)
 	}
 }

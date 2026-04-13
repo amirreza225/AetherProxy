@@ -2,6 +2,7 @@ package service
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"sort"
 	"strconv"
@@ -23,6 +24,20 @@ const (
 	portSyncTaskPending     = "pending"
 	portSyncTaskRunning     = "running"
 )
+
+// errUFWInactive is a sentinel for a firewall that is installed but not active.
+var errUFWInactive = errors.New("ufw is inactive")
+
+// permanentReconcileError wraps an error that indicates a permanent configuration
+// issue for which no retry should be queued. The task will be discarded.
+type permanentReconcileError struct{ msg string }
+
+func (e *permanentReconcileError) Error() string { return e.msg }
+
+func isPermanentReconcileError(err error) bool {
+	var p *permanentReconcileError
+	return errors.As(err, &p)
+}
 
 type portRule struct {
 	Port  int
@@ -147,7 +162,9 @@ func (s *PortSyncService) syncAllTargets(reason string) {
 	if config.GetPortSyncLocalEnabled() {
 		if err := s.reconcileLocal(desired); err != nil {
 			logger.WarningfThrottled("portsync.local.reconcile.failed", 60*time.Second, "PortSync: local reconcile failed: %v", err)
-			s.upsertFailedTask(portSyncScopeLocal, 0, reason, err)
+			if !isPermanentReconcileError(err) {
+				s.upsertFailedTask(portSyncScopeLocal, 0, reason, err)
+			}
 		}
 	} else {
 		logger.InfofThrottled("portsync.local.disabled", 120*time.Second, "PortSync: local reconciliation disabled by config")
@@ -170,7 +187,9 @@ func (s *PortSyncService) syncAllTargets(reason string) {
 		if err := s.reconcileNode(node.Id, desired); err != nil {
 			nodeFailed++
 			logger.Warningf("PortSync: node %d reconcile failed: %v", node.Id, err)
-			s.upsertFailedTask(portSyncScopeNode, node.Id, reason, err)
+			if !isPermanentReconcileError(err) {
+				s.upsertFailedTask(portSyncScopeNode, node.Id, reason, err)
+			}
 		}
 	}
 	logger.Infof("PortSync: reconcile done reason=%q nodes=%d failed_nodes=%d", reason, nodeTotal, nodeFailed)
@@ -230,13 +249,20 @@ func (s *PortSyncService) ProcessDueTasks(limit int) error {
 				runErr = nil
 			} else {
 				runErr = s.reconcileLocal(desired)
+				if isPermanentReconcileError(runErr) {
+					logger.Warningf("PortSync: local task %d discarded (permanent error): %v", task.Id, runErr)
+					runErr = nil
+				}
 			}
 		case portSyncScopeNode:
 			if !config.GetPortSyncRemoteEnabled() {
 				runErr = nil
 			} else {
 				runErr = s.reconcileNode(task.NodeId, desired)
-				if database.IsNotFound(runErr) {
+				if database.IsNotFound(runErr) || isPermanentReconcileError(runErr) {
+					if isPermanentReconcileError(runErr) {
+						logger.Warningf("PortSync: node task %d discarded (permanent error): %v", task.Id, runErr)
+					}
 					runErr = nil
 				}
 			}
@@ -455,13 +481,16 @@ func shouldExposeGossipRules() bool {
 func (s *PortSyncService) reconcileLocal(desired []portRule) error {
 	ok, note := s.localCapabilityState()
 	if !ok {
-		return fmt.Errorf("%s", note)
+		return &permanentReconcileError{msg: note}
 	}
 	if s.firewall == nil {
-		return fmt.Errorf("firewall backend unavailable")
+		return &permanentReconcileError{msg: "firewall backend unavailable"}
 	}
 	existing, err := s.firewall.listManagedLocalRules()
 	if err != nil {
+		if errors.Is(err, errUFWInactive) {
+			return &permanentReconcileError{msg: err.Error()}
+		}
 		return err
 	}
 	toDelete, toAdd := diffRules(existing, desired)
@@ -499,6 +528,9 @@ func (s *PortSyncService) reconcileNode(nodeID uint, desired []portRule) error {
 	}
 	existing, err := s.firewall.listManagedRemoteRules(client)
 	if err != nil {
+		if errors.Is(err, errUFWInactive) {
+			return &permanentReconcileError{msg: fmt.Sprintf("node %d: %v", nodeID, err)}
+		}
 		return err
 	}
 	toDelete, toAdd := diffRules(existing, desired)
@@ -601,7 +633,7 @@ func ruleFromComment(comment string) (portRule, bool) {
 
 func ensureUFWActive(output string) error {
 	if strings.Contains(strings.ToLower(output), "status: inactive") {
-		return fmt.Errorf("ufw is inactive")
+		return errUFWInactive
 	}
 	return nil
 }
