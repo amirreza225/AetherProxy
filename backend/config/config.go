@@ -191,6 +191,32 @@ func GetEvasionAPIURL() string {
 	return os.Getenv("AETHER_EVASION_API_URL")
 }
 
+// GetEvasionAPIURLs returns all configured censorship-monitoring API URLs.
+// Supports both AETHER_EVASION_API_URL (primary) and AETHER_EVASION_API_URL_2 (secondary).
+// The scraper iterates all non-empty URLs on each cycle.
+func GetEvasionAPIURLs() []string {
+	var urls []string
+	for _, env := range []string{"AETHER_EVASION_API_URL", "AETHER_EVASION_API_URL_2"} {
+		if u := os.Getenv(env); u != "" {
+			urls = append(urls, u)
+		}
+	}
+	return urls
+}
+
+// GetTelegramBotToken returns the Telegram Bot API token for out-of-band
+// evasion notifications. Leave empty to disable Telegram notifications.
+func GetTelegramBotToken() string {
+	return os.Getenv("AETHER_TELEGRAM_BOT_TOKEN")
+}
+
+// GetTelegramChannelID returns the Telegram channel or chat ID where evasion
+// alerts and subscription updates are broadcast.
+// Format: "@channelname" or a numeric chat ID.
+func GetTelegramChannelID() string {
+	return os.Getenv("AETHER_TELEGRAM_CHANNEL_ID")
+}
+
 // GetPortSyncEnabled controls automatic firewall reconciliation for inbound ports.
 // Defaults to true.
 func GetPortSyncEnabled() bool {

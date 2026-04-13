@@ -1,8 +1,12 @@
 package api
 
 import (
+	"archive/zip"
+	"bytes"
+	"encoding/base64"
 	"encoding/json"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/aetherproxy/backend/core/plugin"
@@ -737,4 +741,135 @@ func (a *ApiService) DiscoveryAddPeer(c *gin.Context) {
 func (a *ApiService) ResetEvasionPreference(c *gin.Context) {
 	err := service.ResetEvasionPreference()
 	jsonMsg(c, "evasion", err)
+}
+
+// ReportTelemetry accepts a client-submitted connectivity report and persists
+// it as a ClientTelemetry row.  This endpoint is intentionally unauthenticated
+// so that proxy clients can report even when the admin session has expired.
+//
+// Expected JSON body:
+//
+//	{ "protocol": "vless-reality", "success": true, "latency": 120, "throttled": false }
+func (a *ApiService) ReportTelemetry(c *gin.Context) {
+	var req struct {
+		Protocol  string `json:"protocol"`
+		Success   bool   `json:"success"`
+		LatencyMs int    `json:"latency"`
+		Throttled bool   `json:"throttled"`
+	}
+	if err := c.ShouldBindJSON(&req); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	if req.Protocol == "" {
+		jsonMsg(c, "", common.NewError("protocol is required"))
+		return
+	}
+	err := service.RecordTelemetry(model.ClientTelemetry{
+		DateTime:  time.Now().Unix(),
+		Protocol:  req.Protocol,
+		Success:   req.Success,
+		LatencyMs: req.LatencyMs,
+		Throttled: req.Throttled,
+		ClientIP:  getRemoteIp(c),
+		Source:    "client",
+	})
+	jsonMsg(c, "telemetry", err)
+}
+
+// GetTelemetryStats returns aggregated per-protocol success/failure rates over
+// the last hour for display on the dashboard.
+func (a *ApiService) GetTelemetryStats(c *gin.Context) {
+	stats, err := service.GetTelemetryStats()
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+	jsonObj(c, stats, nil)
+}
+
+// GetOfflineBundle generates and serves a ZIP archive containing pre-rendered
+// subscription content for all enabled clients.  Users can download this bundle
+// before a blackout and import the proxy configs directly without fetching a
+// live subscription URL.
+func (a *ApiService) GetOfflineBundle(c *gin.Context) {
+	clients, err := a.ClientService.GetAll()
+	if err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+
+	var buf bytes.Buffer
+	zw := zip.NewWriter(&buf)
+
+	readme := "AetherProxy Offline Bundle\n" +
+		"==========================\n\n" +
+		"Each .txt file in this archive contains Base64-encoded proxy URIs for\n" +
+		"one client.  Import the file into your proxy client (e.g. v2rayNG,\n" +
+		"NekoBox, sing-box) using the 'Import from clipboard' option after\n" +
+		"decoding the Base64 content, or use the file directly if your client\n" +
+		"supports Base64-encoded subscription files.\n\n" +
+		"Generated: " + time.Now().UTC().Format(time.RFC3339) + "\n"
+	if f, werr := zw.Create("README.txt"); werr == nil {
+		_, _ = f.Write([]byte(readme))
+	}
+
+	for _, client := range *clients {
+		if !client.Enable {
+			continue
+		}
+		if client.Links == nil {
+			continue
+		}
+		// Decode the stored links array: [{tag: uri}, ...]
+		var linksArr []map[string]string
+		var uris []string
+		if json.Unmarshal(client.Links, &linksArr) == nil {
+			for _, m := range linksArr {
+				for _, v := range m {
+					if v != "" {
+						uris = append(uris, v)
+					}
+				}
+			}
+		}
+		if len(uris) == 0 {
+			continue
+		}
+		// Build Base64 subscription content (standard format).
+		raw := strings.Join(uris, "\n")
+		encoded := base64.StdEncoding.EncodeToString([]byte(raw))
+
+		fname := sanitizeFilename(client.Name) + "_subscription.txt"
+		if f, werr := zw.Create(fname); werr == nil {
+			_, _ = f.Write([]byte(encoded))
+		}
+	}
+
+	if err := zw.Close(); err != nil {
+		jsonMsg(c, "", err)
+		return
+	}
+
+	ts := time.Now().Format("20060102-150405")
+	c.Header("Content-Type", "application/zip")
+	c.Header("Content-Disposition", "attachment; filename=aetherproxy-offline-"+ts+".zip")
+	_, _ = c.Writer.Write(buf.Bytes())
+}
+
+// sanitizeFilename replaces characters unsafe for filenames with underscores.
+func sanitizeFilename(name string) string {
+	var b strings.Builder
+	for _, r := range name {
+		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') || r == '-' || r == '_' {
+			b.WriteRune(r)
+		} else {
+			b.WriteRune('_')
+		}
+	}
+	s := b.String()
+	if s == "" {
+		return "client"
+	}
+	return s
 }
