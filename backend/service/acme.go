@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"crypto/x509"
 	"encoding/pem"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -198,10 +199,9 @@ func (s *ACMEService) buildClient(ctx context.Context) (*acme.Client, error) {
 		DirectoryURL: acmeProductionURL,
 	}
 
-	if _, err := client.Register(ctx, &acme.Account{}, acme.AcceptTOS); err != nil {
-		if ae, ok := err.(*acme.Error); !ok || ae.StatusCode != 409 {
-			return nil, fmt.Errorf("ACME: register account: %w", err)
-		}
+	if _, err := client.Register(ctx, &acme.Account{}, acme.AcceptTOS); err != nil &&
+		!errors.Is(err, acme.ErrAccountAlreadyExists) {
+		return nil, fmt.Errorf("ACME: register account: %w", err)
 	}
 
 	return client, nil

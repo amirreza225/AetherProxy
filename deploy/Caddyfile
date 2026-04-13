@@ -2,6 +2,8 @@
 # If running on a single domain, use the same value for both.
 
 {$PANEL_DOMAIN} {
+    # ACME HTTP-01 challenge forwarding (needed when backend issues certs for this domain)
+    reverse_proxy /.well-known/acme-challenge/* {$API_UPSTREAM:backend:2095}
     reverse_proxy frontend:3000
 }
 
