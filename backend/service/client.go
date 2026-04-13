@@ -316,12 +316,12 @@ func (s *ClientService) UpdateClientsOnInboundAdd(tx *gorm.DB, initIds string, i
 	if err != nil {
 		return err
 	}
-	for _, client := range clients {
+	for i, client := range clients {
 		// Add inbounds
 		var clientInbounds []uint
 		_ = json.Unmarshal(client.Inbounds, &clientInbounds)
 		clientInbounds = append(clientInbounds, inboundId)
-		client.Inbounds, err = json.MarshalIndent(clientInbounds, "", "  ")
+		clients[i].Inbounds, err = json.MarshalIndent(clientInbounds, "", "  ")
 		if err != nil {
 			return err
 		}
@@ -342,14 +342,13 @@ func (s *ClientService) UpdateClientsOnInboundAdd(tx *gorm.DB, initIds string, i
 			}
 		}
 
-		client.Links, err = json.MarshalIndent(newClientLinks, "", "  ")
+		clients[i].Links, err = json.MarshalIndent(newClientLinks, "", "  ")
 		if err != nil {
 			return err
 		}
-		err = tx.Save(&client).Error
-		if err != nil {
-			return err
-		}
+	}
+	if len(clients) > 0 {
+		return tx.Save(clients).Error
 	}
 	return nil
 }
@@ -368,7 +367,7 @@ func (s *ClientService) UpdateClientsOnInboundDelete(tx *gorm.DB, id uint, tag s
 	if err != nil {
 		return err
 	}
-	for _, client := range clients {
+	for i, client := range clients {
 		// Delete inbounds
 		var clientInbounds, newClientInbounds []uint
 		_ = json.Unmarshal(client.Inbounds, &clientInbounds)
@@ -377,7 +376,7 @@ func (s *ClientService) UpdateClientsOnInboundDelete(tx *gorm.DB, id uint, tag s
 				newClientInbounds = append(newClientInbounds, clientInbound)
 			}
 		}
-		client.Inbounds, err = json.MarshalIndent(newClientInbounds, "", "  ")
+		clients[i].Inbounds, err = json.MarshalIndent(newClientInbounds, "", "  ")
 		if err != nil {
 			return err
 		}
@@ -389,14 +388,13 @@ func (s *ClientService) UpdateClientsOnInboundDelete(tx *gorm.DB, id uint, tag s
 				newClientLinks = append(newClientLinks, clientLink)
 			}
 		}
-		client.Links, err = json.MarshalIndent(newClientLinks, "", "  ")
+		clients[i].Links, err = json.MarshalIndent(newClientLinks, "", "  ")
 		if err != nil {
 			return err
 		}
-		err = tx.Save(&client).Error
-		if err != nil {
-			return err
-		}
+	}
+	if len(clients) > 0 {
+		return tx.Save(clients).Error
 	}
 	return nil
 }
@@ -417,7 +415,7 @@ func (s *ClientService) UpdateLinksByInboundChange(tx *gorm.DB, inbounds *[]mode
 		if err != nil {
 			return err
 		}
-		for _, client := range clients {
+		for i, client := range clients {
 			var clientLinks, newClientLinks []map[string]string
 			_ = json.Unmarshal(client.Links, &clientLinks)
 			newLinks := util.LinkGenerator(client.Config, &inbound, hostname)
@@ -434,12 +432,13 @@ func (s *ClientService) UpdateLinksByInboundChange(tx *gorm.DB, inbounds *[]mode
 				}
 			}
 
-			client.Links, err = json.MarshalIndent(newClientLinks, "", "  ")
+			clients[i].Links, err = json.MarshalIndent(newClientLinks, "", "  ")
 			if err != nil {
 				return err
 			}
-			err = tx.Save(&client).Error
-			if err != nil {
+		}
+		if len(clients) > 0 {
+			if err = tx.Save(clients).Error; err != nil {
 				return err
 			}
 		}
@@ -460,9 +459,6 @@ func (s *ClientService) DepleteClients() ([]uint, error) {
 	defer func() {
 		if err == nil {
 			tx.Commit()
-			if err1 := db.Exec("PRAGMA wal_checkpoint(FULL)").Error; err1 != nil {
-				logger.Error("Error checkpointing WAL: ", err1.Error())
-			}
 		} else {
 			tx.Rollback()
 		}

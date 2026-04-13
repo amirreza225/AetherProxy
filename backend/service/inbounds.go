@@ -52,6 +52,25 @@ func (s *InboundService) GetAll() (*[]map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	// Fetch all inbound→client-name mappings in a single query instead of
+	// one query per inbound (eliminates the N+1 read pattern).
+	type inboundUser struct {
+		InboundId uint
+		Name      string
+	}
+	var inboundUsers []inboundUser
+	err = db.Raw(`SELECT je.value AS inbound_id, clients.name AS name
+		FROM clients, json_each(clients.inbounds) AS je`).Scan(&inboundUsers).Error
+	if err != nil {
+		return nil, err
+	}
+	// Build a map: inboundId → []clientName
+	usersByInbound := make(map[uint][]string)
+	for _, iu := range inboundUsers {
+		usersByInbound[iu.InboundId] = append(usersByInbound[iu.InboundId], iu.Name)
+	}
+
 	var data []map[string]interface{}
 	for _, inbound := range inbounds {
 		var shadowtls_version uint
@@ -79,10 +98,9 @@ func (s *InboundService) GetAll() (*[]map[string]interface{}, error) {
 		if s.hasUser(inbound.Type) &&
 			(inbound.Type != "shadowtls" || shadowtls_version >= 3) &&
 			(inbound.Type != "shadowsocks" || !ss_managed) {
-			users := []string{}
-			err = db.Raw("SELECT clients.name FROM clients, json_each(clients.inbounds) as je WHERE je.value = ?", inbound.Id).Scan(&users).Error
-			if err != nil {
-				return nil, err
+			users := usersByInbound[inbound.Id]
+			if users == nil {
+				users = []string{}
 			}
 			inbData["users"] = users
 		}

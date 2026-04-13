@@ -398,7 +398,7 @@ func (a *ApiService) DeleteToken(c *gin.Context) {
 }
 
 func (a *ApiService) GetSingboxConfig(c *gin.Context) {
-	rawConfig, err := a.ConfigService.GetConfig("")
+	rawConfig, err := a.ConfigService.GetConfigIndented("")
 	if err != nil {
 		c.Status(400)
 		_, _ = c.Writer.WriteString(err.Error())

@@ -6,6 +6,8 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
 	"github.com/aetherproxy/backend/core"
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
@@ -63,27 +65,61 @@ func (s *ConfigService) GetConfig(data string) (*[]byte, error) {
 		return nil, err
 	}
 
-	singboxConfig.Inbounds, err = s.InboundService.GetAllConfig(database.GetDB())
-	if err != nil {
+	db := database.GetDB()
+
+	// Fan out the four independent DB queries in parallel.
+	var eg errgroup.Group
+	eg.Go(func() error {
+		var e error
+		singboxConfig.Inbounds, e = s.InboundService.GetAllConfig(db)
+		return e
+	})
+	eg.Go(func() error {
+		var e error
+		singboxConfig.Outbounds, e = s.OutboundService.GetAllConfig(db)
+		return e
+	})
+	eg.Go(func() error {
+		var e error
+		singboxConfig.Services, e = s.ServicesService.GetAllConfig(db)
+		return e
+	})
+	eg.Go(func() error {
+		var e error
+		singboxConfig.Endpoints, e = s.EndpointService.GetAllConfig(db)
+		return e
+	})
+	if err = eg.Wait(); err != nil {
 		return nil, err
 	}
-	singboxConfig.Outbounds, err = s.OutboundService.GetAllConfig(database.GetDB())
-	if err != nil {
-		return nil, err
-	}
-	singboxConfig.Services, err = s.ServicesService.GetAllConfig(database.GetDB())
-	if err != nil {
-		return nil, err
-	}
-	singboxConfig.Endpoints, err = s.EndpointService.GetAllConfig(database.GetDB())
-	if err != nil {
-		return nil, err
-	}
-	rawConfig, err := json.MarshalIndent(singboxConfig, "", "  ")
+
+	// Use compact JSON for the sing-box config that is passed to the core.
+	// The human-readable version is produced by GetConfigIndented when
+	// the admin panel requests a downloadable copy.
+	rawConfig, err := json.Marshal(singboxConfig)
 	if err != nil {
 		return nil, err
 	}
 	return &rawConfig, nil
+}
+
+// GetConfigIndented returns the sing-box config as pretty-printed JSON.
+// It is used by the admin API download endpoint so that the file is
+// human-readable; the core always receives the compact form via GetConfig.
+func (s *ConfigService) GetConfigIndented(data string) (*[]byte, error) {
+	rawConfig, err := s.GetConfig(data)
+	if err != nil {
+		return nil, err
+	}
+	var obj interface{}
+	if err = json.Unmarshal(*rawConfig, &obj); err != nil {
+		return nil, err
+	}
+	indented, err := json.MarshalIndent(obj, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return &indented, nil
 }
 
 func (s *ConfigService) StartCore() error {

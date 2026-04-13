@@ -2,11 +2,11 @@ package service
 
 import (
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
-
 	"gorm.io/gorm"
 )
 
@@ -44,28 +44,17 @@ func (s *StatsService) SaveStats(enableTraffic bool) error {
 		return nil
 	}
 
-	var err error
-	db := database.GetDB()
-	tx := db.Begin()
-	defer func() {
-		if err == nil {
-			tx.Commit()
-		} else {
-			tx.Rollback()
-		}
-	}()
+	// Accumulate per-user up/down deltas to perform two bulk UPDATEs
+	// instead of one UPDATE per stat row (eliminates the N+1 write pattern).
+	upDeltas := make(map[string]int64)
+	downDeltas := make(map[string]int64)
 
 	for _, stat := range *stats {
 		if stat.Resource == "user" {
 			if stat.Direction {
-				err = tx.Model(model.Client{}).Where("name = ?", stat.Tag).
-					UpdateColumn("up", gorm.Expr("up + ?", stat.Traffic)).Error
+				upDeltas[stat.Tag] += stat.Traffic
 			} else {
-				err = tx.Model(model.Client{}).Where("name = ?", stat.Tag).
-					UpdateColumn("down", gorm.Expr("down + ?", stat.Traffic)).Error
-			}
-			if err != nil {
-				return err
+				downDeltas[stat.Tag] += stat.Traffic
 			}
 		}
 		if stat.Direction {
@@ -80,10 +69,69 @@ func (s *StatsService) SaveStats(enableTraffic bool) error {
 		}
 	}
 
+	var err error
+	db := database.GetDB()
+	tx := db.Begin()
+	defer func() {
+		if err == nil {
+			tx.Commit()
+		} else {
+			tx.Rollback()
+		}
+	}()
+
+	// Bulk UPDATE for upload traffic using a single CASE expression.
+	if len(upDeltas) > 0 {
+		err = bulkUpdateTraffic(tx, "up", upDeltas)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Bulk UPDATE for download traffic using a single CASE expression.
+	if len(downDeltas) > 0 {
+		err = bulkUpdateTraffic(tx, "down", downDeltas)
+		if err != nil {
+			return err
+		}
+	}
+
 	if !enableTraffic {
 		return nil
 	}
 	return tx.Create(&stats).Error
+}
+
+// bulkUpdateTraffic issues a single UPDATE that increments `column` for each
+// client in deltas by its respective delta value, using a CASE expression:
+//
+//	UPDATE clients SET up = up + CASE name WHEN 'u1' THEN 10 WHEN 'u2' THEN 5 END
+//	WHERE name IN ('u1', 'u2')
+//
+// This replaces N individual per-row UPDATE calls with one statement.
+func bulkUpdateTraffic(tx *gorm.DB, column string, deltas map[string]int64) error {
+	names := make([]string, 0, len(deltas))
+	for name := range deltas {
+		names = append(names, name)
+	}
+
+	// Build: UPDATE clients SET <column> = <column> + CASE name WHEN ? THEN ? ... END WHERE name IN (?)
+	var sb strings.Builder
+	sb.WriteString("UPDATE clients SET ")
+	sb.WriteString(column)
+	sb.WriteString(" = ")
+	sb.WriteString(column)
+	sb.WriteString(" + CASE name")
+
+	args := make([]interface{}, 0, len(deltas)*2+1)
+	for _, name := range names {
+		sb.WriteString(" WHEN ? THEN ?")
+		args = append(args, name, deltas[name])
+	}
+	sb.WriteString(" END WHERE name IN ?")
+	args = append(args, names)
+
+	return tx.Exec(sb.String(), args...).Error
 }
 
 func (s *StatsService) GetStats(resource string, tag string, limit int) ([]model.Stats, error) {
@@ -107,44 +155,65 @@ func (s *StatsService) GetStats(resource string, tag string, limit int) ([]model
 	return result, nil
 }
 
-// downsampleStats reduces stats to maxRows rows.
-// Each bucket outputs two rows (direction false and true) with average Traffic.
+// downsampleStats reduces stats to at most maxRows rows by averaging traffic
+// within equal-width time buckets.  Each bucket produces two output rows
+// (direction=false and direction=true).
+//
+// The previous implementation was O(n × numBuckets) because it rescanned all
+// rows for every bucket.  This version is O(n) after the initial sort: each
+// row is assigned to a bucket by arithmetic and accumulated in a single pass.
 func (s *StatsService) downsampleStats(stats []model.Stats, maxRows int) []model.Stats {
 	if len(stats) <= maxRows {
 		return stats
 	}
-	numBuckets := int(maxRows / 2)
+	numBuckets := maxRows / 2
+
+	// Sort once by time ascending.
+	// (stats are typically already ordered from the DB query, but sort anyway
+	// to guarantee correctness.)
 	sort.Slice(stats, func(i, j int) bool { return stats[i].DateTime < stats[j].DateTime })
-	timeMin, timeMax := stats[0].DateTime, stats[len(stats)-1].DateTime
+
+	timeMin := stats[0].DateTime
+	timeMax := stats[len(stats)-1].DateTime
 	bucketSpan := (timeMax - timeMin) / int64(numBuckets)
 	if bucketSpan == 0 {
 		bucketSpan = 1
 	}
-	downsampled := make([]model.Stats, 0, maxRows)
+
+	// Accumulate sums and counts per (bucket, direction).
+	// Direction false → index 0, true → index 1.
+	type accumulator struct{ sum, count int64 }
+	buckets := make([][2]accumulator, numBuckets)
+
+	for _, r := range stats {
+		idx := int((r.DateTime - timeMin) / bucketSpan)
+		if idx >= numBuckets {
+			idx = numBuckets - 1
+		}
+		dir := 0
+		if r.Direction {
+			dir = 1
+		}
+		buckets[idx][dir].sum += r.Traffic
+		buckets[idx][dir].count++
+	}
+
+	resource := stats[0].Resource
+	tag := stats[0].Tag
+
+	downsampled := make([]model.Stats, 0, numBuckets*2)
 	for i := 0; i < numBuckets; i++ {
 		bucketStart := timeMin + int64(i)*bucketSpan
-		bucketEnd := timeMin + int64(i+1)*bucketSpan
-		if i == numBuckets-1 {
-			bucketEnd = timeMax + 1
-		}
-		for _, dir := range []bool{false, true} {
-			var sum int64
-			var count int
-			for _, r := range stats {
-				if r.DateTime >= bucketStart && r.DateTime < bucketEnd && r.Direction == dir {
-					sum += r.Traffic
-					count++
-				}
-			}
+		for dir := 0; dir < 2; dir++ {
 			avg := int64(0)
-			if count > 0 {
-				avg = sum / int64(count)
+			if buckets[i][dir].count > 0 {
+				avg = buckets[i][dir].sum / buckets[i][dir].count
 			}
 			downsampled = append(downsampled, model.Stats{
 				DateTime:  bucketStart,
-				Resource:  stats[0].Resource,
-				Tag:       stats[0].Tag,
-				Direction: dir,
+				Resource:  resource,
+				Tag:       tag,
+				Direction: dir == 1,
 				Traffic:   avg,
 			})
 		}

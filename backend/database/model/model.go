@@ -4,7 +4,7 @@ import "encoding/json"
 
 type Setting struct {
 	Id    uint   `json:"id" form:"id" gorm:"primaryKey;autoIncrement"`
-	Key   string `json:"key" form:"key"`
+	Key   string `json:"key" form:"key" gorm:"uniqueIndex"`
 	Value string `json:"value" form:"value"`
 }
 
@@ -56,9 +56,9 @@ type Stats struct {
 
 type Changes struct {
 	Id       uint64          `json:"id" gorm:"primaryKey;autoIncrement"`
-	DateTime int64           `json:"dateTime"`
-	Actor    string          `json:"actor"`
-	Key      string          `json:"key"`
+	DateTime int64           `json:"dateTime" gorm:"index"`
+	Actor    string          `json:"actor" gorm:"index:idx_changes_actor_key"`
+	Key      string          `json:"key"   gorm:"index:idx_changes_actor_key"`
 	Action   string          `json:"action"`
 	Obj      json.RawMessage `json:"obj"`
 }
@@ -77,8 +77,8 @@ type Tokens struct {
 // automatic evasion protocol cycling.
 type ClientTelemetry struct {
 	Id        uint   `json:"id"        gorm:"primaryKey;autoIncrement"`
-	DateTime  int64  `json:"dateTime"  gorm:"index"`
-	Protocol  string `json:"protocol"  gorm:"index"`
+	DateTime  int64  `json:"dateTime"  gorm:"index:idx_telemetry_time_proto,priority:1"`
+	Protocol  string `json:"protocol"  gorm:"index:idx_telemetry_time_proto,priority:2"`
 	Success   bool   `json:"success"`
 	LatencyMs int    `json:"latencyMs"`
 	Throttled bool   `json:"throttled"`

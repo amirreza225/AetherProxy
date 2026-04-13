@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aetherproxy/backend/config"
@@ -16,6 +17,15 @@ import (
 	"github.com/aetherproxy/backend/util/common"
 
 	"gorm.io/gorm"
+)
+
+// settingsCache is an in-memory copy of the settings table.
+// All reads go through the cache; writes invalidate the affected key.
+// This eliminates per-request DB round-trips for hot settings (subEncode,
+// subUpdates, evasionPreferredProtocol, config, …).
+var (
+	settingsCacheMu sync.RWMutex
+	settingsCache   map[string]string
 )
 
 var defaultConfig = `{
@@ -96,6 +106,16 @@ func (s *SettingService) GetAllSetting() (*map[string]string, error) {
 		}
 	}
 
+	// Warm the in-memory cache with everything we just loaded from the DB.
+	settingsCacheMu.Lock()
+	if settingsCache == nil {
+		settingsCache = make(map[string]string, len(allSetting))
+	}
+	for k, v := range allSetting {
+		settingsCache[k] = v
+	}
+	settingsCacheMu.Unlock()
+
 	// Due to security principles
 	delete(allSetting, "secret")
 	delete(allSetting, "config")
@@ -106,7 +126,14 @@ func (s *SettingService) GetAllSetting() (*map[string]string, error) {
 
 func (s *SettingService) ResetSettings() error {
 	db := database.GetDB()
-	return db.Where("1 = 1").Delete(model.Setting{}).Error
+	if err := db.Where("1 = 1").Delete(model.Setting{}).Error; err != nil {
+		return err
+	}
+	// Flush the entire cache so the next read reloads defaults from DB.
+	settingsCacheMu.Lock()
+	settingsCache = nil
+	settingsCacheMu.Unlock()
+	return nil
 }
 
 func (s *SettingService) getSetting(key string) (*model.Setting, error) {
@@ -120,33 +147,76 @@ func (s *SettingService) getSetting(key string) (*model.Setting, error) {
 }
 
 func (s *SettingService) getString(key string) (string, error) {
+	// Fast path: check in-memory cache first.
+	settingsCacheMu.RLock()
+	if settingsCache != nil {
+		if val, ok := settingsCache[key]; ok {
+			settingsCacheMu.RUnlock()
+			return val, nil
+		}
+	}
+	settingsCacheMu.RUnlock()
+
+	// Cache miss: fetch from DB.
 	setting, err := s.getSetting(key)
 	if database.IsNotFound(err) {
 		value, ok := defaultValueMap[key]
 		if !ok {
 			return "", common.NewErrorf("key <%v> not in defaultValueMap", key)
 		}
+		// Populate the cache with the default value.
+		s.setCacheEntry(key, value)
 		return value, nil
 	} else if err != nil {
 		return "", err
 	}
+	// Populate the cache.
+	s.setCacheEntry(key, setting.Value)
 	return setting.Value, nil
+}
+
+// setCacheEntry writes a single key-value pair into the in-memory cache.
+func (s *SettingService) setCacheEntry(key, value string) {
+	settingsCacheMu.Lock()
+	if settingsCache == nil {
+		settingsCache = make(map[string]string)
+	}
+	settingsCache[key] = value
+	settingsCacheMu.Unlock()
+}
+
+// invalidateCacheEntry removes a single key from the in-memory cache so the
+// next read reloads the value from the database.
+func (s *SettingService) invalidateCacheEntry(key string) {
+	settingsCacheMu.Lock()
+	if settingsCache != nil {
+		delete(settingsCache, key)
+	}
+	settingsCacheMu.Unlock()
 }
 
 func (s *SettingService) saveSetting(key string, value string) error {
 	setting, err := s.getSetting(key)
 	db := database.GetDB()
 	if database.IsNotFound(err) {
-		return db.Create(&model.Setting{
+		if err2 := db.Create(&model.Setting{
 			Key:   key,
 			Value: value,
-		}).Error
+		}).Error; err2 != nil {
+			return err2
+		}
+		s.setCacheEntry(key, value)
+		return nil
 	} else if err != nil {
 		return err
 	}
 	setting.Key = key
 	setting.Value = value
-	return db.Save(setting).Error
+	if err2 := db.Save(setting).Error; err2 != nil {
+		return err2
+	}
+	s.setCacheEntry(key, value)
+	return nil
 }
 
 func (s *SettingService) setString(key string, value string) error {
@@ -363,7 +433,11 @@ func (s *SettingService) SaveConfig(tx *gorm.DB, config json.RawMessage) error {
 	if err != nil {
 		return err
 	}
-	return tx.Model(model.Setting{}).Where("key = ?", "config").Update("value", string(configs)).Error
+	if err := tx.Model(model.Setting{}).Where("key = ?", "config").Update("value", string(configs)).Error; err != nil {
+		return err
+	}
+	s.setCacheEntry("config", string(configs))
+	return nil
 }
 
 func (s *SettingService) Save(tx *gorm.DB, data json.RawMessage) error {
@@ -407,6 +481,8 @@ func (s *SettingService) Save(tx *gorm.DB, data json.RawMessage) error {
 		if err != nil {
 			return err
 		}
+		// Keep the cache in sync with the written value.
+		s.setCacheEntry(key, obj)
 	}
 	return err
 }

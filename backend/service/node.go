@@ -15,10 +15,18 @@ import (
 	"golang.org/x/crypto/ssh"
 )
 
+// nodeConnInfo caches the connection details (host + SSH port) for a node so
+// that pingNode does not have to re-fetch them from the database on every tick.
+type nodeConnInfo struct {
+	host    string
+	sshPort int
+}
+
 // NodeService manages remote VPS nodes.
 type NodeService struct {
-	mu      sync.Mutex
-	stopChs map[uint]context.CancelFunc
+	mu        sync.Mutex
+	stopChs   map[uint]context.CancelFunc
+	connCache map[uint]nodeConnInfo // host/port cache, avoids per-ping DB read
 }
 
 var nodeServiceOnce sync.Once
@@ -27,7 +35,8 @@ var globalNodeService *NodeService
 func GetNodeService() *NodeService {
 	nodeServiceOnce.Do(func() {
 		globalNodeService = &NodeService{
-			stopChs: make(map[uint]context.CancelFunc),
+			stopChs:   make(map[uint]context.CancelFunc),
+			connCache: make(map[uint]nodeConnInfo),
 		}
 	})
 	return globalNodeService
@@ -59,18 +68,30 @@ func (s *NodeService) Create(node *model.Node) error {
 	if err := database.GetDB().Create(node).Error; err != nil {
 		return err
 	}
+	s.mu.Lock()
+	s.connCache[node.Id] = nodeConnInfo{host: node.Host, sshPort: node.SshPort}
+	s.mu.Unlock()
 	s.startHealthCheck(node.Id)
 	return nil
 }
 
-// Update persists changes to a node.
+// Update persists changes to a node and refreshes the connection cache.
 func (s *NodeService) Update(node *model.Node) error {
-	return database.GetDB().Save(node).Error
+	if err := database.GetDB().Save(node).Error; err != nil {
+		return err
+	}
+	s.mu.Lock()
+	s.connCache[node.Id] = nodeConnInfo{host: node.Host, sshPort: node.SshPort}
+	s.mu.Unlock()
+	return nil
 }
 
-// Delete removes a node and stops its health-check.
+// Delete removes a node, stops its health-check, and evicts the cache entry.
 func (s *NodeService) Delete(id uint) error {
 	s.stopHealthCheck(id)
+	s.mu.Lock()
+	delete(s.connCache, id)
+	s.mu.Unlock()
 	return database.GetDB().Delete(&model.Node{}, id).Error
 }
 
@@ -82,6 +103,11 @@ func (s *NodeService) StartAllHealthChecks() {
 		logger.Warning("NodeService: failed to load nodes:", err)
 		return
 	}
+	s.mu.Lock()
+	for _, n := range nodes {
+		s.connCache[n.Id] = nodeConnInfo{host: n.Host, sshPort: n.SshPort}
+	}
+	s.mu.Unlock()
 	for _, n := range nodes {
 		s.startHealthCheck(n.Id)
 	}
@@ -124,14 +150,26 @@ func (s *NodeService) stopHealthCheck(id uint) {
 }
 
 // pingNode performs a TCP-level probe and updates node.Status + node.LastPing.
+// Host and port are read from the in-memory cache to avoid a per-tick DB query;
+// only the status and last_ping columns are written back to the database.
 func (s *NodeService) pingNode(id uint) {
-	db := database.GetDB()
-	var node model.Node
-	if err := db.First(&node, id).Error; err != nil {
-		return
+	s.mu.Lock()
+	info, ok := s.connCache[id]
+	s.mu.Unlock()
+	if !ok {
+		// Cache miss (rare): fall back to DB and populate the cache.
+		db := database.GetDB()
+		var node model.Node
+		if err := db.First(&node, id).Error; err != nil {
+			return
+		}
+		info = nodeConnInfo{host: node.Host, sshPort: node.SshPort}
+		s.mu.Lock()
+		s.connCache[id] = info
+		s.mu.Unlock()
 	}
 
-	addr := net.JoinHostPort(node.Host, fmt.Sprintf("%d", node.SshPort))
+	addr := net.JoinHostPort(info.host, fmt.Sprintf("%d", info.sshPort))
 	conn, err := net.DialTimeout("tcp", addr, 5*time.Second)
 	status := "offline"
 	if err == nil {
@@ -139,7 +177,8 @@ func (s *NodeService) pingNode(id uint) {
 		status = "online"
 	}
 
-	db.Model(&node).Updates(map[string]interface{}{
+	db := database.GetDB()
+	db.Model(&model.Node{}).Where("id = ?", id).Updates(map[string]interface{}{
 		"status":    status,
 		"last_ping": time.Now().Unix(),
 	})

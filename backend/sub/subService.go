@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aetherproxy/backend/database"
@@ -11,6 +12,17 @@ import (
 	"github.com/aetherproxy/backend/service"
 	"github.com/aetherproxy/backend/util"
 )
+
+// offlineNodeCache caches the set of offline node host strings with a TTL
+// matching the node health-check interval (30 s).  This avoids a DB query
+// on every subscription request.
+var (
+	offlineNodeCacheMu      sync.RWMutex
+	offlineNodeCacheHosts   map[string]struct{}
+	offlineNodeCacheExpires time.Time
+)
+
+const offlineNodeCacheTTL = 30 * time.Second
 
 type SubService struct {
 	service.SettingService
@@ -81,7 +93,21 @@ func filterOfflineNodes(links []string) []string {
 }
 
 // getOfflineNodeHosts returns a set of host IPs/domains for all offline nodes.
+// Results are cached for offlineNodeCacheTTL to avoid a DB hit on every
+// subscription request.
 func getOfflineNodeHosts() map[string]struct{} {
+	now := time.Now()
+
+	// Fast path: check cache under read lock.
+	offlineNodeCacheMu.RLock()
+	if offlineNodeCacheHosts != nil && now.Before(offlineNodeCacheExpires) {
+		hosts := offlineNodeCacheHosts
+		offlineNodeCacheMu.RUnlock()
+		return hosts
+	}
+	offlineNodeCacheMu.RUnlock()
+
+	// Slow path: fetch from DB and refresh cache.
 	db := database.GetDB()
 	var nodes []model.Node
 	if err := db.Where("status = ?", "offline").Find(&nodes).Error; err != nil {
@@ -93,6 +119,12 @@ func getOfflineNodeHosts() map[string]struct{} {
 			m[n.Host] = struct{}{}
 		}
 	}
+
+	offlineNodeCacheMu.Lock()
+	offlineNodeCacheHosts = m
+	offlineNodeCacheExpires = now.Add(offlineNodeCacheTTL)
+	offlineNodeCacheMu.Unlock()
+
 	return m
 }
 

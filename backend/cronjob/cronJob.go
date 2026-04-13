@@ -27,8 +27,9 @@ func (c *CronJob) Start(loc *time.Location, trafficAge int) error {
 		if trafficAge > 0 {
 			_, _ = c.cron.AddJob("@daily", NewDelStatsJob(trafficAge))
 		}
-		// Start core if it is not running
-		_, _ = c.cron.AddJob("@every 5s", NewCheckCoreJob())
+		// Start core if it is not running (check every 30s; the 15s cooldown
+		// in StartCore prevents back-to-back restart attempts anyway)
+		_, _ = c.cron.AddJob("@every 30s", NewCheckCoreJob())
 		// database WAL checkpoint
 		_, _ = c.cron.AddJob("@every 10m", NewWALCheckpointJob())
 		// Retry failed inbound port/firewall sync tasks.

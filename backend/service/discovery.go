@@ -317,34 +317,30 @@ func (d *DiscoveryService) pruneStalePeers() {
 		Update("status", "dead")
 }
 
-// upsertPeer writes or updates a peer node record in the database.
+// upsertPeer writes or updates a peer node record in the database using a
+// single upsert statement (ON CONFLICT DO UPDATE) instead of two round-trips.
 func (d *DiscoveryService) upsertPeer(n *memberlist.Node, status string) {
 	meta := parseNodeMeta(n)
 	now := time.Now().Unix()
 	db := database.GetDB()
 
-	var peer model.PeerNode
-	result := db.Where("address = ?", n.Addr.String()).First(&peer)
-	if result.Error != nil {
-		// Create new record.
-		peer = model.PeerNode{
-			Name:       meta.Name,
-			Address:    n.Addr.String(),
-			GossipPort: meta.GossipPort,
-			Version:    meta.Version,
-			Status:     status,
-			LastSeen:   now,
-		}
-		db.Create(&peer)
-	} else {
-		db.Model(&peer).Updates(map[string]interface{}{
+	peer := model.PeerNode{
+		Address:    n.Addr.String(),
+		Name:       meta.Name,
+		GossipPort: meta.GossipPort,
+		Version:    meta.Version,
+		Status:     status,
+		LastSeen:   now,
+	}
+	db.Where(model.PeerNode{Address: n.Addr.String()}).
+		Assign(map[string]interface{}{
 			"name":        meta.Name,
 			"gossip_port": meta.GossipPort,
 			"version":     meta.Version,
 			"status":      status,
 			"last_seen":   now,
-		})
-	}
+		}).
+		FirstOrCreate(&peer)
 }
 
 // parseNodeMeta extracts AetherProxy metadata from a memberlist.Node.
