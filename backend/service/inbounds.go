@@ -4,10 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/database/model"
+	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/util"
 	"github.com/aetherproxy/backend/util/common"
 
@@ -124,34 +126,8 @@ func (s *InboundService) Save(tx *gorm.DB, act string, data json.RawMessage, ini
 			}
 		}
 
-		if corePtr.IsRunning() {
-			if act == "edit" {
-				err = corePtr.RemoveInbound(oldTag)
-				if err != nil && err != os.ErrInvalid {
-					return err
-				}
-			}
-
-			inboundConfig, err := inbound.MarshalJSON()
-			if err != nil {
-				return err
-			}
-
-			if act == "edit" {
-				inboundConfig, err = s.addUsers(tx, inboundConfig, inbound.Id, inbound.Type)
-			} else {
-				inboundConfig, err = s.initUsers(tx, inboundConfig, initUserIds, inbound.Type)
-			}
-			if err != nil {
-				return err
-			}
-
-			err = corePtr.AddInbound(inboundConfig)
-			if err != nil {
-				return err
-			}
-		}
-
+		// DB operations first: ensure the record is persisted before touching the
+		// live core.  If the DB write fails, we return without modifying core state.
 		err = util.FillOutJson(&inbound, hostname)
 		if err != nil {
 			return err
@@ -169,6 +145,57 @@ func (s *InboundService) Save(tx *gorm.DB, act string, data json.RawMessage, ini
 		}
 		if err != nil {
 			return err
+		}
+
+		// Core operations after a successful DB write.  If core fails we log the
+		// error and schedule a full restart so core re-reads from the committed DB.
+		if corePtr.IsRunning() {
+			if act == "edit" {
+				if coreErr := corePtr.RemoveInbound(oldTag); coreErr != nil && coreErr != os.ErrInvalid {
+					logger.Errorf("inbound %q saved to DB but core remove failed: %v; scheduling restart to resync", oldTag, coreErr)
+					go func() {
+						if restartErr := (&ConfigService{}).RestartCore(); restartErr != nil {
+							logger.Error("core resync restart failed:", restartErr)
+						}
+					}()
+					return nil
+				}
+			}
+
+			inboundConfig, coreErr := inbound.MarshalJSON()
+			if coreErr != nil {
+				logger.Errorf("inbound %q: MarshalJSON for core failed: %v; scheduling restart", inbound.Tag, coreErr)
+				go func() {
+					if restartErr := (&ConfigService{}).RestartCore(); restartErr != nil {
+						logger.Error("core resync restart failed:", restartErr)
+					}
+				}()
+				return nil
+			}
+
+			if act == "edit" {
+				inboundConfig, coreErr = s.addUsers(tx, inboundConfig, inbound.Id, inbound.Type)
+			} else {
+				inboundConfig, coreErr = s.initUsers(tx, inboundConfig, initUserIds, inbound.Type)
+			}
+			if coreErr != nil {
+				logger.Errorf("inbound %q: populate users for core failed: %v; scheduling restart", inbound.Tag, coreErr)
+				go func() {
+					if restartErr := (&ConfigService{}).RestartCore(); restartErr != nil {
+						logger.Error("core resync restart failed:", restartErr)
+					}
+				}()
+				return nil
+			}
+
+			if coreErr = corePtr.AddInbound(inboundConfig); coreErr != nil {
+				logger.Errorf("inbound %q saved to DB but core add failed: %v; scheduling restart to resync", inbound.Tag, coreErr)
+				go func() {
+					if restartErr := (&ConfigService{}).RestartCore(); restartErr != nil {
+						logger.Error("core resync restart failed:", restartErr)
+					}
+				}()
+			}
 		}
 	case "del":
 		var tag string
@@ -321,8 +348,9 @@ func (s *InboundService) addUsers(db *gorm.DB, inboundJson []byte, inboundId uin
 }
 
 func (s *InboundService) initUsers(db *gorm.DB, inboundJson []byte, clientIds string, inboundType string) ([]byte, error) {
-	ClientIds := strings.Split(clientIds, ",")
-	if len(ClientIds) == 0 {
+	// Fix: guard against the empty-string case before splitting.
+	// strings.Split("", ",") returns [""] which would produce invalid SQL.
+	if clientIds == "" {
 		return inboundJson, nil
 	}
 
@@ -330,19 +358,91 @@ func (s *InboundService) initUsers(db *gorm.DB, inboundJson []byte, clientIds st
 		return inboundJson, nil
 	}
 
+	// Validate and parse each element as a uint to prevent SQL injection.
+	// Reject the whole request if any element is not a valid positive integer.
+	rawIds := strings.Split(clientIds, ",")
+	var ids []uint
+	for _, raw := range rawIds {
+		raw = strings.TrimSpace(raw)
+		if raw == "" {
+			continue
+		}
+		n, parseErr := strconv.ParseUint(raw, 10, 64)
+		if parseErr != nil {
+			return nil, common.NewErrorf("invalid client id %q in initUsers: must be a positive integer", raw)
+		}
+		ids = append(ids, uint(n))
+	}
+	if len(ids) == 0 {
+		return inboundJson, nil
+	}
+
 	var inbound map[string]interface{}
-	err := json.Unmarshal(inboundJson, &inbound)
-	if err != nil {
+	if err := json.Unmarshal(inboundJson, &inbound); err != nil {
 		return nil, err
 	}
 
-	condition := fmt.Sprintf("id IN (%s)", strings.Join(ClientIds, ","))
-	inbound["users"], err = s.fetchUsers(db, inboundType, condition, inbound)
+	var err error
+	inbound["users"], err = s.fetchUsersByIDs(db, inboundType, ids, inbound)
 	if err != nil {
 		return nil, err
 	}
 
 	return json.Marshal(inbound)
+}
+
+// fetchUsersByIDs is the safe, parameterized variant of fetchUsers used by
+// initUsers.  It accepts a validated []uint slice and binds it via GORM's
+// parameterized IN clause so no user-controlled data ever reaches raw SQL.
+func (s *InboundService) fetchUsersByIDs(db *gorm.DB, inboundType string, ids []uint, inbound map[string]interface{}) ([]json.RawMessage, error) {
+	if inboundType == "shadowtls" {
+		version, _ := inbound["version"].(float64)
+		if int(version) < 3 {
+			return nil, nil
+		}
+	}
+	if inboundType == "shadowsocks" {
+		method, _ := inbound["method"].(string)
+		if method == "2022-blake3-aes-128-gcm" {
+			inboundType = "shadowsocks16"
+		}
+	}
+
+	type clientRow struct {
+		Name   string
+		Config string
+	}
+	var rows []clientRow
+
+	jsonPath := "$." + inboundType
+	err := db.Raw(
+		`SELECT clients.name AS name, json_extract(clients.config, ?) AS config
+		FROM clients WHERE enable = true AND id IN ? AND json_extract(clients.config, ?) IS NOT NULL`,
+		jsonPath, ids, jsonPath).Scan(&rows).Error
+	if err != nil {
+		return nil, err
+	}
+
+	var usersJson []json.RawMessage
+	for _, row := range rows {
+		userStr := row.Config
+		if inboundType == "vless" && inbound["tls"] == nil {
+			userStr = strings.ReplaceAll(userStr, "xtls-rprx-vision", "")
+		}
+		var userMap map[string]interface{}
+		if err := json.Unmarshal([]byte(userStr), &userMap); err != nil {
+			usersJson = append(usersJson, json.RawMessage(userStr))
+			continue
+		}
+		userMap["name"] = row.Name
+		userBytes, err := json.Marshal(userMap)
+		if err != nil {
+			usersJson = append(usersJson, json.RawMessage(userStr))
+			continue
+		}
+		usersJson = append(usersJson, json.RawMessage(userBytes))
+	}
+	return usersJson, nil
 }
 
 func (s *InboundService) RestartInbounds(tx *gorm.DB, ids []uint) error {

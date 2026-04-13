@@ -135,7 +135,10 @@ func (s *UserService) ChangePass(id string, oldPass string, newUser string, newP
 	db := database.GetDB()
 	user := &model.User{}
 	err := db.Model(model.User{}).Where("id = ?", id).First(user).Error
-	if err != nil || database.IsNotFound(err) {
+	if database.IsNotFound(err) {
+		return common.NewError("user not found")
+	}
+	if err != nil {
 		return err
 	}
 	// Verify old password: prefer bcrypt, fall back to legacy plain-text comparison.
@@ -179,7 +182,7 @@ func (s *UserService) GetUserTokens(username string) (*[]model.Tokens, error) {
 	var token []model.Tokens
 	err := db.Model(model.Tokens{}).Select("id,desc,'****' as token,expiry,user_id").Where("user_id = (select id from users where username = ?)", username).Find(&token).Error
 	if err != nil && !database.IsNotFound(err) {
-		println(err.Error())
+		logger.Warning("GetUserTokens:", err)
 		return nil, err
 	}
 	return &token, nil

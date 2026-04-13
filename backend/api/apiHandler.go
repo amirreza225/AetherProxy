@@ -87,6 +87,8 @@ func (a *APIHandler) postHandler(c *gin.Context) {
 		a.DiscoveryLeave(c)
 	case "discoveryAddPeer":
 		a.DiscoveryAddPeer(c)
+	case "resetEvasionPref":
+		a.ResetEvasionPreference(c)
 	case "issueCert":
 		a.IssueCert(c)
 	case "saveCert":

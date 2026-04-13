@@ -271,6 +271,11 @@ func verifyManifest(rawJSON []byte, sigB64 string, pubKeyB64 string) error {
 	}
 
 	// Remove the signature field and re-marshal to get the signed payload.
+	// Go's encoding/json.Marshal serialises map[string]T keys in lexicographic
+	// order (documented: "The map keys are sorted"), so the canonical payload is
+	// deterministic as long as the signing tool also uses sorted-key JSON.
+	// AetherProxy-generated manifests always use Go's json.Marshal, so this
+	// round-trip is safe.
 	var obj map[string]json.RawMessage
 	if err := json.Unmarshal(rawJSON, &obj); err != nil {
 		return err

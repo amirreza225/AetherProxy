@@ -3,8 +3,10 @@ package service
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -111,29 +113,72 @@ func (w *EvasionWatcher) scrape() {
 	}
 }
 
+// evasionPreferenceTTL is the maximum age of a stored evasion preference.
+// After this duration it is treated as expired and ignored until the
+// watcher sets a new one or the admin explicitly resets it.
+const evasionPreferenceTTL = 24 * time.Hour
+
+// evasionPreferenceSettingKey is the DB key for the auto-promoted protocol name.
+const evasionPreferenceSettingKey = "evasionPreferredProtocol"
+
+// evasionPreferenceTSKey is the DB key for the Unix timestamp at which the
+// preference was last set, used to enforce the 24-hour TTL.
+const evasionPreferenceTSKey = "evasionPreferredProtocolTS"
+
 // executeAutoAction stores the preferred protocol in the settings table so
 // that the subscription generator can re-order links by preference.
 // action is the protocol name to boost (e.g. "hysteria2").
 func (w *EvasionWatcher) executeAutoAction(preferredProtocol string) {
 	var ss SettingService
-	if err := ss.saveSetting("evasionPreferredProtocol", preferredProtocol); err != nil {
+	if err := ss.saveSetting(evasionPreferenceSettingKey, preferredProtocol); err != nil {
 		logger.Warning("EvasionWatcher: failed to persist preferred protocol:", err)
 		return
 	}
+	// Persist the timestamp so callers can enforce the TTL.
+	ts := time.Now().Unix()
+	if err := ss.saveSetting(evasionPreferenceTSKey, fmt.Sprintf("%d", ts)); err != nil {
+		logger.Warning("EvasionWatcher: failed to persist preference timestamp:", err)
+	}
 	logger.Infof("EvasionWatcher: preferred protocol set to %q – clients will receive updated subscription on next fetch", preferredProtocol)
 	// Bump LastUpdate so subscribed clients know to re-fetch.
-	LastUpdate = time.Now().Unix()
+	LastUpdate = ts
 }
 
 // GetEvasionPreferredProtocol returns the current auto-promoted protocol
-// (e.g. "hysteria2") or an empty string when no preference has been set.
+// (e.g. "hysteria2") or an empty string when no preference has been set or
+// when the stored preference is older than evasionPreferenceTTL (24 h).
 func GetEvasionPreferredProtocol() string {
 	var ss SettingService
-	val, err := ss.getString("evasionPreferredProtocol")
-	if err != nil {
+	val, err := ss.getString(evasionPreferenceSettingKey)
+	if err != nil || val == "" {
+		return ""
+	}
+	// Enforce TTL: ignore preferences that are too old.
+	tsStr, err := ss.getString(evasionPreferenceTSKey)
+	if err != nil || tsStr == "" {
+		// No timestamp recorded – treat as expired to be safe.
+		return ""
+	}
+	ts, err := strconv.ParseInt(tsStr, 10, 64)
+	if err != nil || time.Since(time.Unix(ts, 0)) > evasionPreferenceTTL {
 		return ""
 	}
 	return val
+}
+
+// ResetEvasionPreference clears the stored protocol preference and its
+// timestamp so that subscriptions revert to their default ordering.
+func ResetEvasionPreference() error {
+	var ss SettingService
+	if err := ss.saveSetting(evasionPreferenceSettingKey, ""); err != nil {
+		return err
+	}
+	if err := ss.saveSetting(evasionPreferenceTSKey, ""); err != nil {
+		return err
+	}
+	LastUpdate = time.Now().Unix()
+	logger.Info("EvasionWatcher: protocol preference cleared by admin")
+	return nil
 }
 
 // isRealityBlock returns true when the event suggests a Reality/VLESS block.

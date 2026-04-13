@@ -190,10 +190,15 @@ func (s *NodeService) sshDial(node *model.Node) (*ssh.Client, error) {
 		auth = append(auth, ssh.PublicKeys(signer))
 	}
 
+	sshUser := node.SshUser
+	if sshUser == "" {
+		sshUser = "root"
+	}
+
 	hostKeyCallback := s.buildHostKeyCallback(node)
 
 	cfg := &ssh.ClientConfig{
-		User:            "root",
+		User:            sshUser,
 		Auth:            auth,
 		HostKeyCallback: hostKeyCallback,
 		Timeout:         10 * time.Second,
