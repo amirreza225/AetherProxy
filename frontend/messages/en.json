@@ -42,7 +42,16 @@
     "onlineUsers": "Active Users",
     "noActiveUsers": "No active users",
     "evasionAlerts": "Censorship Alert",
-    "evasionAlertDismiss": "Dismiss"
+    "evasionAlertDismiss": "Dismiss",
+    "quickActions": "Quick Actions",
+    "restartCore": "Restart Core",
+    "restartPanel": "Restart Panel",
+    "downloadConfig": "Download Config",
+    "viewAnalytics": "View Analytics",
+    "restartCoreSuccess": "Core restart triggered.",
+    "restartCoreError": "Failed to restart core.",
+    "restartPanelSuccess": "Panel restarting…",
+    "restartPanelError": "Failed to restart panel."
   },
   "nodes": {
     "title": "Nodes",
@@ -154,7 +163,10 @@
     "credentialsInvalidJson": "Invalid JSON in credentials field.",
     "showQr": "QR",
     "qrDialogTitle": "Subscription QR Code",
-    "qrDialogHint": "Scan this QR in Hiddify, Clash, or any compatible app."
+    "qrDialogHint": "Scan this QR in Hiddify, Clash, or any compatible app.",
+    "usageBar": "Usage",
+    "usageExceeded": "Exceeded",
+    "usageUnlimited": "Unlimited"
   },
   "inbounds": {
     "title": "Inbounds",
@@ -256,7 +268,14 @@
     "evasionPort": "Port",
     "evasionDomain": "Domain",
     "evasionAction": "Action",
-    "evasionDetail": "Detail"
+    "evasionDetail": "Detail",
+    "tabOverview": "Overview",
+    "tabPerClient": "Per Client",
+    "tabPerInbound": "Per Inbound",
+    "clientName": "Client",
+    "inboundTag": "Inbound",
+    "totalTraffic": "Total",
+    "evasionSource": "Source"
   },
   "settings": {
     "title": "Settings",
@@ -310,7 +329,20 @@
     "portSyncQueueStatus": "status",
     "portSyncQueueAttempts": "attempts",
     "portSyncQueueReason": "reason",
-    "portSyncQueueLastError": "last error"
+    "portSyncQueueLastError": "last error",
+    "evasionTitle": "Evasion Preferences",
+    "evasionPreferredProtocol": "Auto-switched protocol",
+    "evasionNone": "None (default ordering)",
+    "resetEvasionPref": "Reset Preference",
+    "resetEvasionSuccess": "Evasion preference reset.",
+    "resetEvasionError": "Failed to reset evasion preference.",
+    "logsTitle": "Application Logs",
+    "logCount": "Lines",
+    "autoRefresh": "Auto-refresh (5s)",
+    "refreshLogs": "Refresh",
+    "copyLogs": "Copy All",
+    "logsCopied": "Copied!",
+    "noLogs": "No log entries."
   },
   "plugins": {
     "title": "Plugins",

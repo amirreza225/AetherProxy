@@ -10,6 +10,8 @@ import {
   triggerPortSync,
   retryPortSync,
   clearPortSync,
+  resetEvasionPref,
+  getLogs,
   type PortSyncStatus,
 } from "@/lib/api";
 import { useTranslations } from "next-intl";
@@ -52,6 +54,21 @@ export default function SettingsPage() {
   const [syncNowBusy, setSyncNowBusy] = useState(false);
   const [retryBusy, setRetryBusy] = useState(false);
   const [clearBusy, setClearBusy] = useState(false);
+
+  // Evasion section state
+  const [evasionBusy, setEvasionBusy] = useState(false);
+  const [evasionMsg, setEvasionMsg] = useState<{ ok: boolean; text: string } | null>(null);
+
+  // Log viewer state
+  const [logLevel, setLogLevel] = useState("info");
+  const [logCount, setLogCount] = useState(100);
+  const [autoRefresh, setAutoRefresh] = useState(false);
+
+  const { data: logs = [], mutate: mutateLogs } = useSWR(
+    ["/api/logs", logLevel, logCount, autoRefresh],
+    () => getLogs(logLevel, logCount).then((r) => r.obj ?? []),
+    { refreshInterval: autoRefresh ? 5000 : 0 }
+  );
 
   // Change password form state
   const [passForm, setPassForm] = useState({ oldPass: "", newUsername: "", newPass: "" });
@@ -336,6 +353,122 @@ export default function SettingsPage() {
               </div>
             </>
           )}
+        </CardContent>
+      </Card>
+
+      {/* ── Evasion Preferences ── */}
+      <Card className="max-w-lg">
+        <CardHeader>
+          <CardTitle className="text-base">{t("evasionTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm">
+            <span className="font-medium">{t("evasionPreferredProtocol")}:</span>{" "}
+            {(form["evasionPreferredProtocol"] as string) || t("evasionNone")}
+          </p>
+          <div className="flex items-center gap-3">
+            <Button
+              type="button"
+              variant="outline"
+              disabled={evasionBusy}
+              onClick={async () => {
+                setEvasionBusy(true);
+                setEvasionMsg(null);
+                try {
+                  const res = await resetEvasionPref();
+                  if (res.success) setEvasionMsg({ ok: true, text: t("resetEvasionSuccess") });
+                  else setEvasionMsg({ ok: false, text: t("resetEvasionError") });
+                } catch {
+                  setEvasionMsg({ ok: false, text: t("resetEvasionError") });
+                } finally {
+                  setEvasionBusy(false);
+                }
+              }}
+            >
+              {evasionBusy ? t("saving") : t("resetEvasionPref")}
+            </Button>
+          </div>
+          {evasionMsg && (
+            <p className={`text-sm ${evasionMsg.ok ? "text-emerald-600" : "text-destructive"}`}>
+              {evasionMsg.text}
+            </p>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Application Logs ── */}
+      <Card className="max-w-3xl">
+        <CardHeader>
+          <CardTitle className="text-base">{t("logsTitle")}</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Label htmlFor="logLevel">{t("logLevel")}</Label>
+              <select
+                id="logLevel"
+                className="rounded-md border bg-background px-2 py-1 text-sm"
+                value={logLevel}
+                onChange={(e) => setLogLevel(e.target.value)}
+              >
+                <option value="debug">debug</option>
+                <option value="info">info</option>
+                <option value="warn">warn</option>
+                <option value="error">error</option>
+              </select>
+            </div>
+            <div className="flex items-center gap-2">
+              <Label htmlFor="logCount">{t("logCount")}</Label>
+              <select
+                id="logCount"
+                className="rounded-md border bg-background px-2 py-1 text-sm"
+                value={logCount}
+                onChange={(e) => setLogCount(Number(e.target.value))}
+              >
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+                <option value={500}>500</option>
+              </select>
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoRefresh}
+                onChange={(e) => setAutoRefresh(e.target.checked)}
+              />
+              {t("autoRefresh")}
+            </label>
+            <Button type="button" variant="outline" size="sm" onClick={() => mutateLogs()}>
+              {t("refreshLogs")}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigator.clipboard.writeText(logs.join("\n"));
+              }}
+            >
+              {t("copyLogs")}
+            </Button>
+          </div>
+          <div className="h-64 overflow-y-auto rounded-md border bg-muted p-2 font-mono text-xs space-y-0.5">
+            {logs.length === 0 ? (
+              <p className="text-muted-foreground">{t("noLogs")}</p>
+            ) : (
+              logs.map((line, i) => {
+                const upper = line.toUpperCase();
+                const color =
+                  upper.startsWith("ERROR") ? "text-destructive" :
+                  upper.startsWith("WARN") ? "text-amber-500" :
+                  upper.startsWith("DEBUG") ? "text-muted-foreground" :
+                  "";
+                return (
+                  <p key={i} className={color}>{line}</p>
+                );
+              })
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

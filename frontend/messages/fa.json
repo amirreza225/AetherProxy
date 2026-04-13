@@ -42,7 +42,16 @@
     "onlineUsers": "کاربران متصل",
     "noActiveUsers": "کاربر متصلی وجود ندارد",
     "evasionAlerts": "هشدار سانسور",
-    "evasionAlertDismiss": "رد کردن"
+    "evasionAlertDismiss": "رد کردن",
+    "quickActions": "اقدامات سریع",
+    "restartCore": "راه‌اندازی مجدد Core",
+    "restartPanel": "راه‌اندازی مجدد پنل",
+    "downloadConfig": "دریافت Config",
+    "viewAnalytics": "مشاهده آمار",
+    "restartCoreSuccess": "راه‌اندازی مجدد core شروع شد.",
+    "restartCoreError": "راه‌اندازی مجدد core ناموفق بود.",
+    "restartPanelSuccess": "پنل در حال راه‌اندازی مجدد…",
+    "restartPanelError": "راه‌اندازی مجدد پنل ناموفق بود."
   },
   "nodes": {
     "title": "نودها",
@@ -154,7 +163,10 @@
     "credentialsInvalidJson": "JSON نادرست در فیلد اعتبارنامه‌ها.",
     "showQr": "QR",
     "qrDialogTitle": "کد QR اشتراک",
-    "qrDialogHint": "این QR را در Hiddify، Clash یا هر برنامه سازگار اسکن کنید."
+    "qrDialogHint": "این QR را در Hiddify، Clash یا هر برنامه سازگار اسکن کنید.",
+    "usageBar": "مصرف",
+    "usageExceeded": "تجاوز از سهمیه",
+    "usageUnlimited": "نامحدود"
   },
   "inbounds": {
     "title": "ورودی‌ها",
@@ -256,7 +268,14 @@
     "evasionPort": "پورت",
     "evasionDomain": "دامنه",
     "evasionAction": "اقدام",
-    "evasionDetail": "جزییات"
+    "evasionDetail": "جزییات",
+    "tabOverview": "نمای کلی",
+    "tabPerClient": "به ازای کاربر",
+    "tabPerInbound": "به ازای ورودی",
+    "clientName": "کاربر",
+    "inboundTag": "ورودی",
+    "totalTraffic": "کل",
+    "evasionSource": "منبع"
   },
   "settings": {
     "title": "تنظیمات",
@@ -310,7 +329,20 @@
     "portSyncQueueStatus": "وضعیت",
     "portSyncQueueAttempts": "تعداد تلاش",
     "portSyncQueueReason": "دلیل",
-    "portSyncQueueLastError": "آخرین خطا"
+    "portSyncQueueLastError": "آخرین خطا",
+    "evasionTitle": "تنظیمات فرار از سانسور",
+    "evasionPreferredProtocol": "پروتکل تعویض‌شده خودکار",
+    "evasionNone": "هیچ‌کدام (ترتیب پیش‌فرض)",
+    "resetEvasionPref": "بازنشانی ترجیح",
+    "resetEvasionSuccess": "ترجیح فرار بازنشانی شد.",
+    "resetEvasionError": "بازنشانی ترجیح فرار ناموفق بود.",
+    "logsTitle": "لاگ‌های برنامه",
+    "logCount": "تعداد خطوط",
+    "autoRefresh": "بازخوانی خودکار (۵ ثانیه)",
+    "refreshLogs": "بازخوانی",
+    "copyLogs": "کپی همه",
+    "logsCopied": "کپی شد!",
+    "noLogs": "هیچ لاگی وجود ندارد."
   },
   "plugins": {
     "title": "افزونه‌ها",

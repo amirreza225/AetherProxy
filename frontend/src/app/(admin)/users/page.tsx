@@ -9,6 +9,7 @@ import {
   deleteClient,
   clientSubUrl,
   getInbounds,
+  getStats,
   type Client,
   type Inbound,
 } from "@/lib/api";
@@ -37,6 +38,54 @@ import { QRCodeCanvas } from "qrcode.react";
 import { toast } from "sonner";
 import { formatBytes } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+
+// ── Stat types ────────────────────────────────────────────────────────────────
+
+interface StatPoint {
+  id: number;
+  dateTime: number;
+  resource: string;
+  tag: string;
+  direction: boolean;
+  traffic: number;
+}
+
+// ── Usage bar ─────────────────────────────────────────────────────────────────
+
+function UsageBar({
+  used,
+  volume,
+  unlimited,
+  exceeded,
+}: {
+  used: number;
+  volume: number;
+  unlimited: string;
+  exceeded: string;
+}) {
+  if (volume === 0) {
+    return <span className="text-xs text-muted-foreground">{unlimited}</span>;
+  }
+  const pct = Math.min((used / volume) * 100, 100);
+  if (used > volume) {
+    return (
+      <span className="rounded px-1.5 py-0.5 text-xs font-medium bg-destructive/10 text-destructive">
+        {exceeded}
+      </span>
+    );
+  }
+  const color = pct > 95 ? "bg-destructive" : pct > 80 ? "bg-amber-500" : "bg-emerald-500";
+  return (
+    <div className="w-28 space-y-1">
+      <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+        <div className={`h-full rounded-full ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <p className="text-xs text-muted-foreground">
+        {formatBytes(used)} / {formatBytes(volume)}
+      </p>
+    </div>
+  );
+}
 
 // ── Credential helpers ────────────────────────────────────────────────────────
 
@@ -422,6 +471,18 @@ export default function UsersPage() {
 
   const { data: inboundList = [] } = useSWR("/api/inbounds", () => getInbounds());
 
+  const { data: rawStats = [] } = useSWR("/api/stats/users-bulk", () =>
+    getStats("user", "", 1000).then((r) => (r.obj ?? []) as StatPoint[])
+  );
+
+  // Build usage map from raw stats: tag -> { up, down }
+  const usageMap: Record<string, { up: number; down: number }> = {};
+  for (const p of rawStats) {
+    if (!usageMap[p.tag]) usageMap[p.tag] = { up: 0, down: 0 };
+    if (p.direction) usageMap[p.tag].down += p.traffic;
+    else usageMap[p.tag].up += p.traffic;
+  }
+
   async function handleDelete(id: number) {
     try {
       const res = await deleteClient(id);
@@ -460,6 +521,7 @@ export default function UsersPage() {
               <TableHead>{t("status")}</TableHead>
               <TableHead>{t("trafficQuota")}</TableHead>
               <TableHead>{t("used")}</TableHead>
+              <TableHead>{t("usageBar")}</TableHead>
               <TableHead>{t("expiryDate")}</TableHead>
               <TableHead>{t("subLink")}</TableHead>
               <TableHead>{t("actions")}</TableHead>
@@ -469,7 +531,7 @@ export default function UsersPage() {
             {isLoading
               ? Array.from({ length: 4 }).map((_, i) => (
                   <TableRow key={i}>
-                    {Array.from({ length: 8 }).map((__, j) => (
+                    {Array.from({ length: 9 }).map((__, j) => (
                       <TableCell key={j}>
                         <Skeleton className="h-4 w-16" />
                       </TableCell>
@@ -492,6 +554,20 @@ export default function UsersPage() {
                     </TableCell>
                     <TableCell>
                       {formatBytes(c.totalDown + c.totalUp)}
+                    </TableCell>
+                    <TableCell>
+                      {(() => {
+                        const usage = usageMap[c.name];
+                        const used = usage ? usage.up + usage.down : 0;
+                        return (
+                          <UsageBar
+                            used={used}
+                            volume={c.volume}
+                            unlimited={t("usageUnlimited")}
+                            exceeded={t("usageExceeded")}
+                          />
+                        );
+                      })()}
                     </TableCell>
                     <TableCell>{formatExpiry(c.expiry)}</TableCell>
                     <TableCell>

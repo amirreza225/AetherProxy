@@ -2,12 +2,15 @@
 
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { getClientAuthToken, getNodes, getTelemetryStats, type TelemetryStats } from "@/lib/api";
+import { getClientAuthToken, getNodes, getTelemetryStats, type TelemetryStats, restartApp, restartSb, getSingboxConfigUrl } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { formatBytes } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Button } from "@/components/ui/button";
+import Link from "next/link";
+import { toast } from "sonner";
 import {
   Activity,
   Cpu,
@@ -559,6 +562,61 @@ export default function DashboardPage() {
 
       {/* ── Telemetry / Protocol Health ── */}
       <TelemetryCard stats={telemetryData} />
+
+      {/* ── Quick Actions ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-medium text-muted-foreground">
+            {t("quickActions")}
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 gap-3">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!window.confirm("Restart sing-box core?")) return;
+                try {
+                  const res = await restartSb();
+                  if (res.success) toast.success(t("restartCoreSuccess"));
+                  else toast.error(t("restartCoreError"));
+                } catch {
+                  toast.error(t("restartCoreError"));
+                }
+              }}
+            >
+              {t("restartCore")}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                if (!window.confirm("Restart panel?")) return;
+                try {
+                  const res = await restartApp();
+                  if (res.success) {
+                    toast.success(t("restartPanelSuccess"));
+                    setTimeout(() => { window.location.href = "/login"; }, 3000);
+                  } else {
+                    toast.error(t("restartPanelError"));
+                  }
+                } catch {
+                  toast.error(t("restartPanelError"));
+                }
+              }}
+            >
+              {t("restartPanel")}
+            </Button>
+            <a href={getSingboxConfigUrl()} download className="contents">
+              <Button variant="outline" className="w-full">
+                {t("downloadConfig")}
+              </Button>
+            </a>
+            <Button variant="outline" render={<Link href="/analytics" />}>
+              {t("viewAnalytics")}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
     </div>
   );
