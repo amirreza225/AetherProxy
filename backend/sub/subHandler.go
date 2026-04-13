@@ -1,6 +1,9 @@
 package sub
 
 import (
+	"net/http"
+
+	"github.com/aetherproxy/backend/database"
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/service"
 
@@ -41,15 +44,23 @@ func (s *SubHandler) subs(c *gin.Context) {
 			result, headers, err = s.GetClash(subId)
 		}
 		if err != nil || result == nil {
-			logger.Error(err)
-			c.String(400, "Error!")
+			if database.IsNotFound(err) {
+				c.String(http.StatusNotFound, "Not Found")
+				return
+			}
+			logger.Errorf("subs failed subid=%q format=%q err=%v", subId, format, err)
+			c.String(http.StatusBadRequest, "Error!")
 			return
 		}
 	} else {
 		result, headers, err = s.GetSubs(subId)
 		if err != nil || result == nil {
-			logger.Error(err)
-			c.String(400, "Error!")
+			if database.IsNotFound(err) {
+				c.String(http.StatusNotFound, "Not Found")
+				return
+			}
+			logger.Errorf("subs failed subid=%q err=%v", subId, err)
+			c.String(http.StatusBadRequest, "Error!")
 			return
 		}
 	}
@@ -63,8 +74,12 @@ func (s *SubHandler) subHeaders(c *gin.Context) {
 	subId := c.Param("subid")
 	client, err := s.getClientBySubId(subId)
 	if err != nil {
-		logger.Error(err)
-		c.String(400, "Error!")
+		if database.IsNotFound(err) {
+			c.String(http.StatusNotFound, "Not Found")
+			return
+		}
+		logger.Errorf("sub headers failed subid=%q err=%v", subId, err)
+		c.String(http.StatusBadRequest, "Error!")
 		return
 	}
 
