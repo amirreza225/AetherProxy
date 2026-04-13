@@ -393,6 +393,8 @@ func vlessLink(
 		params := make([]LinkParam, len(baseParams))
 		copy(params, baseParams)
 		if tls, ok := addr["tls"].(map[string]interface{}); ok {
+			// enabled defaults to false if the key is absent or not a bool,
+			// which is the safe default (skip TLS params for unconfigured inbounds).
 			if enabled, _ := tls["enabled"].(bool); enabled {
 				getTlsParams(&params, tls, "allowInsecure")
 				if flow, ok := userConfig["flow"].(string); ok {
@@ -421,6 +423,8 @@ func trojanLink(
 		params := make([]LinkParam, len(baseParams))
 		copy(params, baseParams)
 		if tls, ok := addr["tls"].(map[string]interface{}); ok {
+			// enabled defaults to false if the key is absent or not a bool,
+			// which is the safe default (skip TLS params for unconfigured inbounds).
 			if enabled, _ := tls["enabled"].(bool); enabled {
 				getTlsParams(&params, tls, "allowInsecure")
 			}
