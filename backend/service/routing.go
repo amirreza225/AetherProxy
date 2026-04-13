@@ -5,25 +5,22 @@ import (
 	"fmt"
 
 	"github.com/aetherproxy/backend/database"
+	"github.com/aetherproxy/backend/logger"
 )
 
-// RouteRule maps to a sing-box route.rules entry.
-// Only the fields used by the visual editor are included; additional fields
-// can be added without breaking serialization.
-type RouteRule struct {
-	Inbound      []string `json:"inbound,omitempty"`
-	Network      string   `json:"network,omitempty"`
-	DomainSuffix []string `json:"domain_suffix,omitempty"`
-	GeoIP        []string `json:"geoip,omitempty"`
-	Outbound     string   `json:"outbound,omitempty"`
-	Action       string   `json:"action,omitempty"`
-}
+// RouteRule is an open map that preserves every sing-box route.rules field
+// without restricting it to a fixed struct.  Using map[string]json.RawMessage
+// ensures that advanced fields (ip_cidr, rule_set, process_name, invert, …)
+// round-trip through the API without being silently dropped.
+type RouteRule = map[string]json.RawMessage
 
 // RoutingService reads and writes the route.rules section of the stored
 // sing-box config (the "config" setting key persisted by SettingService).
+// It intentionally does NOT embed ConfigService to avoid ambiguous method
+// promotion when ApiService embeds both RoutingService and ConfigService.
+// Core restarts are triggered via the package-level restartCoreAsync helper.
 type RoutingService struct {
 	SettingService
-	ConfigService
 }
 
 // GetRules returns the current route rules from the stored config.
@@ -92,9 +89,13 @@ func (s *RoutingService) SaveRules(rules []RouteRule) error {
 		tx.Rollback()
 		return err
 	}
-	tx.Commit()
+	if err := tx.Commit().Error; err != nil {
+		return err
+	}
 
-	// Async restart so the HTTP handler returns quickly
-	go func() { _ = s.restartCoreWithConfig(newConfig) }()
+	// Async restart so the HTTP handler returns quickly.
+	// Errors are logged inside restartCoreAsync → restartCoreWithConfig.
+	restartCoreAsync(newConfig)
+	logger.Info("routing rules saved; sing-box restart scheduled")
 	return nil
 }

@@ -6,6 +6,7 @@ type Node struct {
 	Name       string `json:"name"        form:"name"`
 	Host       string `json:"host"        form:"host"`
 	SshPort    int    `json:"sshPort"     form:"sshPort"    gorm:"default:22"`
+	SshUser    string `json:"sshUser"     form:"sshUser"    gorm:"default:'root'"`
 	SshKeyPath string `json:"sshKeyPath"  form:"sshKeyPath"`
 	Provider   string `json:"provider"    form:"provider"`
 	// Status values: "unknown" | "online" | "offline"

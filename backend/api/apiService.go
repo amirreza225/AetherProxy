@@ -731,3 +731,10 @@ func (a *ApiService) DiscoveryAddPeer(c *gin.Context) {
 	err := service.GetDiscoveryService().JoinPeer(addr)
 	jsonMsg(c, "discovery", err)
 }
+
+// ResetEvasionPreference clears the auto-promoted protocol preference so that
+// subscription links revert to their default ordering.
+func (a *ApiService) ResetEvasionPreference(c *gin.Context) {
+	err := service.ResetEvasionPreference()
+	jsonMsg(c, "evasion", err)
+}

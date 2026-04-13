@@ -275,7 +275,7 @@ func (s *ConfigService) CheckChanges(lu string) (bool, error) {
 	if LastUpdate == 0 {
 		db := database.GetDB()
 		var count int64
-		err := db.Model(model.Changes{}).Where("date_time > " + lu).Count(&count).Error
+		err := db.Model(model.Changes{}).Where("date_time > ?", lu).Count(&count).Error
 		if err == nil {
 			LastUpdate = time.Now().Unix()
 		}
@@ -288,6 +288,9 @@ func (s *ConfigService) CheckChanges(lu string) (bool, error) {
 
 func (s *ConfigService) GetChanges(actor string, chngKey string, count string) []model.Changes {
 	c, _ := strconv.Atoi(count)
+	if c <= 0 {
+		c = 50
+	}
 	db := database.GetDB()
 	q := db.Model(model.Changes{})
 	if len(actor) > 0 {
@@ -302,4 +305,16 @@ func (s *ConfigService) GetChanges(actor string, chngKey string, count string) [
 		logger.Warning(err)
 	}
 	return chngs
+}
+
+// restartCoreAsync schedules an asynchronous sing-box restart using the
+// supplied raw config.  It is a package-level helper so that services in the
+// same package can trigger a restart without embedding ConfigService.
+func restartCoreAsync(config json.RawMessage) {
+	cs := &ConfigService{}
+	go func() {
+		if err := cs.restartCoreWithConfig(config); err != nil {
+			logger.Error("restartCoreAsync: sing-box restart failed:", err)
+		}
+	}()
 }

@@ -58,6 +58,9 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 		if err != nil {
 			return nil, err
 		}
+		if client.Name == "" {
+			return nil, common.NewError("client name is required")
+		}
 		if len(client.Inbounds) == 0 {
 			client.Inbounds = json.RawMessage("[]")
 		}
@@ -104,9 +107,12 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 				client.Config = json.RawMessage("{}")
 			}
 		}
-		err = json.Unmarshal(clients[0].Inbounds, &inboundIds)
-		if err != nil {
-			return nil, err
+		// Collect inbound IDs from ALL clients in the batch (not just clients[0]).
+		for _, client := range clients {
+			var clientInboundIds []uint
+			if err = json.Unmarshal(client.Inbounds, &clientInboundIds); err == nil {
+				inboundIds = common.UnionUintArray(inboundIds, clientInboundIds)
+			}
 		}
 		err = s.updateLinksWithFixedInbounds(tx, clients, hostname)
 		if err != nil {
@@ -202,42 +208,70 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 }
 
 func (s *ClientService) updateLinksWithFixedInbounds(tx *gorm.DB, clients []*model.Client, hostname string) error {
-	var err error
-	var inbounds []model.Inbound
-	var inboundIds []uint
-
 	if len(clients) == 0 {
 		return nil
 	}
-	if len(clients[0].Inbounds) == 0 {
-		clients[0].Inbounds = json.RawMessage("[]")
+
+	// Collect all unique inbound IDs referenced by any client in the batch.
+	allInboundIDsSet := make(map[uint]struct{})
+	for _, client := range clients {
+		if len(client.Inbounds) == 0 {
+			continue
+		}
+		var ids []uint
+		if err := json.Unmarshal(client.Inbounds, &ids); err == nil {
+			for _, id := range ids {
+				allInboundIDsSet[id] = struct{}{}
+			}
+		}
 	}
 
-	err = json.Unmarshal(clients[0].Inbounds, &inboundIds)
-	if err != nil {
-		return err
-	}
-
-	// Zero inbounds means removing local links only
-	if len(inboundIds) > 0 {
-		err = tx.Model(model.Inbound{}).Preload("Tls").Where("id in ? and type in ?", inboundIds, util.InboundTypeWithLink).Find(&inbounds).Error
-		if err != nil {
+	// Fetch all referenced inbounds in a single query.
+	var allInbounds []model.Inbound
+	if len(allInboundIDsSet) > 0 {
+		allInboundIDs := make([]uint, 0, len(allInboundIDsSet))
+		for id := range allInboundIDsSet {
+			allInboundIDs = append(allInboundIDs, id)
+		}
+		if err := tx.Model(model.Inbound{}).Preload("Tls").
+			Where("id in ? and type in ?", allInboundIDs, util.InboundTypeWithLink).
+			Find(&allInbounds).Error; err != nil {
 			return err
 		}
 	}
+
+	// Build an ID→inbound lookup map.
+	inboundByID := make(map[uint]*model.Inbound, len(allInbounds))
+	for i := range allInbounds {
+		inboundByID[allInbounds[i].Id] = &allInbounds[i]
+	}
+
+	// Update each client's links using its own set of inbound IDs.
 	for index, client := range clients {
+		if len(client.Inbounds) == 0 {
+			client.Inbounds = json.RawMessage("[]")
+		}
 		if len(client.Links) == 0 {
 			client.Links = json.RawMessage("[]")
 		}
+
+		var clientInboundIDs []uint
+		if err := json.Unmarshal(client.Inbounds, &clientInboundIDs); err != nil {
+			return err
+		}
+
 		var clientLinks []map[string]string
-		err = json.Unmarshal(client.Links, &clientLinks)
-		if err != nil {
+		if err := json.Unmarshal(client.Links, &clientLinks); err != nil {
 			return err
 		}
 
 		newClientLinks := []map[string]string{}
-		for _, inbound := range inbounds {
-			newLinks := util.LinkGenerator(client.Config, &inbound, hostname)
+		for _, inboundID := range clientInboundIDs {
+			inbound, ok := inboundByID[inboundID]
+			if !ok {
+				continue
+			}
+			newLinks := util.LinkGenerator(client.Config, inbound, hostname)
 			for _, newLink := range newLinks {
 				newClientLinks = append(newClientLinks, map[string]string{
 					"remark": inbound.Tag,
@@ -247,13 +281,14 @@ func (s *ClientService) updateLinksWithFixedInbounds(tx *gorm.DB, clients []*mod
 			}
 		}
 
-		// Add non local links
+		// Preserve any non-local links (e.g. custom/remote links).
 		for _, clientLink := range clientLinks {
 			if clientLink["type"] != "local" {
 				newClientLinks = append(newClientLinks, clientLink)
 			}
 		}
 
+		var err error
 		clients[index].Links, err = json.MarshalIndent(newClientLinks, "", "  ")
 		if err != nil {
 			return err
