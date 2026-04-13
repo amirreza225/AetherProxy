@@ -5,6 +5,8 @@ RUN apk add --no-cache git gcc musl-dev
 
 ARG GO_BUILD_P
 ARG GO_BUILD_GOMAXPROCS
+ARG GO_BUILD_GOMEMLIMIT
+ARG GO_BUILD_GOGC
 
 WORKDIR /src
 COPY go.mod go.sum ./
@@ -15,6 +17,8 @@ RUN set -eu; \
 	export CGO_ENABLED=1 GOOS=linux; \
 	if [ -n "${GO_BUILD_P:-}" ]; then export GOFLAGS="-p=${GO_BUILD_P}"; fi; \
 	if [ -n "${GO_BUILD_GOMAXPROCS:-}" ]; then export GOMAXPROCS="${GO_BUILD_GOMAXPROCS}"; fi; \
+	if [ -n "${GO_BUILD_GOMEMLIMIT:-}" ]; then export GOMEMLIMIT="${GO_BUILD_GOMEMLIMIT}"; fi; \
+	if [ -n "${GO_BUILD_GOGC:-}" ]; then export GOGC="${GO_BUILD_GOGC}"; fi; \
 	go build -trimpath -ldflags="-s -w" \
 	-tags "with_utls,with_quic,with_grpc,with_acme,with_gvisor,with_naive_outbound,with_purego" \
 	-o /aetherproxy ./

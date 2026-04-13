@@ -106,6 +106,19 @@ Or with env var:
 AETHER_LOW_RAM_BUILD=1 curl -fsSL https://raw.githubusercontent.com/amirreza225/AetherProxy/main/deploy/install.sh | sudo -E bash -s -- --yes
 ```
 
+For manual rebuilds on small VPSes, use conservative build settings:
+
+```bash
+GO_BUILD_P=1 GO_BUILD_GOMAXPROCS=1 GO_BUILD_GOMEMLIMIT=700MiB GO_BUILD_GOGC=30 COMPOSE_PARALLEL_LIMIT=1 \
+docker compose --env-file deploy/.env -f deploy/docker-compose.hostnet.yml up -d --build
+```
+
+Or use the Makefile shortcut:
+
+```bash
+make deploy-up-lowram
+```
+
 After install/update, you can restart services manually anytime with:
 
 ```bash
@@ -218,6 +231,11 @@ npm run tauri build  # produce .msi / .dmg / .AppImage
 | `AETHER_PORT_SYNC_UFW_BIN` | `ufw` | UFW binary path used by reconciliation |
 | `NEXT_PUBLIC_API_URL` | `http://localhost:2095` | Frontend → backend API URL |
 | `NEXT_PUBLIC_SUB_URL` | `http://localhost:2096` | Frontend subscription base URL |
+| `GO_BUILD_P` | – | Optional `go build` package parallelism (`1` recommended for 2GB VPS) |
+| `GO_BUILD_GOMAXPROCS` | – | Optional max OS threads for Go build (`1` recommended for 2GB VPS) |
+| `GO_BUILD_GOMEMLIMIT` | – | Optional Go compiler memory cap (example: `700MiB`) |
+| `GO_BUILD_GOGC` | – | Optional Go compiler GC aggressiveness (example: `30`) |
+| `COMPOSE_PARALLEL_LIMIT` | – | Optional Compose build parallelism (`1` for low-RAM hosts) |
 
 Port sync automation manages only AetherProxy-tagged UFW rules. In containerized deployments, full host-firewall control requires host-network mode and container network capabilities (NET_ADMIN).
 When discovery gossip is active (or bootstrap/manifest discovery is configured), PortSync also manages `AETHER_GOSSIP_PORT` for both TCP and UDP.
@@ -579,6 +597,9 @@ make lint
 
 # Deploy via Docker Compose
 make deploy-up
+
+# Deploy with conservative build settings on low-RAM VPSes
+make deploy-up-lowram
 ```
 
 Pre-commit hooks are managed by [lefthook](https://github.com/evilmartians/lefthook):

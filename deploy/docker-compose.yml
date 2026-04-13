@@ -6,6 +6,8 @@ services:
       args:
         GO_BUILD_P: "${GO_BUILD_P:-}"
         GO_BUILD_GOMAXPROCS: "${GO_BUILD_GOMAXPROCS:-}"
+        GO_BUILD_GOMEMLIMIT: "${GO_BUILD_GOMEMLIMIT:-}"
+        GO_BUILD_GOGC: "${GO_BUILD_GOGC:-}"
     restart: unless-stopped
     environment:
       AETHER_PORT: "2095"

@@ -1,5 +1,5 @@
 .PHONY: help build dev test lint backend-build backend-dev backend-test backend-lint \
-        frontend-dev frontend-build frontend-lint deploy-up deploy-down \
+	frontend-dev frontend-build frontend-lint deploy-up deploy-up-lowram deploy-down \
         plugin-build plugin-test
 
 GOBIN  := $(shell which go 2>/dev/null || echo /usr/local/go/bin/go)
@@ -48,6 +48,12 @@ lint: backend-lint frontend-lint ## Lint all code
 
 # ── Deploy ────────────────────────────────────────────────────────────────────
 deploy-up: ## Start all services via docker compose (host networking)
+	docker compose --env-file deploy/.env -f deploy/docker-compose.hostnet.yml up -d --build
+
+deploy-up-lowram: ## Start all services with conservative build settings for low-RAM VPSes
+	GO_BUILD_P="$${GO_BUILD_P:-1}" GO_BUILD_GOMAXPROCS="$${GO_BUILD_GOMAXPROCS:-1}" \
+	GO_BUILD_GOMEMLIMIT="$${GO_BUILD_GOMEMLIMIT:-700MiB}" GO_BUILD_GOGC="$${GO_BUILD_GOGC:-30}" \
+	COMPOSE_PARALLEL_LIMIT="$${COMPOSE_PARALLEL_LIMIT:-1}" \
 	docker compose --env-file deploy/.env -f deploy/docker-compose.hostnet.yml up -d --build
 
 deploy-down: ## Stop all services

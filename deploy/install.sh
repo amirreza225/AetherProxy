@@ -294,6 +294,14 @@ AETHER_PORT_SYNC_RETRY_SECONDS=30
 # Uncomment and fill in to use PostgreSQL instead of the default SQLite:
 # AETHER_DB_DSN=postgres://aether:secret@postgres:5432/aether?sslmode=disable
 # POSTGRES_PASSWORD=secret
+
+# ── Build tuning (leave empty for defaults) ──────────────────────────────────
+GO_BUILD_P=
+GO_BUILD_GOMAXPROCS=
+GO_BUILD_GOMEMLIMIT=
+GO_BUILD_GOGC=
+# Compose build parallelism. Set to 1 on very small VPSes.
+COMPOSE_PARALLEL_LIMIT=
 ENVEOF
   ok "Configuration written."
 fi
@@ -309,10 +317,19 @@ echo -e ""
 info "Building images and starting services (first run may take several minutes) ..."
 
 if [[ "$LOW_RAM_MODE" -eq 1 ]]; then
-  warn "Low-RAM build mode enabled (serialized compose build + conservative Go compiler parallelism)."
+  warn "Low-RAM build mode enabled (serialized compose build + conservative Go compiler memory limits)."
   export GO_BUILD_P="${GO_BUILD_P:-1}"
   export GO_BUILD_GOMAXPROCS="${GO_BUILD_GOMAXPROCS:-1}"
+  export GO_BUILD_GOMEMLIMIT="${GO_BUILD_GOMEMLIMIT:-700MiB}"
+  export GO_BUILD_GOGC="${GO_BUILD_GOGC:-30}"
   export COMPOSE_PARALLEL_LIMIT="${COMPOSE_PARALLEL_LIMIT:-1}"
+
+  set_env_value "GO_BUILD_P" "${GO_BUILD_P}" "$ENV_FILE"
+  set_env_value "GO_BUILD_GOMAXPROCS" "${GO_BUILD_GOMAXPROCS}" "$ENV_FILE"
+  set_env_value "GO_BUILD_GOMEMLIMIT" "${GO_BUILD_GOMEMLIMIT}" "$ENV_FILE"
+  set_env_value "GO_BUILD_GOGC" "${GO_BUILD_GOGC}" "$ENV_FILE"
+  set_env_value "COMPOSE_PARALLEL_LIMIT" "${COMPOSE_PARALLEL_LIMIT}" "$ENV_FILE"
+  info "Persisted conservative build settings to $ENV_FILE"
 fi
 
 compose_file="$COMPOSE_FILE"

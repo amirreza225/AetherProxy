@@ -185,16 +185,6 @@ func (s *SettingService) setCacheEntry(key, value string) {
 	settingsCacheMu.Unlock()
 }
 
-// invalidateCacheEntry removes a single key from the in-memory cache so the
-// next read reloads the value from the database.
-func (s *SettingService) invalidateCacheEntry(key string) {
-	settingsCacheMu.Lock()
-	if settingsCache != nil {
-		delete(settingsCache, key)
-	}
-	settingsCacheMu.Unlock()
-}
-
 func (s *SettingService) saveSetting(key string, value string) error {
 	setting, err := s.getSetting(key)
 	db := database.GetDB()

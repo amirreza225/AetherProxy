@@ -6,6 +6,8 @@ services:
       args:
         GO_BUILD_P: "${GO_BUILD_P:-}"
         GO_BUILD_GOMAXPROCS: "${GO_BUILD_GOMAXPROCS:-}"
+        GO_BUILD_GOMEMLIMIT: "${GO_BUILD_GOMEMLIMIT:-}"
+        GO_BUILD_GOGC: "${GO_BUILD_GOGC:-}"
     restart: unless-stopped
     network_mode: host
     cap_add:
