@@ -21,16 +21,46 @@ func certsDir() string {
 	return filepath.Join(config.GetDBFolderPath(), "certs")
 }
 
-// IssueLetsEncrypt obtains a certificate from Let's Encrypt for the given domain.
-// The HTTP-01 ACME challenge is served via the running web server at
-// /.well-known/acme-challenge/ — Caddy forwards that path to the backend, so
-// port 80 does not need to be bound directly.
-// email is accepted for API compatibility but is not used by the ACME client.
+// caddyCertPaths returns the certificate and key paths that Caddy stores for a
+// domain inside the volume mounted at /caddy-certs. Returns empty strings if
+// no Caddy-managed cert is found for the domain.
+func caddyCertPaths(domain string) (certPath, keyPath string) {
+	base := filepath.Join("/caddy-certs", "caddy", "certificates",
+		"acme-v02.api.letsencrypt.org-directory", domain)
+	c := filepath.Join(base, domain+".crt")
+	k := filepath.Join(base, domain+".key")
+	if _, err := os.Stat(c); err != nil {
+		return "", ""
+	}
+	if _, err := os.Stat(k); err != nil {
+		return "", ""
+	}
+	return c, k
+}
+
+// IssueLetsEncrypt returns a valid certificate and key for domain.
+//
+// Priority order:
+//  1. Caddy-managed cert (mounted at /caddy-certs) — reused when Caddy already
+//     owns the domain, avoiding an ACME conflict where Caddy intercepts the
+//     HTTP-01 challenge before it reaches the backend.
+//  2. Backend-owned ACME cert — obtained via the HTTP-01 challenge served by
+//     the backend web server and forwarded by Caddy for domains Caddy does not
+//     already manage.
+//
+// email is accepted for API compatibility but is unused.
 func (s *CertService) IssueLetsEncrypt(domain, _ string) (certPath, keyPath string, err error) {
 	domain = strings.TrimSpace(domain)
 	if domain == "" {
 		return "", "", fmt.Errorf("domain is required")
 	}
+
+	// If Caddy already has a cert for this domain, reuse it directly.
+	if cp, kp := caddyCertPaths(domain); cp != "" {
+		return cp, kp, nil
+	}
+
+	// Fall back to the backend's own ACME client.
 	return GetACMEService().ObtainCert(domain)
 }
 

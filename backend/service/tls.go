@@ -131,9 +131,16 @@ func (s *TlsService) applyACME(tls *model.Tls) error {
 	}
 
 	logger.Infof("TLS: obtaining Let's Encrypt certificate for domain %q", domain)
-	certPath, keyPath, err := GetACMEService().ObtainCert(domain)
-	if err != nil {
-		return common.NewError("ACME certificate failed for "+domain+": ", err.Error())
+	var certPath, keyPath string
+	var err error
+	// Prefer Caddy's existing cert to avoid ACME challenge conflicts.
+	if cp, kp := caddyCertPaths(domain); cp != "" {
+		certPath, keyPath = cp, kp
+	} else {
+		certPath, keyPath, err = GetACMEService().ObtainCert(domain)
+		if err != nil {
+			return common.NewError("ACME certificate failed for "+domain+": ", err.Error())
+		}
 	}
 
 	delete(serverCfg, "acme_domain")
