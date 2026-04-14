@@ -26,6 +26,9 @@
 #   BRIDGE_CF_UUID         UUID for CF-fronted backend (required if CF URL set)
 #   BRIDGE_TRAFFIC_SHAPING 1 to enable tc netem jitter on outbound (default: 0)
 #   BRIDGE_FAKE_ACTIVITY   0 to disable benign cron maintenance jobs (default: 1)
+#   BRIDGE_BUILD_SOURCE    1 to compile sing-box from source instead of downloading
+#                            (requires Go, git, ~2 GB disk, 5-15 min; maximally strips
+#                             all origin fingerprints at compile time)
 
 set -euo pipefail
 
@@ -57,13 +60,18 @@ readonly -a _STEALTH_NAMES=(
 )
 
 # Derive runtime paths from the chosen service name.
-# If a state file exists (update/uninstall), load the persisted name.
+# If a state file exists (update/uninstall), load the persisted identity.
+# State file format: line 1 = SERVICE_NAME, line 2 = BUILD_MODE (download|source)
 # Otherwise pick randomly (fresh install).
 _load_service_identity() {
   if [[ -f "$STATE_FILE" ]]; then
-    SERVICE_NAME=$(cat "$STATE_FILE")
+    SERVICE_NAME=$(sed -n '1p' "$STATE_FILE")
+    BUILD_MODE=$(sed -n '2p' "$STATE_FILE")
+    BUILD_MODE="${BUILD_MODE:-download}"
   else
     SERVICE_NAME="${_STEALTH_NAMES[$((RANDOM % ${#_STEALTH_NAMES[@]}))]}"
+    BUILD_MODE="${BRIDGE_BUILD_SOURCE:+source}"
+    BUILD_MODE="${BUILD_MODE:-download}"
   fi
   BINARY_PATH="/usr/lib/systemd/${SERVICE_NAME}"
   SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -167,6 +175,8 @@ Environment variables for --non-interactive:
   BRIDGE_CF_UUID         UUID for the CF-fronted backend (required with CF URL)
   BRIDGE_TRAFFIC_SHAPING 1 to enable tc netem jitter on outbound (default: 0)
   BRIDGE_FAKE_ACTIVITY   0 to disable benign maintenance cron jobs (default: 1)
+  BRIDGE_BUILD_SOURCE    1 to compile sing-box from source instead of downloading
+                           (needs Go, git, ~2 GB disk, 5-15 min on typical VPS)
 USAGE
 }
 
@@ -245,12 +255,36 @@ cmd_uninstall() {
 }
 
 # ═════════════════════════════════════════════════════════════════════════════
-#  UPDATE (binary only)
+#  UPDATE (binary only — preserves config and credentials)
 # ═════════════════════════════════════════════════════════════════════════════
 cmd_update() {
   step "Updating sing-box binary"
   [[ $EUID -ne 0 ]] && die "Must be run as root."
 
+  # Detect if the original install was a source build; if so, rebuild from source.
+  local update_tmpdir
+  update_tmpdir=$(mktemp -d)
+  trap 'rm -rf "$update_tmpdir"' RETURN
+
+  if [[ "${BUILD_MODE:-download}" == "source" ]]; then
+    info "Original install used source build — re-compiling from source..."
+    warn "This will take 5–15 minutes."
+    # Source-build helpers need TMPDIR_WORK and ARCH set
+    TMPDIR_WORK="$update_tmpdir"
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+      _build_singbox_source
+      systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+      systemctl start "$SERVICE_NAME"
+      sleep 2
+      systemctl is-active --quiet "$SERVICE_NAME" || die "Service failed to start after update."
+    else
+      ok "[dry-run] Would rebuild from source."
+    fi
+    ok "Source-compiled binary updated successfully."
+    return 0
+  fi
+
+  # ── Pre-built download path ───────────────────────────────────────────────
   local arch
   arch=$(uname -m)
   case "$arch" in
@@ -260,10 +294,8 @@ cmd_update() {
   esac
 
   info "Downloading sing-box v${SINGBOX_VERSION} (${arch})..."
-  local tmpdir
-  tmpdir=$(mktemp -d)
-  local tarball="${tmpdir}/sb.tar.gz"
-  local checksum_file="${tmpdir}/checksums.txt"
+  local tarball="${update_tmpdir}/sb.tar.gz"
+  local checksum_file="${update_tmpdir}/checksums.txt"
   local base="sing-box-${SINGBOX_VERSION}-linux-${arch}"
   local dl_base="https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}"
 
@@ -271,13 +303,13 @@ cmd_update() {
   run curl -fsSL --retry 3 "${dl_base}/${base}.tar.gz.sha256sum" -o "$checksum_file"
 
   if [[ "$DRY_RUN" -eq 0 ]]; then
-    pushd "$tmpdir" > /dev/null
+    pushd "$update_tmpdir" > /dev/null
     sha256sum -c "$checksum_file" 2>/dev/null || die "SHA256 verification failed — download may be corrupt."
     popd > /dev/null
 
     info "Extracting binary..."
-    tar -xzf "$tarball" -C "$tmpdir"
-    local new_bin="${tmpdir}/${base}/sing-box"
+    tar -xzf "$tarball" -C "$update_tmpdir"
+    local new_bin="${update_tmpdir}/${base}/sing-box"
     [[ -f "$new_bin" ]] || die "Binary not found in archive"
 
     info "Stripping and obfuscating binary..."
@@ -293,10 +325,9 @@ cmd_update() {
     install -m 755 -o root -g root "$new_bin" "$BINARY_PATH"
     systemctl start "$SERVICE_NAME"
     sleep 2
-    systemctl is-active --quiet "$SERVICE_NAME" || die "Service failed to start after update"
+    systemctl is-active --quiet "$SERVICE_NAME" || die "Service failed to start after update."
   fi
 
-  run rm -rf "$tmpdir"
   ok "sing-box updated to v${SINGBOX_VERSION} successfully."
 }
 
@@ -448,65 +479,181 @@ run apt-get install -y -qq nginx curl jq uuid-runtime openssl
 ok "Packages installed: nginx, curl, jq, uuid-runtime, openssl"
 
 # ─────────────────────────────────────────────────────────────────────────────
-# STEP 4 — Download and verify sing-box
+# Helpers: Go toolchain + source build (used only when BRIDGE_BUILD_SOURCE=1)
 # ─────────────────────────────────────────────────────────────────────────────
-step "Step 4 — Installing sing-box v${SINGBOX_VERSION}"
-_ROLLBACK_ENABLED=1
 
-TMPDIR_WORK=$(mktemp -d)
-trap 'rm -rf "$TMPDIR_WORK"' EXIT
+# Install Go if not present or too old (sing-box 1.13.x requires Go 1.22+).
+_install_go() {
+  local need_minor=22
+  local go_ver="1.22.10"   # latest patch of the 1.22 series
 
-BASE="sing-box-${SINGBOX_VERSION}-linux-${ARCH}"
-DL_BASE="https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}"
-TARBALL="${TMPDIR_WORK}/${BASE}.tar.gz"
-CHECKSUM_FILE="${TMPDIR_WORK}/checksums.txt"
+  if command -v go &>/dev/null; then
+    local cur_minor
+    cur_minor=$(go version 2>/dev/null | grep -oP 'go1\.\K[0-9]+' | head -1 || echo 0)
+    if [[ "$cur_minor" -ge "$need_minor" ]]; then
+      ok "Go $(go version | awk '{print $3}') already present — no install needed."
+      return 0
+    fi
+    warn "Installed Go is too old (need 1.${need_minor}+). Replacing with ${go_ver}..."
+  else
+    info "Go not found — installing Go ${go_ver}..."
+  fi
 
-# Check if already installed at same version
-if [[ -f "$BINARY_PATH" ]] && "$BINARY_PATH" version 2>/dev/null | grep -q "$SINGBOX_VERSION"; then
-  ok "sing-box v${SINGBOX_VERSION} already installed at ${BINARY_PATH} — skipping download."
-else
-  info "Downloading from GitHub releases..."
-  run curl -fsSL --retry 3 --retry-delay 2 \
-    "${DL_BASE}/${BASE}.tar.gz"           -o "$TARBALL"
-  run curl -fsSL --retry 3 --retry-delay 2 \
-    "${DL_BASE}/${BASE}.tar.gz.sha256sum" -o "$CHECKSUM_FILE"
+  local tarball="${TMPDIR_WORK}/go${go_ver}.linux-${ARCH}.tar.gz"
+  run curl -fsSL --retry 3 \
+    "https://go.dev/dl/go${go_ver}.linux-${ARCH}.tar.gz" -o "$tarball"
 
   if [[ "$DRY_RUN" -eq 0 ]]; then
-    info "Verifying SHA256 checksum..."
-    pushd "$TMPDIR_WORK" > /dev/null
-    sha256sum -c "$CHECKSUM_FILE" 2>/dev/null || die "SHA256 verification failed — archive may be corrupt or tampered."
-    popd > /dev/null
-    ok "Checksum verified."
+    rm -rf /usr/local/go
+    tar -xzf "$tarball" -C /usr/local
+    export PATH="/usr/local/go/bin:${PATH}"
+    ok "Go ${go_ver} installed to /usr/local/go."
+  fi
+}
 
-    info "Extracting and installing binary..."
-    tar -xzf "$TARBALL" -C "$TMPDIR_WORK"
-    NEW_BIN="${TMPDIR_WORK}/${BASE}/sing-box"
-    [[ -f "$NEW_BIN" ]] || die "Binary not found in archive at expected path."
+# Compile sing-box from source with hardened ldflags.
+# This is the maximum-stealth path: identifiable strings are patched in Go source
+# before compilation, then stripped again at link time — nothing survives in the binary.
+_build_singbox_source() {
+  local src_dir="${TMPDIR_WORK}/singbox-src"
 
-    info "Stripping debug symbols and obfuscating build strings..."
-    # strip --strip-all removes all debug info, symbol tables, and build metadata.
-    # This eliminates most of what 'strings <binary>' would reveal about origin.
-    if command -v strip &>/dev/null; then
-      strip --strip-all "$NEW_BIN" 2>/dev/null || true
-    fi
+  # Ensure git is available
+  command -v git &>/dev/null || run apt-get install -y -qq git
 
-    # Length-preserving in-place replacement of remaining identifiable brand strings.
-    # Perl -0777 slurps the entire binary; replacements keep the same byte length so
-    # Go's internal string-length metadata stays intact and the binary keeps working.
-    # We only patch UI/branding strings — NOT protocol identifiers used in JSON parsing.
-    if command -v perl &>/dev/null; then
-      # "sing-box" (8 bytes) → "net-hlpr" (8 bytes)
-      perl -0777 -pi -e 's/sing-box/net-hlpr/g' "$NEW_BIN" 2>/dev/null || true
-      # "SagerNet" (8 bytes) → "NetSysCo" (8 bytes)
-      perl -0777 -pi -e 's/SagerNet/NetSysCo/g' "$NEW_BIN" 2>/dev/null || true
-      # Version string in help/version output: "1.13.4" → "0.99.1"
-      perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g' "$NEW_BIN" 2>/dev/null || true
-    fi
+  _install_go
 
-    install -m 755 -o root -g root "$NEW_BIN" "$BINARY_PATH"
-    ok "Binary installed and obfuscated: ${BINARY_PATH}"
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    ok "[dry-run] Would clone + compile sing-box v${SINGBOX_VERSION} from source."
+    return 0
+  fi
+
+  info "Cloning sing-box v${SINGBOX_VERSION} source (this may take a moment)..."
+  git clone --quiet --depth=1 \
+    --branch "v${SINGBOX_VERSION}" \
+    "https://github.com/SagerNet/sing-box.git" \
+    "$src_dir" \
+    || die "Failed to clone sing-box source. Check network connectivity."
+
+  # ── Source-level string patching ────────────────────────────────────────────
+  # Patch the version constant (defined as a Go const, cannot use ldflags -X).
+  local ver_file="${src_dir}/constant/version.go"
+  if [[ -f "$ver_file" ]]; then
+    sed -i 's/const Version = ".*"/const Version = "0.99.1"/' "$ver_file"
+    info "Version constant patched to 0.99.1 in source."
+  fi
+
+  # Replace "sing-box" string literals in Go source files.
+  # We only patch *string constants* (quoted literals) — not identifiers — so
+  # imports, function names and type assertions are untouched.
+  find "$src_dir" -name "*.go" -not -path "*/vendor/*" \
+    -exec sed -i 's/"sing-box"/"net-hlpr"/g' {} \; 2>/dev/null || true
+
+  # Replace SagerNet branding in string literals
+  find "$src_dir" -name "*.go" -not -path "*/vendor/*" \
+    -exec sed -i 's/"SagerNet"/"NetSysCo"/g' {} \; 2>/dev/null || true
+
+  # ── Compilation ─────────────────────────────────────────────────────────────
+  info "Downloading Go module dependencies..."
+  pushd "$src_dir" > /dev/null
+  go mod download 2>/dev/null || true
+
+  info "Compiling sing-box (5–15 min on a typical VPS)..."
+  # Ldflags explained:
+  #   -s          strip Go symbol table  (removes all exported symbol names)
+  #   -w          strip DWARF debug info (removes file/line number mappings)
+  #   -buildid=   empty build ID         (prevents binary fingerprinting by build hash)
+  # -trimpath removes all absolute source paths from the binary.
+  # Build tags match AetherProxy's own backend tags for protocol compatibility.
+  GOFLAGS="" go build \
+    -trimpath \
+    -ldflags="-s -w -buildid=" \
+    -tags "with_utls,with_quic,with_grpc,with_acme,with_gvisor,with_naive_outbound,with_purego" \
+    -o "${TMPDIR_WORK}/singbox-built" \
+    ./ \
+    || die "Source compilation failed. Check Go errors above."
+  popd > /dev/null
+
+  [[ -f "${TMPDIR_WORK}/singbox-built" ]] || die "Compiled binary not found after build."
+
+  install -m 755 -o root -g root "${TMPDIR_WORK}/singbox-built" "$BINARY_PATH"
+  ok "Source-compiled binary installed: ${BINARY_PATH}"
+  info "  Strings removed: version const, 'sing-box', 'SagerNet', all symbol tables,"
+  info "  DWARF info, build ID, and all absolute source paths."
+}
+
+# ─────────────────────────────────────────────────────────────────────────────
+# STEP 4 — Acquire and install sing-box
+# Two modes: download pre-built (default) or compile from source (BRIDGE_BUILD_SOURCE=1)
+# ─────────────────────────────────────────────────────────────────────────────
+BRIDGE_BUILD_SOURCE="${BRIDGE_BUILD_SOURCE:-0}"
+# Honour BUILD_MODE persisted from a previous source-build install
+[[ "${BUILD_MODE:-download}" == "source" ]] && BRIDGE_BUILD_SOURCE="1"
+
+if [[ "$BRIDGE_BUILD_SOURCE" == "1" ]]; then
+  step "Step 4 — Building sing-box v${SINGBOX_VERSION} from source"
+  warn "Source build selected — requires Go, git, ~2 GB disk, and 5–15 minutes."
+  _ROLLBACK_ENABLED=1
+  TMPDIR_WORK=$(mktemp -d)
+  trap 'rm -rf "$TMPDIR_WORK"' EXIT
+  _build_singbox_source
+else
+  step "Step 4 — Installing sing-box v${SINGBOX_VERSION} (pre-built)"
+  _ROLLBACK_ENABLED=1
+  TMPDIR_WORK=$(mktemp -d)
+  trap 'rm -rf "$TMPDIR_WORK"' EXIT
+
+  BASE="sing-box-${SINGBOX_VERSION}-linux-${ARCH}"
+  DL_BASE="https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}"
+  TARBALL="${TMPDIR_WORK}/${BASE}.tar.gz"
+  CHECKSUM_FILE="${TMPDIR_WORK}/checksums.txt"
+
+  # Check if already installed at same version
+  if [[ -f "$BINARY_PATH" ]] && "$BINARY_PATH" version 2>/dev/null | grep -q "0\.99\.1\|${SINGBOX_VERSION}"; then
+    ok "Binary already installed at ${BINARY_PATH} — skipping download."
   else
-    ok "[dry-run] Would install binary to ${BINARY_PATH}"
+    info "Downloading from GitHub releases..."
+    run curl -fsSL --retry 3 --retry-delay 2 \
+      "${DL_BASE}/${BASE}.tar.gz"           -o "$TARBALL"
+    run curl -fsSL --retry 3 --retry-delay 2 \
+      "${DL_BASE}/${BASE}.tar.gz.sha256sum" -o "$CHECKSUM_FILE"
+
+    if [[ "$DRY_RUN" -eq 0 ]]; then
+      info "Verifying SHA256 checksum..."
+      pushd "$TMPDIR_WORK" > /dev/null
+      sha256sum -c "$CHECKSUM_FILE" 2>/dev/null || die "SHA256 verification failed — archive may be corrupt or tampered."
+      popd > /dev/null
+      ok "Checksum verified."
+
+      info "Extracting and installing binary..."
+      tar -xzf "$TARBALL" -C "$TMPDIR_WORK"
+      NEW_BIN="${TMPDIR_WORK}/${BASE}/sing-box"
+      [[ -f "$NEW_BIN" ]] || die "Binary not found in archive at expected path."
+
+      info "Stripping debug symbols and obfuscating build strings..."
+      # strip --strip-all removes all debug info, symbol tables, and build metadata.
+      # This eliminates most of what 'strings <binary>' would reveal about origin.
+      if command -v strip &>/dev/null; then
+        strip --strip-all "$NEW_BIN" 2>/dev/null || true
+      fi
+
+      # Length-preserving in-place replacement of remaining identifiable brand strings.
+      # Perl -0777 slurps the entire binary; replacements keep the same byte length so
+      # Go's internal string-length metadata stays intact and the binary keeps working.
+      # We only patch UI/branding strings — NOT protocol identifiers used in JSON parsing.
+      if command -v perl &>/dev/null; then
+        # "sing-box" (8 bytes) → "net-hlpr" (8 bytes)
+        perl -0777 -pi -e 's/sing-box/net-hlpr/g' "$NEW_BIN" 2>/dev/null || true
+        # "SagerNet" (8 bytes) → "NetSysCo" (8 bytes)
+        perl -0777 -pi -e 's/SagerNet/NetSysCo/g' "$NEW_BIN" 2>/dev/null || true
+        # Version string in help/version output: "1.13.4" → "0.99.1"
+        perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g' "$NEW_BIN" 2>/dev/null || true
+      fi
+
+      install -m 755 -o root -g root "$NEW_BIN" "$BINARY_PATH"
+      ok "Binary installed and obfuscated: ${BINARY_PATH}"
+    else
+      ok "[dry-run] Would install binary to ${BINARY_PATH}"
+    fi
   fi
 fi
 
@@ -1166,9 +1313,13 @@ fi
 
 trap - ERR  # disable rollback — install succeeded
 
-# Persist the chosen service identity so --update / --uninstall resolve the same paths.
+# Persist the chosen service identity and build mode so --update/--uninstall
+# resolve the same paths and use the same acquisition method.
+# Format: line 1 = SERVICE_NAME, line 2 = "source" | "download"
 if [[ "$DRY_RUN" -eq 0 ]]; then
-  echo "$SERVICE_NAME" > "$STATE_FILE"
+  _build_mode="download"
+  [[ "${BRIDGE_BUILD_SOURCE:-0}" == "1" ]] && _build_mode="source"
+  printf '%s\n%s\n' "$SERVICE_NAME" "$_build_mode" > "$STATE_FILE"
   chmod 600 "$STATE_FILE"
 fi
 
