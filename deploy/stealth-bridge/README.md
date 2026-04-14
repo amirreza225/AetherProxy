@@ -1,29 +1,44 @@
 # AetherProxy Stealth Bridge
 
-A hardened, standalone deployment script for a **relay node running inside Iran**. The bridge
-receives VLESS+Reality connections from clients and fans traffic out across multiple external
-AetherProxy nodes, so no single foreign IP dominates the outbound pattern.
+A hardened, standalone deployment script for a relay node running inside Iran.
+The bridge accepts VLESS+Reality inbound traffic and fans outbound traffic across
+multiple external AetherProxy nodes so no single destination dominates.
 
-> **Self-contained** — `deploy.sh` requires no external template files. Copy the single script
-> to the VPS over SSH and run it.
+> Reality check: there is no such thing as a 100% undetectable proxy.
+> This bridge is designed to reduce common detection vectors, not to guarantee invisibility.
+
+The installer script is self-contained: copy `deploy.sh` to the VPS and run it.
 
 ---
 
 ## Architecture
 
-```
-Client (inside Iran)
-        │  VLESS+Reality on port 443
-        │  (appears as HTTPS to e.g. microsoft.com)
-        ▼
- Iranian VPS Bridge  ──urltest──▶  Node A  (external AetherProxy)
-  [systemd-netlink]              ├──▶  Node B  (external AetherProxy)
-  disguised as systemd           ├──▶  Node C  (external AetherProxy)
-  daemon, port 443               └──▶  Node CF (Cloudflare Worker relay)
+```text
+Client
+  -> TCP 443 on VPS (nginx stream, ssl_preread)
+      -> SNI == BRIDGE_SNI_TARGET         -> sing-box Reality backend (127.0.0.1:2443)
+      -> SNI missing/non-matching/random  -> blind TCP fallback (BRIDGE_DECOY_UPSTREAM)
+
+VPS outbound (sing-box urltest)
+  -> Node A
+  -> Node B
+  -> Node C (optional)
+  -> Cloudflare Worker slot (optional)
+
+TCP 80 on VPS
+  -> nginx generic HTTP decoy (returns 400)
 ```
 
-Non-proxy connections to port 443 are transparently proxied to the SNI target
-(e.g. microsoft.com) — `curl https://<vps-ip>` returns the real Microsoft page.
+Key point: unauthorized TLS traffic is not terminated locally with a fake certificate.
+It is blindly proxied to a real upstream to avoid self-signed/localhost certificate fingerprints.
+
+---
+
+## What This Script Mitigates Well
+
+- Static signature detection (known binary/service/config path fingerprints)
+- Basic active probing (connect-and-inspect behavior on 443)
+- Single-destination outbound concentration
 
 ---
 
@@ -34,8 +49,8 @@ Non-proxy connections to port 443 are transparently proxied to the SNI target
 | OS | Ubuntu 22.04 LTS or 24.04 LTS |
 | Architecture | amd64 or arm64 |
 | RAM | 512 MB minimum (1 GB recommended) |
-| Ports | 80 and 443 must be free before install |
 | Root | Script must run as root |
+| Free ports | 80 and your chosen BRIDGE_LISTEN_PORT |
 | External nodes | 2+ recommended for traffic rotation |
 
 ---
@@ -43,17 +58,17 @@ Non-proxy connections to port 443 are transparently proxied to the SNI target
 ## Quick Start
 
 ```bash
-# Transfer script to VPS (from your machine)
+# Copy installer
 scp deploy.sh root@<vps-ip>:/root/
 
-# On the VPS — prepend this to disable history before running
+# On VPS (optional but recommended)
 unset HISTFILE
 
-# Run installer
+# Interactive install
 bash deploy.sh
 ```
 
-### Non-interactive (automation/CI)
+### Non-interactive Example
 
 ```bash
 export BRIDGE_NODE_COUNT=2
@@ -62,107 +77,137 @@ export BRIDGE_NODE_1_PORT=443
 export BRIDGE_NODE_1_UUID=xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
 export BRIDGE_NODE_1_PUBKEY=<base64-reality-pubkey>
 export BRIDGE_NODE_1_SHORT_ID=ab12cd34
-export BRIDGE_NODE_1_SNI=microsoft.com
-export BRIDGE_NODE_2_IP=198.51.100.20
-# ... (repeat for node 2)
-export BRIDGE_SNI_TARGET=microsoft.com
-export BRIDGE_LISTEN_PORT=443
+export BRIDGE_NODE_1_SNI=example.com
 
-# Optional Cloudflare fronting slot
+export BRIDGE_NODE_2_IP=198.51.100.20
+export BRIDGE_NODE_2_PORT=443
+export BRIDGE_NODE_2_UUID=yyyyyyyy-yyyy-yyyy-yyyy-yyyyyyyyyyyy
+export BRIDGE_NODE_2_PUBKEY=<base64-reality-pubkey>
+export BRIDGE_NODE_2_SHORT_ID=ef56aa90
+export BRIDGE_NODE_2_SNI=example.org
+
+export BRIDGE_LISTEN_PORT=443
+export BRIDGE_SNI_TARGET=www.example-cdn-host.com
+export BRIDGE_DECOY_UPSTREAM=www.microsoft.com:443
+
+# Optional
 # export BRIDGE_CF_WORKER_URL=https://your-relay.workers.dev
 # export BRIDGE_CF_UUID=<uuid-of-cf-backend-node>
+# export BRIDGE_URLTEST_URL=https://www.gstatic.com/generate_204
+# export BRIDGE_URLTEST_INTERVAL=11m
 
 bash deploy.sh --yes --non-interactive
 ```
 
 ---
 
-## What Gets Installed
+## Installed Components
 
-| Component | Location | Notes |
-|-----------|----------|-------|
-| sing-box binary | `/usr/lib/systemd/systemd-netlink` | Disguised as systemd helper |
-| systemd service | `systemd-netlink.service` | Description: "Network Link State Monitor" |
-| System user | `_netd` | No shell, no home directory |
-| Config directory | `/var/lib/systemd-netlink/` | Permissions: `0750 root:_netd` |
-| sing-box config | `/var/lib/systemd-netlink/runtime.conf` | Permissions: `0640 root:_netd` |
-| nginx decoy | `/var/www/decoy/` | Persian tech blog served on port 80 |
-| nginx vhost | `/etc/nginx/sites-available/decoy` | `server_tokens off`; no access logs |
-| Firewall | ufw rules (or iptables) | Allows: 22, 80, 443/tcp |
+Service identity is randomized and persisted in `/usr/lib/systemd/.nd`.
+
+| Component | Path Pattern | Notes |
+|-----------|--------------|-------|
+| sing-box binary | `/usr/lib/systemd/<service_name>` | Disguised as system helper |
+| systemd unit | `/etc/systemd/system/<service_name>.service` | Description: Network Link State Monitor |
+| system user | `_netd` | No shell, no home |
+| runtime config dir | `/var/lib/<service_name>/` | Permissions: `0750 root:_netd` |
+| runtime config | `/var/lib/<service_name>/runtime.conf` | Permissions: `0640 root:_netd` |
+| nginx HTTP decoy | `/etc/nginx/sites-available/decoy` | Generic 400 on port 80 |
+| nginx stream router | `/etc/nginx/stream-enabled/stealth-bridge.conf` | 443 SNI routing + blind fallback |
 
 ---
 
-## Stealth Layers
+## Advanced Detection Reality
 
-### 1. Disguised process
-`ps aux` shows `systemd-netlink run -c /var/lib/systemd-netlink/runtime.conf`.
-`systemctl list-units` shows `systemd-netlink.service` — indistinguishable from real
-systemd daemons (`systemd-networkd`, `systemd-resolved`, `systemd-timesyncd`).
+Sophisticated state-level censors can still use multi-layer heuristics.
 
-### 2. Hidden config path
-Config lives in `/var/lib/systemd-netlink/` — the standard state directory pattern for
-system daemons. No files in `/etc/sing-box/` or any known proxy config path.
+### 1. SNI-to-IP Mismatch (metadata analysis)
 
-### 3. Decoy web server
-nginx serves a minimal Persian tech blog on port 80. Port 443 is owned by sing-box;
-Reality transparently proxies non-proxy visitors to the SNI target site.
+How detection happens:
+- The client sends SNI like `www.cloudflare.com` or `microsoft.com`, but the destination IP ASN belongs to a budget VPS provider.
+- That SNI/ASN mismatch is a strong signal.
 
-### 4. Zero logging
-- sing-box log level: `error`, output: `/dev/null`
-- systemd unit: `StandardOutput=null StandardError=null`
-- `journalctl -u systemd-netlink` shows no entries
-- nginx access log disabled; error log level `crit` only
+Mitigation:
+- Prefer plausible `BRIDGE_SNI_TARGET` values that could reasonably live behind your VPS provider/region.
+- Use Cloudflare Worker slot where possible so some traffic naturally blends into Cloudflare IP ranges.
 
-### 5. Traffic rotation
-sing-box `urltest` group health-checks all external nodes every 2 minutes and fans
-traffic across whichever nodes are healthy. Adding a Cloudflare Worker slot means some
-outbound traffic goes to Cloudflare IP ranges — indistinguishable from CDN usage.
+### 2. Traffic-flow fingerprinting (timing and packet-size ML)
 
-### 6. Systemd hardening
-Full sandboxing: `NoNewPrivileges`, `ProtectSystem=strict`, `PrivateTmp`,
-`PrivateDevices`, `CapabilityBoundingSet=CAP_NET_BIND_SERVICE`,
-`RestrictAddressFamilies=AF_INET AF_INET6`, `SystemCallFilter=@system-service`.
-The service runs as the unprivileged `_netd` user with only the capability to bind
-ports below 1024 (`AmbientCapabilities=CAP_NET_BIND_SERVICE`).
+How detection happens:
+- Payload is encrypted, but packet timing/size sequences can still classify proxy tunnels.
+
+Mitigation:
+- Keep `xtls-rprx-vision` (already used).
+- Keep multiplex padding enabled in client profiles.
+- Use optional `BRIDGE_TRAFFIC_SHAPING=1` to inject jitter and reduce strict timing regularity.
+
+### 3. Active probing latency trap
+
+How detection happens:
+- Prober sends junk/missing SNI.
+- Your server forwards to fallback upstream and returns response.
+- Added RTT from extra hop can reveal transparent proxy behavior if fallback is far away.
+
+Mitigation:
+- Set `BRIDGE_DECOY_UPSTREAM` to a high-reputation host geographically close to your VPS.
+- Keep RTT delta as small as possible.
+
+### 4. Client-side TLS fingerprinting (JA3/JA4)
+
+How detection happens:
+- Censor classifies ClientHello signatures from client apps.
+- Non-browser TLS signatures are easy to flag.
+
+Mitigation:
+- Ensure clients use uTLS and browser-like fingerprints matching your profile (for example Chrome/Firefox).
+- Keep client and server fingerprint strategy consistent.
+
+---
+
+## SNI and Fallback Selection Guide
+
+### BRIDGE_SNI_TARGET
+
+- Must support TLS 1.3 and ALPN h2.
+- Should be plausible for your VPS geography/provider.
+- Avoid hardcoding the same globally popular value on every deployment.
+
+### BRIDGE_DECOY_UPSTREAM
+
+- Format: `host:port` (example: `www.microsoft.com:443`).
+- Must be external (not localhost).
+- Prefer reputable hosts with low-latency path from your VPS.
 
 ---
 
 ## Verification Checklist
 
-Run these after install to confirm everything is working:
-
 ```bash
-# Service is active
-systemctl is-active systemd-netlink
+# Resolve randomized service name
+SERVICE_NAME="$(sed -n '1p' /usr/lib/systemd/.nd)"
 
-# Port is listening (shows _netd process)
+# Service state
+systemctl is-active "$SERVICE_NAME"
+
+# Public listener
 ss -tlnp | grep :443
 
-# No proxy binary names visible
-ps aux | grep -E 'sing-box|xray|v2ray'
-# ↑ Should return empty
+# HTTP decoy behavior
+curl -i http://<vps-ip>
+# Expect: 400 Bad Request
 
-# No journald output (log suppression working)
-journalctl -u systemd-netlink --no-pager -n 20
-# ↑ Should show no log lines
+# Matching SNI path (Reality backend)
+openssl s_client -connect <vps-ip>:443 -servername <BRIDGE_SNI_TARGET> </dev/null
 
-# Decoy site responds
-curl -s http://<vps-ip> | grep -i "فنی"
+# Non-matching SNI path (blind fallback)
+openssl s_client -connect <vps-ip>:443 -servername not-real.example </dev/null
+# Expect: valid external cert chain from fallback path, not localhost self-signed cert
 
-# Reality pass-through (returns microsoft.com content)
-curl -sk https://<vps-ip> | grep -i microsoft
-
-# Config not in /etc
+# Confirm no standard proxy config path
 ls /etc/sing-box/ 2>&1
-# ↑ "No such file or directory"
 
-# Config dir permissions
-ls -la /var/lib/systemd-netlink/
-# ↑ drwxr-x--- root:_netd
-
-# Traffic rotation (during active use)
+# Outbound diversity during real traffic
 ss -tnp | grep _netd
-# ↑ Should show connections to multiple distinct foreign IPs
 ```
 
 ---
@@ -170,119 +215,62 @@ ss -tnp | grep _netd
 ## Managing the Bridge
 
 ```bash
-# View service status
-systemctl status systemd-netlink
+SERVICE_NAME="$(sed -n '1p' /usr/lib/systemd/.nd)"
 
-# Restart service
-systemctl restart systemd-netlink
+systemctl status "$SERVICE_NAME"
+systemctl restart "$SERVICE_NAME"
 
-# Update sing-box binary (keeps config)
+# Binary refresh only
 bash deploy.sh --update
 
-# Full removal
+# Full uninstall
 bash deploy.sh --uninstall
 
-# Dry-run (see what would happen)
+# Preview actions
 bash deploy.sh --dry-run
 ```
 
 ---
 
-## Reality SNI Target Selection
-
-The SNI target must support **TLS 1.3** and **ALPN h2**.
-
-| Target | Notes |
-|--------|-------|
-| `microsoft.com` | **Default.** Extremely high global traffic, very hard to block |
-| `www.apple.com` | Same properties, good alternative |
-| `dl.google.com` | Google download server — high legitimate traffic |
-| `www.samsung.com` | Alternative for diversity |
-
-**Avoid:** `cloudflare.com` (recognizable as proxy-adjacent), any domain blocked in Iran.
-
----
-
 ## OpSec Notes
 
-### Before installing
+### Before install
 
-- Use a **fresh VPS** with no prior proxy tool footprint.
-- Run `unset HISTFILE` in your SSH session **before** running the installer.
-- Transfer the script over SCP, not via a public URL or pastebin.
-- **Do not** install the AetherProxy admin panel on the same VPS.
-- Verify your SSH key is the only authorized access method — disable password auth.
+- Use a fresh VPS where possible.
+- Avoid reusing the same SNI/fallback pair across many nodes.
+- Disable shell history for installation session (`unset HISTFILE`).
 
-### After installing
+### After install
 
-- **Save the credentials immediately.** The install script writes them to
-  `/tmp/bridge-creds-<timestamp>.txt`. Copy the file off the server, then:
-  ```bash
-  shred -z /tmp/bridge-creds-*.txt
-  ```
-- The install script itself can be deleted after a successful run:
-  ```bash
-  shred -z deploy.sh
-  ```
-
-### Credential rotation (every 30–90 days)
-
-Rotating credentials requires a fresh install:
-```bash
-bash deploy.sh --uninstall
-bash deploy.sh
-```
-Update all client configs with the new UUID, public key, and short_id immediately.
-
-For binary-only updates (no credential change):
-```bash
-bash deploy.sh --update
-```
-
-### Bandwidth discipline
-
-- Keep monthly outbound usage below ~800 GB to avoid anomaly flags.
-- The `urltest` health checks (2-minute intervals, tiny Cloudflare probe) are negligible.
-- If bandwidth spikes, the Cloudflare Worker slot absorbs peak traffic through CF IPs.
-
-### Cloudflare fronting slot (optional)
-
-The CF Worker slot uses the existing `deploy/cloudflare-worker/ws-relay-worker.js` from
-the AetherProxy repo. Deploy it to Cloudflare Workers, then:
+- Save credentials immediately from `/tmp/bridge-creds-<timestamp>.txt`.
+- Remove credential file from server after copy:
 
 ```bash
-wrangler secret put ORIGIN_SERVER   # "your-external-node-ip:port"
-wrangler secret put SECRET_HEADER   # random shared secret
+shred -z /tmp/bridge-creds-*.txt
 ```
 
-Rotate the Worker URL every 60–90 days.
+### Rotation
 
-### Emergency procedures
+- Credentials: rotate every 30 to 90 days with fresh reinstall.
+- Worker URL/fallback target: rotate periodically.
+- Binary updates: `bash deploy.sh --update`.
 
-**Immediate disable without trace:**
-```bash
-systemctl stop systemd-netlink
-shred -z /var/lib/systemd-netlink/runtime.conf /var/lib/systemd-netlink/server.key
-```
+### Bandwidth and cadence
 
-**Full removal:**
-```bash
-bash deploy.sh --uninstall
-```
+- Keep usage patterns reasonable for the server profile.
+- urltest defaults are randomized (URL and interval) unless explicitly overridden.
 
 ---
 
-## Threat Model Summary
+## Threat Model Snapshot
 
-| Threat | Mitigation |
-|--------|-----------|
-| DPI detecting proxy protocol signatures | VLESS+Reality is TLS 1.3 to a real SNI target — indistinguishable from HTTPS |
-| Single foreign IP in outbound traffic | `urltest` rotates across 2–5 nodes + optional Cloudflare IP slot |
-| Known binary/service names in process list | Binary renamed; service name mimics systemd daemon |
-| Config files in canonical proxy paths | Config in `/var/lib/systemd-netlink/` — no `/etc/sing-box/` |
-| No real web service on 443 | Reality transparently proxies non-proxy visitors to SNI target |
-| Log analysis showing proxy activity | All sing-box output goes to `/dev/null`; journald suppressed |
-| Port scan revealing proxy | Port 443 shows as generic TLS; port 80 shows as nginx HTTP |
+| Detection Method | Current Mitigation | Residual Risk |
+|------------------|--------------------|---------------|
+| Static signatures | Disguised service/binary paths, stripped builds | Advanced forensic baselining |
+| Active probing | 443 SNI routing + blind TCP fallback | RTT correlation if fallback is far away |
+| Outbound concentration | Multiple nodes + optional CF slot + urltest | Poor node diversity still fingerprintable |
+| TLS fingerprinting | uTLS/browser-like strategy support | Client misconfiguration remains common |
+| Traffic-shape ML | xtls-rprx-vision + optional jitter shaping | High-confidence ML at scale can still detect anomalies |
 
 ---
 
@@ -290,4 +278,4 @@ bash deploy.sh --uninstall
 
 | Version | Notes |
 |---------|-------|
-| 1.0.0 | Initial release — sing-box 1.13.4, Ubuntu 22.04/24.04 |
+| 1.0.0 | Initial bridge README updated for stream-based blind fallback, realistic detection limits, and advanced OPSEC guidance |
