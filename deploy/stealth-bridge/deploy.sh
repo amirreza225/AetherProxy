@@ -70,8 +70,14 @@ _load_service_identity() {
     BUILD_MODE="${BUILD_MODE:-download}"
   else
     SERVICE_NAME="${_STEALTH_NAMES[$((RANDOM % ${#_STEALTH_NAMES[@]}))]}"
-    BUILD_MODE="${BRIDGE_BUILD_SOURCE:+source}"
-    BUILD_MODE="${BUILD_MODE:-download}"
+    # Explicit equality check: only "1" means source build.
+    # ${var:+word} would return "source" for BRIDGE_BUILD_SOURCE=0 (non-empty but disabled),
+    # which is the documented default and a very common explicit value.
+    if [[ "${BRIDGE_BUILD_SOURCE:-0}" == "1" ]]; then
+      BUILD_MODE="source"
+    else
+      BUILD_MODE="download"
+    fi
   fi
   BINARY_PATH="/usr/lib/systemd/${SERVICE_NAME}"
   SERVICE_FILE="/etc/systemd/system/${SERVICE_NAME}.service"
@@ -267,8 +273,9 @@ cmd_update() {
   trap 'rm -rf "$update_tmpdir"' RETURN
 
   if [[ "${BUILD_MODE:-download}" == "source" ]]; then
-    info "Original install used source build — re-compiling from source..."
-    warn "This will take 5–15 minutes."
+    info "Original install used source build — re-compiling from source."
+    warn "This will take 5–15 minutes (full recompile every update by design)."
+    info "To switch to the faster pre-built path: --uninstall, then reinstall without BRIDGE_BUILD_SOURCE=1."
     # Source-build helpers need TMPDIR_WORK and ARCH set
     TMPDIR_WORK="$update_tmpdir"
     if [[ "$DRY_RUN" -eq 0 ]]; then
@@ -426,27 +433,21 @@ for i in $(seq 1 "$NODE_COUNT"); do
   echo ""
   info "Node ${i} of ${NODE_COUNT}:"
 
-  v="BRIDGE_NODE_${i}_IP";     prompt_input "v" "  IP address: " "";            NODE_IPS[$i]="${v}"
+  _vn="BRIDGE_NODE_${i}_IP";     prompt_input "$_vn" "  IP address: " "";            NODE_IPS[$i]="${!_vn}"
   [[ -z "${NODE_IPS[$i]}" ]]    && die "Node ${i} IP cannot be empty."
 
-  v="BRIDGE_NODE_${i}_PORT";   prompt_input "v" "  Port: " "443";               NODE_PORTS[$i]="${v}"
-  v="BRIDGE_NODE_${i}_UUID";   prompt_input "v" "  VLESS UUID: " "";            NODE_UUIDS[$i]="${v}"
+  _vn="BRIDGE_NODE_${i}_PORT";   prompt_input "$_vn" "  Port: " "443";               NODE_PORTS[$i]="${!_vn}"
+  _vn="BRIDGE_NODE_${i}_UUID";   prompt_input "$_vn" "  VLESS UUID: " "";            NODE_UUIDS[$i]="${!_vn}"
   [[ -z "${NODE_UUIDS[$i]}" ]]  && die "Node ${i} UUID cannot be empty."
 
-  v="BRIDGE_NODE_${i}_PUBKEY"; prompt_input "v" "  Reality public key: " "";    NODE_PUBKEYS[$i]="${v}"
+  _vn="BRIDGE_NODE_${i}_PUBKEY"; prompt_input "$_vn" "  Reality public key: " "";    NODE_PUBKEYS[$i]="${!_vn}"
   [[ -z "${NODE_PUBKEYS[$i]}" ]] && die "Node ${i} Reality public key cannot be empty."
 
-  v="BRIDGE_NODE_${i}_SHORT_ID"; prompt_input "v" "  Reality short_id: " "";   NODE_SIDS[$i]="${v}"
-  v="BRIDGE_NODE_${i}_SNI";    prompt_input "v" "  SNI target [microsoft.com]: " "microsoft.com"; NODE_SNIS[$i]="${v}"
-
-  # Indirect assignment via eval for dynamic variable names
-  eval "BRIDGE_NODE_${i}_IP='${NODE_IPS[$i]}'"
-  eval "BRIDGE_NODE_${i}_PORT='${NODE_PORTS[$i]}'"
-  eval "BRIDGE_NODE_${i}_UUID='${NODE_UUIDS[$i]}'"
-  eval "BRIDGE_NODE_${i}_PUBKEY='${NODE_PUBKEYS[$i]}'"
-  eval "BRIDGE_NODE_${i}_SHORT_ID='${NODE_SIDS[$i]}'"
-  eval "BRIDGE_NODE_${i}_SNI='${NODE_SNIS[$i]}'"
+  _vn="BRIDGE_NODE_${i}_SHORT_ID"; prompt_input "$_vn" "  Reality short_id: " "";   NODE_SIDS[$i]="${!_vn}"
+  _vn="BRIDGE_NODE_${i}_SNI";    prompt_input "$_vn" "  SNI target [microsoft.com]: " "microsoft.com"; NODE_SNIS[$i]="${!_vn}"
 done
+# All node values live in NODE_IPS/NODE_PORTS/NODE_UUIDS/NODE_PUBKEYS/NODE_SIDS/NODE_SNIS arrays.
+# No eval needed — build_outbound_nodes reads directly from these arrays.
 
 echo ""
 # Bridge inbound settings
@@ -507,9 +508,12 @@ _install_go() {
   if [[ "$DRY_RUN" -eq 0 ]]; then
     rm -rf /usr/local/go
     tar -xzf "$tarball" -C /usr/local
-    export PATH="/usr/local/go/bin:${PATH}"
     ok "Go ${go_ver} installed to /usr/local/go."
   fi
+  # Export here AND record the canonical path so callers can re-assert it after
+  # any subshell boundaries (subshells inherit a snapshot of PATH, not live updates).
+  export GOROOT="/usr/local/go"
+  export PATH="/usr/local/go/bin:${PATH}"
 }
 
 # Compile sing-box from source with hardened ldflags.
@@ -522,6 +526,9 @@ _build_singbox_source() {
   command -v git &>/dev/null || run apt-get install -y -qq git
 
   _install_go
+  # Re-assert PATH after _install_go in case this function was entered from a
+  # subshell context where the export from inside _install_go didn't propagate.
+  [[ -d /usr/local/go/bin ]] && export PATH="/usr/local/go/bin:${PATH}"
 
   if [[ "$DRY_RUN" -eq 1 ]]; then
     ok "[dry-run] Would clone + compile sing-box v${SINGBOX_VERSION} from source."
@@ -702,7 +709,24 @@ else
   SHORT_ID="deadbeef"
 fi
 
-SERVER_IP=$(ip -4 route get 1.1.1.1 2>/dev/null | awk 'NR==1 {print $7}' || echo "<server-ip>")
+# Detect the primary outbound IP using a layered strategy:
+# 1. IPv4 via default route (most reliable for Iranian VPSs)
+# 2. IPv4 src field (alternative kernel output format)
+# 3. IPv6 (for dual-stack or IPv6-only VPSs)
+# 4. hostname -I (any bound address)
+# 5. Hard-coded placeholder (user fills in manually)
+_detect_server_ip() {
+  local ip=""
+  ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk '/src/ {for(i=1;i<=NF;i++) if($i=="src") {print $(i+1); exit}}')
+  [[ -z "$ip" ]] && \
+    ip=$(ip -4 route get 1.1.1.1 2>/dev/null | awk 'NR==1 {print $NF}')
+  [[ -z "$ip" ]] && \
+    ip=$(ip -6 route get 2001:4860:4860::8888 2>/dev/null | awk '/src/ {for(i=1;i<=NF;i++) if($i=="src") {print $(i+1); exit}}')
+  [[ -z "$ip" ]] && \
+    ip=$(hostname -I 2>/dev/null | awk '{print $1}')
+  echo "${ip:-<server-ip>}"
+}
+SERVER_IP=$(_detect_server_ip)
 
 ok "UUID and Reality keypair generated."
 
@@ -716,12 +740,12 @@ run mkdir -p "$CONFIG_DIR"
 build_outbound_nodes() {
   local nodes=""
   for i in $(seq 1 "$NODE_COUNT"); do
-    local ip; ip=$(eval "echo \${BRIDGE_NODE_${i}_IP}")
-    local port; port=$(eval "echo \${BRIDGE_NODE_${i}_PORT:-443}")
-    local uuid; uuid=$(eval "echo \${BRIDGE_NODE_${i}_UUID}")
-    local pubkey; pubkey=$(eval "echo \${BRIDGE_NODE_${i}_PUBKEY}")
-    local sid; sid=$(eval "echo \${BRIDGE_NODE_${i}_SHORT_ID:-}")
-    local sni; sni=$(eval "echo \${BRIDGE_NODE_${i}_SNI:-microsoft.com}")
+    local ip="${NODE_IPS[$i]}"
+    local port="${NODE_PORTS[$i]:-443}"
+    local uuid="${NODE_UUIDS[$i]}"
+    local pubkey="${NODE_PUBKEYS[$i]}"
+    local sid="${NODE_SIDS[$i]:-}"
+    local sni="${NODE_SNIS[$i]:-microsoft.com}"
     nodes+=",
     {
       \"type\": \"vless\",
@@ -1364,10 +1388,8 @@ ${VLESS_LINK}
 
 External nodes configured: ${NODE_COUNT}$(
   for i in $(seq 1 "$NODE_COUNT"); do
-    ip=$(eval "echo \${BRIDGE_NODE_${i}_IP}")
-    port=$(eval "echo \${BRIDGE_NODE_${i}_PORT:-443}")
     echo ""
-    echo "  Node ${i}: ${ip}:${port}"
+    echo "  Node ${i}: ${NODE_IPS[$i]}:${NODE_PORTS[$i]:-443}"
   done
 )
 
