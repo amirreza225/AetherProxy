@@ -21,9 +21,12 @@
 #   BRIDGE_NODE_N_SHORT_ID node N Reality short_id
 #   BRIDGE_NODE_N_SNI      node N SNI (e.g. microsoft.com)
 #   BRIDGE_LISTEN_PORT     inbound listen port (default: 443)
-#   BRIDGE_SNI_TARGET      Reality SNI target (default: microsoft.com)
+#   BRIDGE_SNI_TARGET      Reality SNI target (default: www.cloudflare.com)
+#   BRIDGE_DECOY_UPSTREAM  Blind TCP fallback upstream for non-matching TLS (default: www.microsoft.com:443)
 #   BRIDGE_CF_WORKER_URL   Cloudflare Worker URL (optional)
 #   BRIDGE_CF_UUID         UUID for CF-fronted backend (required if CF URL set)
+#   BRIDGE_URLTEST_URL     Override urltest probe URL (must start with https://)
+#   BRIDGE_URLTEST_INTERVAL Override urltest interval (e.g. 9m, 540s)
 #   BRIDGE_TRAFFIC_SHAPING 1 to enable tc netem jitter on outbound (default: 0)
 #   BRIDGE_FAKE_ACTIVITY   0 to disable benign cron maintenance jobs (default: 1)
 #   BRIDGE_BUILD_SOURCE    1 to compile sing-box from source instead of downloading
@@ -90,9 +93,16 @@ _load_service_identity
 readonly NGINX_CONF_DIR="/etc/nginx/sites-available"
 readonly NGINX_ENABLED_DIR="/etc/nginx/sites-enabled"
 readonly NGINX_CONF="${NGINX_CONF_DIR}/decoy"
-readonly WEBROOT="/var/www/decoy"
+readonly NGINX_STREAM_DIR="/etc/nginx/stream-enabled"
+readonly NGINX_STREAM_CONF="${NGINX_STREAM_DIR}/stealth-bridge.conf"
+readonly NGINX_MAIN_CONF="/etc/nginx/nginx.conf"
+# Legacy paths from older versions; retained for cleanup during reinstall/uninstall.
+readonly LEGACY_NGINX_TLS_BACKEND_CONF="${NGINX_CONF_DIR}/decoy-tls-backend"
+readonly LEGACY_NGINX_TLS_DECOY_DIR="/etc/nginx/decoy-tls"
 
 readonly LOGROTATE_CONF="/etc/logrotate.d/nginx-decoy"
+readonly REALITY_BACKEND_PORT="2443"
+readonly DEFAULT_DECOY_UPSTREAM="www.microsoft.com:443"
 
 # ── Colors ────────────────────────────────────────────────────────────────────
 RED='\033[0;31m'
@@ -180,6 +190,48 @@ _is_port_listening() {
   return 2
 }
 
+# Ensure nginx has a stream include block at top level for SNI-based TCP routing.
+_ensure_nginx_stream_include() {
+  local stream_include_pattern="/etc/nginx/stream-enabled/*.conf"
+
+  if grep -Fq "$stream_include_pattern" "$NGINX_MAIN_CONF" 2>/dev/null; then
+    return 0
+  fi
+
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    ok "[dry-run] Would add stream include block to ${NGINX_MAIN_CONF}"
+    return 0
+  fi
+
+  [[ -f "$NGINX_MAIN_CONF" ]] || die "nginx main config not found: ${NGINX_MAIN_CONF}"
+
+  local tmp_conf
+  tmp_conf=$(mktemp)
+
+  awk -v include_pattern="$stream_include_pattern" '
+    BEGIN { inserted = 0 }
+    /^[[:space:]]*http[[:space:]]*{/ && inserted == 0 {
+      print "stream {"
+      print "    include " include_pattern ";"
+      print "}"
+      print ""
+      inserted = 1
+    }
+    { print }
+    END {
+      if (inserted == 0) {
+        print ""
+        print "stream {"
+        print "    include " include_pattern ";"
+        print "}"
+      }
+    }
+  ' "$NGINX_MAIN_CONF" > "$tmp_conf"
+
+  install -m 644 -o root -g root "$tmp_conf" "$NGINX_MAIN_CONF"
+  rm -f "$tmp_conf"
+}
+
 prompt_input() {
   local var_name="$1"
   local prompt_text="$2"
@@ -229,9 +281,12 @@ Environment variables for --non-interactive:
   BRIDGE_NODE_N_SHORT_ID Reality short_id of node N
   BRIDGE_NODE_N_SNI      SNI target of node N (e.g. microsoft.com)
   BRIDGE_LISTEN_PORT     Inbound listen port (default: 443)
-  BRIDGE_SNI_TARGET      Reality masquerade SNI (default: microsoft.com)
+  BRIDGE_SNI_TARGET      Reality masquerade SNI (default: www.cloudflare.com)
+  BRIDGE_DECOY_UPSTREAM  Blind TCP fallback upstream for non-matching TLS (default: www.microsoft.com:443)
   BRIDGE_CF_WORKER_URL   Cloudflare Worker relay URL (optional)
   BRIDGE_CF_UUID         UUID for the CF-fronted backend (required with CF URL)
+  BRIDGE_URLTEST_URL     Override urltest probe URL (must start with https://)
+  BRIDGE_URLTEST_INTERVAL Override urltest interval (e.g. 9m, 540s)
   BRIDGE_TRAFFIC_SHAPING 1 to enable tc netem jitter on outbound (default: 0)
   BRIDGE_FAKE_ACTIVITY   0 to disable benign maintenance cron jobs (default: 1)
   BRIDGE_BUILD_SOURCE    1 to compile sing-box from source instead of downloading
@@ -265,8 +320,17 @@ echo ""
 # ═════════════════════════════════════════════════════════════════════════════
 cmd_uninstall() {
   step "Uninstalling Stealth Bridge"
+  local public_tls_port="443"
   [[ $EUID -ne 0 ]] && die "Must be run as root."
   [[ -f "$STATE_FILE" ]] || warn "State file not found — attempting uninstall with identity: ${SERVICE_NAME}"
+
+  if [[ -f "$NGINX_STREAM_CONF" ]]; then
+    _detected_tls_port=$(awk '/listen[[:space:]]+[0-9]+;/ {gsub(";", "", $2); print $2; exit}' "$NGINX_STREAM_CONF" 2>/dev/null || true)
+    if [[ -n "${_detected_tls_port:-}" ]]; then
+      public_tls_port="$_detected_tls_port"
+    fi
+  fi
+
   info "Service identity: ${SERVICE_NAME}"
   confirm "This will remove all bridge components. Continue?" || die "Aborted."
 
@@ -287,7 +351,14 @@ cmd_uninstall() {
 
   info "Removing nginx decoy..."
   run rm -f "${NGINX_ENABLED_DIR}/decoy" "${NGINX_CONF}"
-  run rm -rf "$WEBROOT"
+  run rm -f "${NGINX_ENABLED_DIR}/decoy-tls-backend" "${LEGACY_NGINX_TLS_BACKEND_CONF}"
+  run rm -f "$NGINX_STREAM_CONF"
+  run rm -f "${LEGACY_NGINX_TLS_DECOY_DIR}/cert.pem" "${LEGACY_NGINX_TLS_DECOY_DIR}/key.pem"
+  run bash -c "rmdir '${LEGACY_NGINX_TLS_DECOY_DIR}' 2>/dev/null || true"
+  run bash -c "rmdir '${NGINX_STREAM_DIR}' 2>/dev/null || true"
+  if [[ -f "$NGINX_MAIN_CONF" ]]; then
+    run sed -i '\|include /etc/nginx/stream-enabled/\*\.conf;|d' "$NGINX_MAIN_CONF"
+  fi
   run rm -f "$LOGROTATE_CONF"
   if nginx -t 2>/dev/null; then
     run bash -c 'systemctl reload nginx 2>/dev/null || true'
@@ -296,7 +367,7 @@ cmd_uninstall() {
   info "Removing firewall rules..."
   if command -v ufw &>/dev/null; then
     run bash -c 'ufw delete allow 80/tcp 2>/dev/null || true'
-    run bash -c 'ufw delete allow 443/tcp 2>/dev/null || true'
+    run bash -c "ufw delete allow ${public_tls_port}/tcp 2>/dev/null || true"
   fi
 
   info "Removing maintenance cron..."
@@ -376,14 +447,8 @@ cmd_update() {
     local new_bin="${update_tmpdir}/${base}/sing-box"
     [[ -f "$new_bin" ]] || die "Binary not found in archive"
 
-    info "Stripping and obfuscating binary..."
+    info "Applying minimal hardening (strip only, no byte-level patching)..."
     command -v strip &>/dev/null && strip --strip-all "$new_bin" 2>/dev/null || true
-    if command -v perl &>/dev/null; then
-      perl -0777 -pi -e 's/sing-box/net-hlpr/g'  "$new_bin" 2>/dev/null || true
-      perl -0777 -pi -e 's/SagerNet/NetSysCo/g'  "$new_bin" 2>/dev/null || true
-      perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g'  "$new_bin" 2>/dev/null || true
-      perl -0777 -pi -e 's/sagernet/netsysco/g'   "$new_bin" 2>/dev/null || true
-    fi
 
     info "Replacing binary and restarting service..."
     systemctl stop "$SERVICE_NAME" 2>/dev/null || true
@@ -449,9 +514,10 @@ esac
 ok "Architecture: ${ARCH}"
 
 # Port availability (only if not already installed)
+EXISTING_INSTALL=0
 if [[ ! -f "$SERVICE_FILE" ]]; then
   _port_check_unavailable=0
-  for port in 80 443; do
+  for port in 80; do
     if _is_port_listening "$port"; then
       die "Port ${port} is already in use. Free it before installing."
     else
@@ -462,11 +528,12 @@ if [[ ! -f "$SERVICE_FILE" ]]; then
     fi
   done
   if [[ "$_port_check_unavailable" -eq 0 ]]; then
-    ok "Ports 80 and 443 are available."
+    ok "Port 80 is available."
   else
-    warn "Could not verify port usage (missing ss/lsof/netstat). Proceeding without a local listener check."
+    warn "Could not verify port 80 usage (missing ss/lsof/netstat). Proceeding without a local listener check."
   fi
 else
+  EXISTING_INSTALL=1
   warn "Existing installation detected at ${SERVICE_FILE}."
   if ! confirm "Re-run installation (will overwrite config)?"; then
     info "Use --update to update the binary only, or --uninstall to remove."
@@ -521,8 +588,59 @@ echo ""
 BRIDGE_LISTEN_PORT="${BRIDGE_LISTEN_PORT:-}"
 prompt_input BRIDGE_LISTEN_PORT "Bridge inbound listen port [443]: " "443"
 
+if ! [[ "$BRIDGE_LISTEN_PORT" =~ ^[0-9]+$ ]] || [[ "$BRIDGE_LISTEN_PORT" -lt 1 || "$BRIDGE_LISTEN_PORT" -gt 65535 ]]; then
+  die "Bridge inbound listen port must be a valid TCP port (1-65535)."
+fi
+
+if [[ "$BRIDGE_LISTEN_PORT" == "$REALITY_BACKEND_PORT" ]]; then
+  die "Bridge listen port conflicts with internal backend port (${REALITY_BACKEND_PORT})."
+fi
+
+if [[ "$EXISTING_INSTALL" -eq 0 ]]; then
+  if _is_port_listening "$BRIDGE_LISTEN_PORT"; then
+    die "Port ${BRIDGE_LISTEN_PORT} is already in use. Choose another BRIDGE_LISTEN_PORT."
+  else
+    _listen_port_check_rc=$?
+    if [[ "$_listen_port_check_rc" -eq 2 ]]; then
+      warn "Could not verify port ${BRIDGE_LISTEN_PORT} usage (missing ss/lsof/netstat)."
+    else
+      ok "Port ${BRIDGE_LISTEN_PORT} is available."
+    fi
+  fi
+fi
+
 BRIDGE_SNI_TARGET="${BRIDGE_SNI_TARGET:-}"
-prompt_input BRIDGE_SNI_TARGET "Reality masquerade SNI (must support TLS 1.3+h2) [microsoft.com]: " "microsoft.com"
+prompt_input BRIDGE_SNI_TARGET "Reality masquerade SNI (must support TLS 1.3+h2) [www.cloudflare.com]: " "www.cloudflare.com"
+
+if ! [[ "$BRIDGE_SNI_TARGET" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  die "Reality SNI target must be a hostname (letters, numbers, dots, hyphens)."
+fi
+
+if [[ "$BRIDGE_SNI_TARGET" == "microsoft.com" ]]; then
+  warn "Using microsoft.com as Reality SNI is a common/static fingerprint."
+  warn "Set BRIDGE_SNI_TARGET to a less predictable hostname where possible."
+fi
+
+if [[ "$BRIDGE_SNI_TARGET" == "www.cloudflare.com" ]]; then
+  warn "www.cloudflare.com is highly scrutinized in restricted regions."
+  warn "Consider a less common, still legitimate TLS1.3+h2 hostname for BRIDGE_SNI_TARGET."
+fi
+
+BRIDGE_DECOY_UPSTREAM="${BRIDGE_DECOY_UPSTREAM:-}"
+prompt_input BRIDGE_DECOY_UPSTREAM "Blind TCP fallback upstream [${DEFAULT_DECOY_UPSTREAM}]: " "${DEFAULT_DECOY_UPSTREAM}"
+
+if ! [[ "$BRIDGE_DECOY_UPSTREAM" =~ ^[A-Za-z0-9.-]+:[0-9]+$ ]]; then
+  die "BRIDGE_DECOY_UPSTREAM must look like host:port (example: www.microsoft.com:443)."
+fi
+
+DECOY_UPSTREAM_HOST="${BRIDGE_DECOY_UPSTREAM%:*}"
+DECOY_UPSTREAM_PORT="${BRIDGE_DECOY_UPSTREAM##*:}"
+if [[ "$DECOY_UPSTREAM_PORT" -lt 1 || "$DECOY_UPSTREAM_PORT" -gt 65535 ]]; then
+  die "BRIDGE_DECOY_UPSTREAM port must be between 1 and 65535."
+fi
+if [[ "$DECOY_UPSTREAM_HOST" =~ ^(localhost|127\.|::1$) ]]; then
+  die "BRIDGE_DECOY_UPSTREAM must be a real external host, not localhost."
+fi
 
 # Optional Cloudflare fronting
 BRIDGE_CF_WORKER_URL="${BRIDGE_CF_WORKER_URL:-}"
@@ -544,8 +662,8 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 step "Step 3 — Installing system packages"
 run apt-get update -qq
-run apt-get install -y -qq nginx curl jq uuid-runtime openssl
-ok "Packages installed: nginx, curl, jq, uuid-runtime, openssl"
+run apt-get install -y -qq nginx libnginx-mod-stream curl jq uuid-runtime openssl
+ok "Packages installed: nginx, libnginx-mod-stream, curl, jq, uuid-runtime, openssl"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Helpers: Go toolchain + source build (used only when BRIDGE_BUILD_SOURCE=1)
@@ -702,37 +820,15 @@ else
       NEW_BIN="${TMPDIR_WORK}/${BASE}/sing-box"
       [[ -f "$NEW_BIN" ]] || die "Binary not found in archive at expected path."
 
-      info "Stripping debug symbols and obfuscating build strings..."
+      info "Applying minimal hardening (strip only, no byte-level patching)..."
       # strip --strip-all removes all debug info, symbol tables, and build metadata.
       # This eliminates most of what 'strings <binary>' would reveal about origin.
       if command -v strip &>/dev/null; then
         strip --strip-all "$NEW_BIN" 2>/dev/null || true
       fi
 
-      # Length-preserving in-place replacement of identifiable brand strings.
-      # Rule: replacement MUST be the exact same byte count as the original, because
-      # Go binaries store string length alongside the string pointer in the data section.
-      # A shorter/longer replacement shifts offsets and corrupts string descriptors.
-      #
-      # Protocol identifiers (vless, reality, xtls, utls) are intentionally skipped —
-      # they are used at runtime for JSON config key matching. Patching them would make
-      # the binary unable to parse its own config file.
-      if command -v perl &>/dev/null; then
-        # Tier 1 — branding strings (help/version output only)
-        # "sing-box" (8) → "net-hlpr" (8)
-        perl -0777 -pi -e 's/sing-box/net-hlpr/g' "$NEW_BIN" 2>/dev/null || true
-        # "SagerNet" (8) → "NetSysCo" (8)
-        perl -0777 -pi -e 's/SagerNet/NetSysCo/g' "$NEW_BIN" 2>/dev/null || true
-        # "1.13.4" (6) → "0.99.1" (6) — version shown in --version output
-        perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g' "$NEW_BIN" 2>/dev/null || true
-
-        # Tier 2 — Go module path segment (appears in panic traces and go build info)
-        # "sagernet" (8) → "netsysco" (8)
-        perl -0777 -pi -e 's/sagernet/netsysco/g' "$NEW_BIN" 2>/dev/null || true
-      fi
-
       install -m 755 -o root -g root "$NEW_BIN" "$BINARY_PATH"
-      ok "Binary installed and obfuscated: ${BINARY_PATH}"
+      ok "Binary installed safely: ${BINARY_PATH}"
     else
       ok "[dry-run] Would install binary to ${BINARY_PATH}"
     fi
@@ -846,6 +942,22 @@ build_urltest_tags() {
   echo "[${tags%,}]"
 }
 
+build_urltest_url() {
+  local probes=(
+    "https://cp.cloudflare.com/"
+    "https://www.gstatic.com/generate_204"
+    "https://connectivitycheck.gstatic.com/generate_204"
+    "https://detectportal.firefox.com/success.txt"
+  )
+  echo "${probes[$((RANDOM % ${#probes[@]}))]}"
+}
+
+build_urltest_interval() {
+  # Randomize between 7 and 17 minutes to avoid fixed cadence signatures.
+  local seconds=$((420 + RANDOM % 601))
+  echo "${seconds}s"
+}
+
 build_cf_outbound() {
   if [[ "$USE_CF" -ne 1 ]]; then
     echo ""
@@ -882,6 +994,11 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
   OUTBOUND_NODES=$(build_outbound_nodes)
   URLTEST_TAGS=$(build_urltest_tags)
   CF_OUTBOUND=$(build_cf_outbound)
+  URLTEST_URL="${BRIDGE_URLTEST_URL:-$(build_urltest_url)}"
+  URLTEST_INTERVAL="${BRIDGE_URLTEST_INTERVAL:-$(build_urltest_interval)}"
+
+  [[ "$URLTEST_URL" =~ ^https:// ]] || die "BRIDGE_URLTEST_URL must start with https://"
+  [[ "$URLTEST_INTERVAL" =~ ^[0-9]+(ms|s|m|h)$ ]] || die "BRIDGE_URLTEST_INTERVAL must be a duration like 9m or 540s"
 
   CONFIG_JSON=$(cat <<SINGBOX_JSON
 {
@@ -894,8 +1011,8 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
     {
       "type": "vless",
       "tag": "vless-in",
-      "listen": "::",
-      "listen_port": ${BRIDGE_LISTEN_PORT},
+      "listen": "127.0.0.1",
+      "listen_port": ${REALITY_BACKEND_PORT},
       "sniff": false,
       "tcp_fast_open": true,
       "users": [
@@ -922,8 +1039,8 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
       "type": "urltest",
       "tag": "proxy-select",
       "outbounds": ${URLTEST_TAGS},
-      "url": "https://cp.cloudflare.com/",
-      "interval": "2m",
+      "url": "${URLTEST_URL}",
+      "interval": "${URLTEST_INTERVAL}",
       "idle_timeout": "30m",
       "interrupt_exist_connections": false
     },
@@ -958,207 +1075,56 @@ fi
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 8 — Deploy nginx decoy site
 # ─────────────────────────────────────────────────────────────────────────────
-step "Step 8 — Deploying nginx decoy site"
+step "Step 8 — Deploying nginx decoy + TCP fallback router"
 
-run mkdir -p "$WEBROOT"
+run mkdir -p "$NGINX_STREAM_DIR"
 
 if [[ "$DRY_RUN" -eq 0 ]]; then
+_ensure_nginx_stream_include
 
-# nginx virtual host
+# Public HTTP decoy: always generic 400.
 cat > "$NGINX_CONF" <<'NGINX_CONF'
 server {
     listen 80 default_server;
     listen [::]:80 default_server;
     server_name _;
-    root /var/www/decoy;
-    index index.html;
-
     server_tokens off;
-
     access_log off;
     error_log /var/log/nginx/error.log crit;
-
-    add_header X-Content-Type-Options "nosniff" always;
-    add_header X-Frame-Options "SAMEORIGIN" always;
-    add_header Referrer-Policy "strict-origin-when-cross-origin" always;
-    add_header Cache-Control "public, max-age=3600" always;
-
-    location / {
-        try_files $uri $uri/ =404;
-    }
-    location = /robots.txt  { log_not_found off; access_log off; }
-    location = /favicon.ico { log_not_found off; access_log off; }
-    location = /sitemap.xml { log_not_found off; }
-    location ~ /\.           { deny all; return 404; }
+    return 400;
 }
 NGINX_CONF
 
-# Homepage
-cat > "${WEBROOT}/index.html" <<'HTML'
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="یادداشت‌های فنی یک توسعه‌دهنده نرم‌افزار درباره برنامه‌نویسی، لینوکس و امنیت">
-  <title>یادداشت‌های فنی | DevLog</title>
-  <style>
-    :root {
-      --bg: #0f1117;
-      --surface: #1a1d27;
-      --border: #2a2d3a;
-      --text: #e0e0e0;
-      --muted: #888;
-      --accent: #4f8ef7;
-      --accent2: #7c5cbf;
-      --tag-bg: #1e2235;
-    }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, Arial, sans-serif; line-height: 1.7; font-size: 16px; }
-    a { color: var(--accent); text-decoration: none; }
-    a:hover { text-decoration: underline; }
-    .container { max-width: 760px; margin: 0 auto; padding: 0 1.5rem; }
-    header { border-bottom: 1px solid var(--border); padding: 1.5rem 0; margin-bottom: 2.5rem; }
-    header .inner { display: flex; align-items: center; justify-content: space-between; }
-    .logo { font-size: 1.4rem; font-weight: 700; color: var(--text); }
-    .logo span { color: var(--accent); }
-    nav a { color: var(--muted); margin-right: 1.5rem; font-size: 0.9rem; }
-    nav a:hover { color: var(--text); }
-    .post { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 1.5rem; margin-bottom: 1.5rem; transition: border-color .2s; }
-    .post:hover { border-color: var(--accent2); }
-    .post-meta { font-size: 0.82rem; color: var(--muted); margin-bottom: .5rem; display: flex; align-items: center; gap: .75rem; }
-    .post-meta .date::before { content: "📅 "; }
-    .tag { background: var(--tag-bg); color: var(--accent); font-size: 0.75rem; padding: 2px 8px; border-radius: 4px; border: 1px solid var(--border); }
-    .post h2 { font-size: 1.2rem; margin-bottom: .5rem; }
-    .post p { color: var(--muted); font-size: 0.95rem; }
-    .read-more { display: inline-block; margin-top: .75rem; font-size: 0.85rem; color: var(--accent); }
-    footer { border-top: 1px solid var(--border); padding: 2rem 0; text-align: center; color: var(--muted); font-size: 0.85rem; margin-top: 3rem; }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="container">
-      <div class="inner">
-        <div class="logo">dev<span>.</span>log</div>
-        <nav>
-          <a href="/index.html">خانه</a>
-          <a href="/about.html">درباره</a>
-        </nav>
-      </div>
-    </div>
-  </header>
+cat > "$NGINX_STREAM_CONF" <<NGINX_STREAM
+map \$ssl_preread_server_name \$bridge_tls_backend {
+    hostnames;
+    ${BRIDGE_SNI_TARGET} reality_backend;
+    default decoy_backend;
+}
 
-  <main class="container">
-    <article class="post">
-      <div class="post-meta">
-        <span class="date">۱۴۰۳/۰۸/۱۵</span>
-        <span class="tag">Linux</span>
-        <span class="tag">systemd</span>
-      </div>
-      <h2><a href="#">مدیریت سرویس‌های سیستمی با systemd — راهنمای عملی</a></h2>
-      <p>در این نوشته با ابزارهای مدیریت سرویس در لینوکس مدرن آشنا می‌شویم. از نوشتن unit file تا debug کردن وابستگی‌ها با journalctl.</p>
-      <a class="read-more" href="#">ادامه مطلب ›</a>
-    </article>
+upstream reality_backend {
+    server 127.0.0.1:${REALITY_BACKEND_PORT};
+}
 
-    <article class="post">
-      <div class="post-meta">
-        <span class="date">۱۴۰۳/۰۷/۲۲</span>
-        <span class="tag">Go</span>
-        <span class="tag">Performance</span>
-      </div>
-      <h2><a href="#">بهینه‌سازی مصرف حافظه در برنامه‌های Go — تجربه واقعی</a></h2>
-      <p>بعد از چند ماه کار روی یک سرویس با ترافیک بالا، چند نکته مهم درباره memory management در Go یاد گرفتم که می‌خوام به اشتراک بذارم.</p>
-      <a class="read-more" href="#">ادامه مطلب ›</a>
-    </article>
+upstream decoy_backend {
+  server ${BRIDGE_DECOY_UPSTREAM};
+}
 
-    <article class="post">
-      <div class="post-meta">
-        <span class="date">۱۴۰۳/۰۶/۰۵</span>
-        <span class="tag">Nginx</span>
-        <span class="tag">TLS</span>
-      </div>
-      <h2><a href="#">پیکربندی Nginx برای سرویس‌های پرترافیک — نکات امنیتی</a></h2>
-      <p>راهنمای عملی برای تنظیم nginx با تمرکز بر امنیت، HTTP/2، و کاهش latency در محیط‌های پروداکشن.</p>
-      <a class="read-more" href="#">ادامه مطلب ›</a>
-    </article>
-  </main>
-
-  <footer>
-    <div class="container">
-      <p>© ۱۴۰۳ یادداشت‌های فنی — نوشته‌هایی درباره برنامه‌نویسی و سیستم</p>
-    </div>
-  </footer>
-</body>
-</html>
-HTML
-
-# About page
-cat > "${WEBROOT}/about.html" <<'HTML'
-<!DOCTYPE html>
-<html lang="fa" dir="rtl">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>درباره | DevLog</title>
-  <style>
-    :root { --bg:#0f1117;--surface:#1a1d27;--border:#2a2d3a;--text:#e0e0e0;--muted:#888;--accent:#4f8ef7; }
-    * { box-sizing:border-box;margin:0;padding:0; }
-    body { background:var(--bg);color:var(--text);font-family:'Segoe UI',Tahoma,Arial,sans-serif;line-height:1.8;font-size:16px; }
-    a { color:var(--accent);text-decoration:none; }
-    .container { max-width:760px;margin:0 auto;padding:0 1.5rem; }
-    header { border-bottom:1px solid var(--border);padding:1.5rem 0;margin-bottom:2.5rem; }
-    .inner { display:flex;align-items:center;justify-content:space-between; }
-    .logo { font-size:1.4rem;font-weight:700; }
-    .logo span { color:var(--accent); }
-    nav a { color:var(--muted);margin-right:1.5rem;font-size:.9rem; }
-    .card { background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:2rem; }
-    h1 { font-size:1.5rem;margin-bottom:1rem; }
-    p { color:var(--muted);margin-bottom:1rem; }
-    footer { border-top:1px solid var(--border);padding:2rem 0;text-align:center;color:var(--muted);font-size:.85rem;margin-top:3rem; }
-  </style>
-</head>
-<body>
-  <header>
-    <div class="container">
-      <div class="inner">
-        <div class="logo">dev<span>.</span>log</div>
-        <nav><a href="/index.html">خانه</a><a href="/about.html">درباره</a></nav>
-      </div>
-    </div>
-  </header>
-  <main class="container">
-    <div class="card">
-      <h1>درباره این وبلاگ</h1>
-      <p>سلام. من یک توسعه‌دهنده نرم‌افزار هستم که در حوزه backend و زیرساخت کار می‌کنم. این وبلاگ جایی‌ه که تجربه‌ها و یادداشت‌های فنی خودم رو می‌نویسم.</p>
-      <p>بیشتر روی Go، Linux، و امنیت شبکه کار می‌کنم. اگه سوالی داشتید از طریق GitHub پیام بدید.</p>
-      <p style="font-size:.85rem;color:#555">This is a personal tech blog. Posts are written in Persian.</p>
-    </div>
-  </main>
-  <footer><div class="container"><p>© ۱۴۰۳ یادداشت‌های فنی</p></div></footer>
-</body>
-</html>
-HTML
-
-# robots.txt
-cat > "${WEBROOT}/robots.txt" <<'ROBOTS'
-User-agent: *
-Allow: /
-Sitemap: /sitemap.xml
-ROBOTS
-
-# sitemap.xml
-cat > "${WEBROOT}/sitemap.xml" <<SITEMAP
-<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>http://${SERVER_IP}/</loc><changefreq>weekly</changefreq><priority>1.0</priority></url>
-  <url><loc>http://${SERVER_IP}/about.html</loc><changefreq>monthly</changefreq><priority>0.5</priority></url>
-</urlset>
-SITEMAP
+server {
+    listen ${BRIDGE_LISTEN_PORT};
+    listen [::]:${BRIDGE_LISTEN_PORT};
+    proxy_pass \$bridge_tls_backend;
+    ssl_preread on;
+}
+NGINX_STREAM
 
 fi  # end DRY_RUN check
 
-# Enable site, disable default
+# Enable sites, disable default
 run ln -sf "$NGINX_CONF" "${NGINX_ENABLED_DIR}/decoy"
+run rm -f "${NGINX_ENABLED_DIR}/decoy-tls-backend" "${LEGACY_NGINX_TLS_BACKEND_CONF}"
+run rm -f "${LEGACY_NGINX_TLS_DECOY_DIR}/cert.pem" "${LEGACY_NGINX_TLS_DECOY_DIR}/key.pem"
+run bash -c "rmdir '${LEGACY_NGINX_TLS_DECOY_DIR}' 2>/dev/null || true"
 [[ -f "${NGINX_ENABLED_DIR}/default" ]] && run rm -f "${NGINX_ENABLED_DIR}/default"
 
 # Logrotate
@@ -1184,7 +1150,7 @@ fi
 # Test and start nginx
 run nginx -t
 run systemctl enable --now nginx
-ok "Nginx decoy site deployed at ${WEBROOT}"
+ok "Nginx decoy and TLS fallback router enabled on port ${BRIDGE_LISTEN_PORT}"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # STEP 9 — Install systemd service
@@ -1271,14 +1237,14 @@ if command -v ufw &>/dev/null; then
   info "Using ufw..."
   run ufw allow 22/tcp   comment "SSH"
   run ufw allow 80/tcp   comment "HTTP decoy"
-  run ufw allow 443/tcp  comment "HTTPS"
+  run ufw allow "${BRIDGE_LISTEN_PORT}/tcp" comment "TLS ingress"
   run ufw --force enable
   ok "ufw rules applied."
 elif command -v iptables &>/dev/null; then
   warn "ufw not found — using iptables fallback."
   run iptables -C INPUT -p tcp --dport 22  -j ACCEPT 2>/dev/null || run iptables -I INPUT -p tcp --dport 22  -j ACCEPT
   run iptables -C INPUT -p tcp --dport 80  -j ACCEPT 2>/dev/null || run iptables -I INPUT -p tcp --dport 80  -j ACCEPT
-  run iptables -C INPUT -p tcp --dport 443 -j ACCEPT 2>/dev/null || run iptables -I INPUT -p tcp --dport 443 -j ACCEPT
+  run iptables -C INPUT -p tcp --dport "$BRIDGE_LISTEN_PORT" -j ACCEPT 2>/dev/null || run iptables -I INPUT -p tcp --dport "$BRIDGE_LISTEN_PORT" -j ACCEPT
   if command -v iptables-save &>/dev/null; then
     mkdir -p /etc/iptables
     iptables-save > /etc/iptables/rules.v4
