@@ -315,9 +315,10 @@ cmd_update() {
     info "Stripping and obfuscating binary..."
     command -v strip &>/dev/null && strip --strip-all "$new_bin" 2>/dev/null || true
     if command -v perl &>/dev/null; then
-      perl -0777 -pi -e 's/sing-box/net-hlpr/g' "$new_bin" 2>/dev/null || true
-      perl -0777 -pi -e 's/SagerNet/NetSysCo/g' "$new_bin" 2>/dev/null || true
-      perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g' "$new_bin" 2>/dev/null || true
+      perl -0777 -pi -e 's/sing-box/net-hlpr/g'  "$new_bin" 2>/dev/null || true
+      perl -0777 -pi -e 's/SagerNet/NetSysCo/g'  "$new_bin" 2>/dev/null || true
+      perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g'  "$new_bin" 2>/dev/null || true
+      perl -0777 -pi -e 's/sagernet/netsysco/g'   "$new_bin" 2>/dev/null || true
     fi
 
     info "Replacing binary and restarting service..."
@@ -636,17 +637,26 @@ else
         strip --strip-all "$NEW_BIN" 2>/dev/null || true
       fi
 
-      # Length-preserving in-place replacement of remaining identifiable brand strings.
-      # Perl -0777 slurps the entire binary; replacements keep the same byte length so
-      # Go's internal string-length metadata stays intact and the binary keeps working.
-      # We only patch UI/branding strings — NOT protocol identifiers used in JSON parsing.
+      # Length-preserving in-place replacement of identifiable brand strings.
+      # Rule: replacement MUST be the exact same byte count as the original, because
+      # Go binaries store string length alongside the string pointer in the data section.
+      # A shorter/longer replacement shifts offsets and corrupts string descriptors.
+      #
+      # Protocol identifiers (vless, reality, xtls, utls) are intentionally skipped —
+      # they are used at runtime for JSON config key matching. Patching them would make
+      # the binary unable to parse its own config file.
       if command -v perl &>/dev/null; then
-        # "sing-box" (8 bytes) → "net-hlpr" (8 bytes)
+        # Tier 1 — branding strings (help/version output only)
+        # "sing-box" (8) → "net-hlpr" (8)
         perl -0777 -pi -e 's/sing-box/net-hlpr/g' "$NEW_BIN" 2>/dev/null || true
-        # "SagerNet" (8 bytes) → "NetSysCo" (8 bytes)
+        # "SagerNet" (8) → "NetSysCo" (8)
         perl -0777 -pi -e 's/SagerNet/NetSysCo/g' "$NEW_BIN" 2>/dev/null || true
-        # Version string in help/version output: "1.13.4" → "0.99.1"
+        # "1.13.4" (6) → "0.99.1" (6) — version shown in --version output
         perl -0777 -pi -e 's/1\.13\.4/0\.99\.1/g' "$NEW_BIN" 2>/dev/null || true
+
+        # Tier 2 — Go module path segment (appears in panic traces and go build info)
+        # "sagernet" (8) → "netsysco" (8)
+        perl -0777 -pi -e 's/sagernet/netsysco/g' "$NEW_BIN" 2>/dev/null || true
       fi
 
       install -m 755 -o root -g root "$NEW_BIN" "$BINARY_PATH"
@@ -1101,6 +1111,9 @@ Type=simple
 User=${SYS_USER}
 Group=${SYS_USER}
 ExecStart=${BINARY_PATH} run -c ${CONFIG_FILE}
+# Random sub-second delay before starting. Removes the "instant start" pattern
+# that some automated monitoring tools flag as anomalous for a "web server" service.
+ExecStartPre=/bin/sh -c 'sleep 0.\$(shuf -i 100-800 -n 1 2>/dev/null || echo 3)'
 Restart=on-failure
 RestartSec=10s
 TimeoutStopSec=10s
