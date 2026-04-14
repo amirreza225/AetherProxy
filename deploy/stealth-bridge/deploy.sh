@@ -127,6 +127,59 @@ run() {
   fi
 }
 
+# Validate a JSON payload before writing it to disk.
+_json_safe() {
+  local json_payload="$1"
+  jq -e . >/dev/null 2>&1 <<<"$json_payload" \
+    || die "Generated JSON is invalid. Check node inputs for malformed characters."
+}
+
+# Portable TCP listener check with fallback tools.
+# Returns: 0 = listening, 1 = not listening, 2 = no supported inspection tool.
+_is_port_listening() {
+  local port="$1"
+
+  if command -v ss &>/dev/null; then
+    if ss -H -ltn "( sport = :${port} )" 2>/dev/null | grep -q .; then
+      return 0
+    fi
+    if ss -H -ltn 2>/dev/null | awk -v p="$port" '
+      {
+        split($4, a, ":")
+        if (a[length(a)] == p) {
+          found = 1
+          exit
+        }
+      }
+      END { exit(found ? 0 : 1) }
+    '; then
+      return 0
+    fi
+    return 1
+  fi
+
+  if command -v lsof &>/dev/null; then
+    lsof -nP -iTCP:"$port" -sTCP:LISTEN >/dev/null 2>&1
+    return $?
+  fi
+
+  if command -v netstat &>/dev/null; then
+    netstat -ltn 2>/dev/null | awk -v p="$port" '
+      NR > 2 {
+        split($4, a, ":")
+        if (a[length(a)] == p) {
+          found = 1
+          exit
+        }
+      }
+      END { exit(found ? 0 : 1) }
+    '
+    return $?
+  fi
+
+  return 2
+}
+
 prompt_input() {
   local var_name="$1"
   local prompt_text="$2"
@@ -218,8 +271,8 @@ cmd_uninstall() {
   confirm "This will remove all bridge components. Continue?" || die "Aborted."
 
   info "Stopping and disabling service..."
-  run systemctl stop "$SERVICE_NAME"     2>/dev/null || true
-  run systemctl disable "$SERVICE_NAME"  2>/dev/null || true
+  run bash -c "systemctl stop '${SERVICE_NAME}' 2>/dev/null || true"
+  run bash -c "systemctl disable '${SERVICE_NAME}' 2>/dev/null || true"
   run rm -f "$SERVICE_FILE"
   run systemctl daemon-reload
 
@@ -230,28 +283,32 @@ cmd_uninstall() {
   run rm -rf "$CONFIG_DIR"
 
   info "Removing system user..."
-  run userdel "$SYS_USER" 2>/dev/null || true
+  run bash -c "userdel '${SYS_USER}' 2>/dev/null || true"
 
   info "Removing nginx decoy..."
   run rm -f "${NGINX_ENABLED_DIR}/decoy" "${NGINX_CONF}"
   run rm -rf "$WEBROOT"
   run rm -f "$LOGROTATE_CONF"
   if nginx -t 2>/dev/null; then
-    run systemctl reload nginx 2>/dev/null || true
+    run bash -c 'systemctl reload nginx 2>/dev/null || true'
   fi
 
   info "Removing firewall rules..."
   if command -v ufw &>/dev/null; then
-    run ufw delete allow 80/tcp  2>/dev/null || true
-    run ufw delete allow 443/tcp 2>/dev/null || true
+    run bash -c 'ufw delete allow 80/tcp 2>/dev/null || true'
+    run bash -c 'ufw delete allow 443/tcp 2>/dev/null || true'
   fi
 
   info "Removing maintenance cron..."
   run rm -f /etc/cron.d/svc-maintenance
 
   info "Removing tc traffic shaping rules..."
-  _iface=$(ip -4 route show default 2>/dev/null | awk '/default/ {print $5}' | head -1)
-  [[ -n "$_iface" ]] && tc qdisc del dev "$_iface" root 2>/dev/null || true
+  if command -v tc &>/dev/null; then
+    _iface=$(ip -4 route show default 2>/dev/null | awk '/default/ {print $5}' | head -1)
+    if [[ -n "$_iface" ]]; then
+      run bash -c "tc qdisc del dev '${_iface}' root 2>/dev/null || true"
+    fi
+  fi
 
   info "Removing state file..."
   run rm -f "$STATE_FILE"
@@ -393,12 +450,22 @@ ok "Architecture: ${ARCH}"
 
 # Port availability (only if not already installed)
 if [[ ! -f "$SERVICE_FILE" ]]; then
+  _port_check_unavailable=0
   for port in 80 443; do
-    if ss -tlnp 2>/dev/null | grep -q ":${port} "; then
+    if _is_port_listening "$port"; then
       die "Port ${port} is already in use. Free it before installing."
+    else
+      _port_check_rc=$?
+      if [[ "$_port_check_rc" -eq 2 ]]; then
+        _port_check_unavailable=1
+      fi
     fi
   done
-  ok "Ports 80 and 443 are available."
+  if [[ "$_port_check_unavailable" -eq 0 ]]; then
+    ok "Ports 80 and 443 are available."
+  else
+    warn "Could not verify port usage (missing ss/lsof/netstat). Proceeding without a local listener check."
+  fi
 else
   warn "Existing installation detected at ${SERVICE_FILE}."
   if ! confirm "Re-run installation (will overwrite config)?"; then
@@ -597,18 +664,16 @@ BRIDGE_BUILD_SOURCE="${BRIDGE_BUILD_SOURCE:-0}"
 # Honour BUILD_MODE persisted from a previous source-build install
 [[ "${BUILD_MODE:-download}" == "source" ]] && BRIDGE_BUILD_SOURCE="1"
 
+_ROLLBACK_ENABLED=1
+TMPDIR_WORK=$(mktemp -d)
+trap 'rm -rf "$TMPDIR_WORK"' EXIT
+
 if [[ "$BRIDGE_BUILD_SOURCE" == "1" ]]; then
   step "Step 4 — Building sing-box v${SINGBOX_VERSION} from source"
   warn "Source build selected — requires Go, git, ~2 GB disk, and 5–15 minutes."
-  _ROLLBACK_ENABLED=1
-  TMPDIR_WORK=$(mktemp -d)
-  trap 'rm -rf "$TMPDIR_WORK"' EXIT
   _build_singbox_source
 else
   step "Step 4 — Installing sing-box v${SINGBOX_VERSION} (pre-built)"
-  _ROLLBACK_ENABLED=1
-  TMPDIR_WORK=$(mktemp -d)
-  trap 'rm -rf "$TMPDIR_WORK"' EXIT
 
   BASE="sing-box-${SINGBOX_VERSION}-linux-${ARCH}"
   DL_BASE="https://github.com/SagerNet/sing-box/releases/download/v${SINGBOX_VERSION}"
@@ -818,7 +883,7 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
   URLTEST_TAGS=$(build_urltest_tags)
   CF_OUTBOUND=$(build_cf_outbound)
 
-  cat > "$CONFIG_FILE" <<SINGBOX_JSON
+  CONFIG_JSON=$(cat <<SINGBOX_JSON
 {
   "log": {
     "level": "error",
@@ -871,6 +936,10 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
   }
 }
 SINGBOX_JSON
+)
+
+  _json_safe "$CONFIG_JSON"
+  printf '%s\n' "$CONFIG_JSON" > "$CONFIG_FILE"
 
   chown root:"$SYS_USER" "$CONFIG_FILE"
   chmod 640 "$CONFIG_FILE"
@@ -1230,31 +1299,35 @@ BRIDGE_TRAFFIC_SHAPING="${BRIDGE_TRAFFIC_SHAPING:-0}"
 if [[ "$BRIDGE_TRAFFIC_SHAPING" == "1" ]]; then
   step "Step 10a — Traffic shaping"
 
-  # Detect primary outbound interface (the one used for the default route)
-  TC_IFACE=$(ip -4 route show default 2>/dev/null | awk '/default/ {print $5}' | head -1)
-
-  if [[ -z "$TC_IFACE" ]]; then
-    warn "Cannot detect primary network interface — skipping traffic shaping."
+  if ! command -v tc &>/dev/null; then
+    warn "tc is not installed (iproute2). Skipping traffic shaping."
   else
-    info "Applying netem jitter to interface: ${TC_IFACE}"
+    # Detect primary outbound interface (the one used for the default route)
+    TC_IFACE=$(ip -4 route show default 2>/dev/null | awk '/default/ {print $5}' | head -1)
 
-    if [[ "$DRY_RUN" -eq 0 ]]; then
-      # Remove any existing root qdisc to start clean
-      tc qdisc del dev "$TC_IFACE" root 2>/dev/null || true
-
-      # netem: 3ms base delay ± 5ms with normal distribution, 1% packet reorder.
-      # This mimics the natural jitter of a busy CDN-connected web server.
-      # Rate limiting is intentionally omitted — it would cap real throughput.
-      tc qdisc add dev "$TC_IFACE" root handle 1: netem \
-        delay 3ms 5ms distribution normal \
-        reorder 1% 50%
-
-      # Persist across reboots via a @reboot cron entry (added alongside fake-activity
-      # cron file below — skip here if fake-activity is disabled to avoid orphan entry)
-      TC_PERSIST_CMD="tc qdisc del dev ${TC_IFACE} root 2>/dev/null; tc qdisc add dev ${TC_IFACE} root handle 1: netem delay 3ms 5ms distribution normal reorder 1% 50%"
-      ok "Traffic shaping applied on ${TC_IFACE}."
+    if [[ -z "$TC_IFACE" ]]; then
+      warn "Cannot detect primary network interface — skipping traffic shaping."
     else
-      ok "[dry-run] Would apply tc netem on ${TC_IFACE}."
+      info "Applying netem jitter to interface: ${TC_IFACE}"
+
+      if [[ "$DRY_RUN" -eq 0 ]]; then
+        # Remove any existing root qdisc to start clean
+        tc qdisc del dev "$TC_IFACE" root 2>/dev/null || true
+
+        # netem: 3ms base delay ± 5ms with normal distribution, 1% packet reorder.
+        # This mimics the natural jitter of a busy CDN-connected web server.
+        # Rate limiting is intentionally omitted — it would cap real throughput.
+        tc qdisc add dev "$TC_IFACE" root handle 1: netem \
+          delay 3ms 5ms distribution normal \
+          reorder 1% 50%
+
+        # Persist across reboots via a @reboot cron entry (added alongside fake-activity
+        # cron file below — skip here if fake-activity is disabled to avoid orphan entry)
+        TC_PERSIST_CMD="tc qdisc del dev ${TC_IFACE} root 2>/dev/null; tc qdisc add dev ${TC_IFACE} root handle 1: netem delay 3ms 5ms distribution normal reorder 1% 50%"
+        ok "Traffic shaping applied on ${TC_IFACE}."
+      else
+        ok "[dry-run] Would apply tc netem on ${TC_IFACE}."
+      fi
     fi
   fi
 else
@@ -1333,10 +1406,15 @@ if [[ "$DRY_RUN" -eq 0 ]]; then
   fi
 
   # Port listening?
-  if ss -tlnp 2>/dev/null | grep -q ":${BRIDGE_LISTEN_PORT} "; then
+  if _is_port_listening "$BRIDGE_LISTEN_PORT"; then
     ok "Port ${BRIDGE_LISTEN_PORT} is listening."
   else
-    warn "Port ${BRIDGE_LISTEN_PORT} not yet detected in ss output (may need a moment)."
+    _port_check_rc=$?
+    if [[ "$_port_check_rc" -eq 2 ]]; then
+      warn "Could not verify listening port (missing ss/lsof/netstat)."
+    else
+      warn "Port ${BRIDGE_LISTEN_PORT} not yet detected as listening (may need a moment)."
+    fi
   fi
 
   # Log suppression
@@ -1426,6 +1504,7 @@ echo ""
 info "Cleaning up temporary files..."
 run rm -rf "$TMPDIR_WORK" 2>/dev/null || true
 if [[ "$DRY_RUN" -eq 0 ]]; then
+  # In non-interactive shells this is usually a no-op; kept for interactive runs.
   history -c 2>/dev/null || true
   unset HISTFILE 2>/dev/null || true
 fi
