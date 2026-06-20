@@ -13,7 +13,7 @@ require (
 	github.com/cretz/bine v0.2.0
 	github.com/database64128/tfo-go/v2 v2.3.1
 	github.com/enfein/mieru/v3 v3.27.0
-	github.com/go-chi/chi/v5 v5.2.3
+	github.com/go-chi/chi/v5 v5.2.4
 	github.com/go-chi/render v1.0.3
 	github.com/godbus/dbus/v5 v5.2.1
 	github.com/gofrs/uuid/v5 v5.4.0
