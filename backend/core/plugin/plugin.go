@@ -29,13 +29,14 @@ type OutboundPlugin interface {
 
 // PluginInfo holds metadata about a registered plugin.
 type PluginInfo struct {
-	Plugin  OutboundPlugin
-	Config  json.RawMessage
+	Plugin OutboundPlugin
+	Config json.RawMessage
 }
 
 var (
 	mu      sync.RWMutex
 	plugins = make(map[string]*PluginInfo)
+	order   []string
 )
 
 // RegisterPlugin registers a plugin under its Name().
@@ -48,6 +49,7 @@ func RegisterPlugin(p OutboundPlugin) {
 		panic(fmt.Sprintf("plugin %q already registered; ensure plugin names are unique across all loaded .so files", name))
 	}
 	plugins[name] = &PluginInfo{Plugin: p, Config: p.DefaultConfig()}
+	order = append(order, name)
 }
 
 // LoadPlugin opens a compiled .so file and registers the plugin it exports.
@@ -74,10 +76,38 @@ func List() []*PluginInfo {
 	mu.RLock()
 	defer mu.RUnlock()
 	result := make([]*PluginInfo, 0, len(plugins))
-	for _, info := range plugins {
+	for _, name := range order {
+		info := plugins[name]
 		result = append(result, info)
 	}
 	return result
+}
+
+// IsTransportPlugin identifies plugins that modify the outbound transport.
+// These wrappers are mutually exclusive because each owns the same transport
+// fields in the generated sing-box outbound.
+func IsTransportPlugin(name string) bool {
+	switch name {
+	case "h2disguise", "wscdn", "grpcobfs":
+		return true
+	default:
+		return false
+	}
+}
+
+// DisableOtherTransportPlugins disables all transport plugins other than name
+// and returns their names so callers can persist the state change.
+func DisableOtherTransportPlugins(name string) []string {
+	mu.Lock()
+	defer mu.Unlock()
+	var disabled []string
+	for pluginName, info := range plugins {
+		if pluginName != name && IsTransportPlugin(pluginName) && info.Plugin.Enabled() {
+			info.Plugin.SetEnabled(false)
+			disabled = append(disabled, pluginName)
+		}
+	}
+	return disabled
 }
 
 // Get returns the PluginInfo for the given name, or nil if not found.
@@ -104,7 +134,8 @@ func ApplyAll(outboundJSON json.RawMessage) (json.RawMessage, error) {
 	mu.RLock()
 	defer mu.RUnlock()
 	result := outboundJSON
-	for _, info := range plugins {
+	for _, name := range order {
+		info := plugins[name]
 		if !info.Plugin.Enabled() {
 			continue
 		}

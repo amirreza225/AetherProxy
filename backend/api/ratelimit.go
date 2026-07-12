@@ -31,6 +31,32 @@ var (
 	loginLimiter   = make(map[string]*loginEntry)
 )
 
+const telemetryMaxAttempts = 30
+
+var (
+	telemetryLimiterMu sync.Mutex
+	telemetryLimiter   = make(map[string]*loginEntry)
+)
+
+// checkTelemetryRateLimit bounds unauthenticated telemetry ingestion per IP.
+func checkTelemetryRateLimit(c *gin.Context) bool {
+	ip := extractIP(c.ClientIP())
+	now := time.Now()
+	telemetryLimiterMu.Lock()
+	e := telemetryLimiter[ip]
+	if e == nil || now.After(e.windowEnd) {
+		e = &loginEntry{windowEnd: now.Add(time.Minute)}
+		telemetryLimiter[ip] = e
+	}
+	e.count++
+	allowed := e.count <= telemetryMaxAttempts
+	telemetryLimiterMu.Unlock()
+	if !allowed {
+		c.JSON(http.StatusTooManyRequests, gin.H{"error": "too many telemetry reports"})
+	}
+	return allowed
+}
+
 func checkLoginRateLimit(c *gin.Context) bool {
 	ip := extractIP(c.ClientIP())
 

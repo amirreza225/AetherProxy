@@ -28,6 +28,15 @@ func (a *APIHandler) initRouter(g *gin.RouterGroup) {
 			!strings.HasSuffix(path, "report") {
 			checkLogin(c)
 		}
+		if c.IsAborted() {
+			return
+		}
+		username := GetLoginUser(c)
+		if username != "" && a.PasswordChangeRequired(username) &&
+			!strings.HasSuffix(path, "changePass") && !strings.HasSuffix(path, "logout") && !strings.HasSuffix(path, "users") {
+			pureJsonMsg(c, false, "password change required before using the admin API")
+			c.Abort()
+		}
 	})
 	g.POST("/:postAction", a.postHandler)
 	g.GET("/:getAction", a.getHandler)
@@ -36,6 +45,9 @@ func (a *APIHandler) initRouter(g *gin.RouterGroup) {
 func (a *APIHandler) postHandler(c *gin.Context) {
 	loginUser := GetLoginUser(c)
 	action := c.Param("postAction")
+	if action == "report" && !checkTelemetryRateLimit(c) {
+		return
+	}
 
 	switch action {
 	case "login":

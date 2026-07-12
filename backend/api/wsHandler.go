@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aetherproxy/backend/config"
@@ -32,6 +33,31 @@ type evasionAlertDTO struct {
 	Protocol   string `json:"protocol"`
 	AutoAction string `json:"autoAction"`
 	Detail     string `json:"detail"`
+}
+
+var statsSnapshot = struct {
+	sync.Mutex
+	at      time.Time
+	onlines interface{}
+	status  interface{}
+}{}
+
+// cachedStatsSnapshot bounds expensive system and database probes to one
+// collection per interval across all WebSocket clients.
+func (h *StatsWSHandler) cachedStatsSnapshot() (interface{}, interface{}, error) {
+	statsSnapshot.Lock()
+	defer statsSnapshot.Unlock()
+	if time.Since(statsSnapshot.at) < 2*time.Second && statsSnapshot.onlines != nil {
+		return statsSnapshot.onlines, statsSnapshot.status, nil
+	}
+	onlines, err := h.GetOnlines()
+	if err != nil {
+		return nil, nil, err
+	}
+	statsSnapshot.onlines = onlines
+	statsSnapshot.status = h.GetStatus("cpu,mem,net,sbd,db")
+	statsSnapshot.at = time.Now()
+	return statsSnapshot.onlines, statsSnapshot.status, nil
 }
 
 // RegisterWSRoutes adds the WebSocket endpoint to the given router group.
@@ -74,13 +100,11 @@ func (h *StatsWSHandler) ServeStats(c *gin.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			onlines, err := h.GetOnlines()
+			onlines, status, err := h.cachedStatsSnapshot()
 			if err != nil {
 				logger.Warning("ws/stats: GetOnlines:", err)
 				continue
 			}
-			status := h.GetStatus("cpu,mem,net,sbd,db")
-
 			// Collect new evasion events since the last tick.
 			newAlerts := getNewEvasionAlerts(lastEvasionTS)
 			if len(newAlerts) > 0 {

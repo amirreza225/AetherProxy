@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import useSWR from "swr";
-import { getClientAuthToken, getNodes, getTelemetryStats, type TelemetryStats, restartApp, restartSb, getSingboxConfigUrl } from "@/lib/api";
+import { getNodes, getTelemetryStats, type TelemetryStats, restartApp, restartSb, getSingboxConfigUrl } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { formatBytes } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -269,10 +269,7 @@ export default function DashboardPage() {
       const apiBase = httpBase
         ? httpBase.replace(/^http/i, "ws")
         : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.host}`;
-      const token = getClientAuthToken();
-      const wsUrl = token
-        ? `${apiBase}/api/ws/stats?token=${encodeURIComponent(token)}`
-        : `${apiBase}/api/ws/stats`;
+      const wsUrl = `${apiBase}/api/ws/stats`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;

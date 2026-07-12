@@ -167,7 +167,8 @@ export default function SubscriptionsPage() {
   const [selectedClientName, setSelectedClientName] = useState("");
   const [clientCopied, setClientCopied] = useState(false);
 
-  const selectedUrl = selectedClientName ? clientSubUrl(selectedClientName) : "";
+  const selectedClient = (clientsData ?? []).find((client) => client.name === selectedClientName);
+  const selectedUrl = selectedClient?.subToken ? clientSubUrl(selectedClient.subToken) : "";
   const selectedClashUrl = selectedUrl ? `${selectedUrl}?format=clash` : "";
   const selectedJsonUrl  = selectedUrl ? `${selectedUrl}?format=json`  : "";
 
@@ -440,4 +441,3 @@ export default function SubscriptionsPage() {
     </div>
   );
 }
-

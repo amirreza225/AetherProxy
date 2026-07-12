@@ -41,10 +41,13 @@ func NewApp() *APP {
 
 func (a *APP) Init() error {
 	log.Printf("%v %v", config.GetName(), config.GetVersion())
+	if err := config.ValidateJWTSecret(); err != nil {
+		return err
+	}
 
 	a.initLog()
 
-	// Warn operators who have not changed the default JWT secret.
+	// The development-only fallback is never accepted outside debug mode.
 	if config.GetJWTSecret() == "change-me-in-production" {
 		logger.Warning("⚠️  SECURITY WARNING: AETHER_JWT_SECRET is set to the default value.")
 		logger.Warning("⚠️  Please set a strong, unique secret via the AETHER_JWT_SECRET environment variable.")
@@ -68,6 +71,7 @@ func (a *APP) Init() error {
 	a.configService = service.NewConfigService(a.core)
 
 	a.registerBuiltinPlugins()
+	a.loadPlugins()
 	a.LoadPluginStates()
 
 	return nil
@@ -98,8 +102,6 @@ func (a *APP) Start() error {
 	if err != nil {
 		return err
 	}
-
-	a.loadPlugins()
 
 	err = a.configService.StartCore()
 	if err != nil {
@@ -170,6 +172,10 @@ func (a *APP) registerBuiltinPlugins() {
 }
 
 func (a *APP) loadPlugins() {
+	if !config.DynamicPluginsEnabled() {
+		logger.Info("dynamic plugins disabled; set AETHER_ENABLE_DYNAMIC_PLUGINS=true to enable them")
+		return
+	}
 	dir := config.GetPluginsDir()
 	entries, err := os.ReadDir(dir)
 	if err != nil {

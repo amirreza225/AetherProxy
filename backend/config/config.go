@@ -78,9 +78,32 @@ func GetDBPath() string {
 func GetJWTSecret() string {
 	s := os.Getenv("AETHER_JWT_SECRET")
 	if s == "" {
-		return "change-me-in-production"
+		if IsDebug() {
+			return "change-me-in-production"
+		}
+		return ""
 	}
 	return s
+}
+
+// ValidateJWTSecret rejects missing and weak production signing secrets before
+// the HTTP server can issue or accept authentication tokens.
+func ValidateJWTSecret() error {
+	s := GetJWTSecret()
+	if IsDebug() && s == "change-me-in-production" {
+		return nil
+	}
+	if len(s) < 32 {
+		return fmt.Errorf("AETHER_JWT_SECRET must be at least 32 characters outside debug mode")
+	}
+	return nil
+}
+
+// DynamicPluginsEnabled opts in to loading Go shared objects. Shared objects
+// execute with the full privileges of this process, so loading is disabled by
+// default and must be explicitly enabled by the operator.
+func DynamicPluginsEnabled() bool {
+	return os.Getenv("AETHER_ENABLE_DYNAMIC_PLUGINS") == "true"
 }
 
 // GetAdminOrigin returns the allowed CORS origin for the admin panel.

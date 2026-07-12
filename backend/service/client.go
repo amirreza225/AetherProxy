@@ -2,6 +2,8 @@ package service
 
 import (
 	"bytes"
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
 	"strings"
 	"time"
@@ -39,7 +41,7 @@ func (s *ClientService) GetAll() (*[]model.Client, error) {
 	db := database.GetDB()
 	var clients []model.Client
 	err := db.Model(model.Client{}).
-		Select("`id`, `enable`, `name`, `desc`, `group`, `inbounds`, `up`, `down`, `volume`, `expiry`").
+		Select("`id`, `enable`, `name`, `sub_token`, `desc`, `group`, `inbounds`, `up`, `down`, `volume`, `expiry`").
 		Scan(&clients).Error
 	if err != nil {
 		return nil, err
@@ -60,6 +62,12 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 		}
 		if client.Name == "" {
 			return nil, common.NewError("client name is required")
+		}
+		if act == "new" && client.SubToken == "" {
+			client.SubToken, err = newSubToken()
+			if err != nil {
+				return nil, err
+			}
 		}
 		if len(client.Inbounds) == 0 {
 			client.Inbounds = json.RawMessage("[]")
@@ -97,6 +105,12 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 			return nil, err
 		}
 		for _, client := range clients {
+			if client.SubToken == "" {
+				client.SubToken, err = newSubToken()
+				if err != nil {
+					return nil, err
+				}
+			}
 			if len(client.Inbounds) == 0 {
 				client.Inbounds = json.RawMessage("[]")
 			}
@@ -212,6 +226,14 @@ func (s *ClientService) Save(tx *gorm.DB, act string, data json.RawMessage, host
 	}
 
 	return inboundIds, nil
+}
+
+func newSubToken() (string, error) {
+	b := make([]byte, 32)
+	if _, err := rand.Read(b); err != nil {
+		return "", err
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
 }
 
 func (s *ClientService) updateLinksWithFixedInbounds(tx *gorm.DB, clients []*model.Client, hostname string) error {

@@ -576,12 +576,12 @@ export default function UsersPage() {
                     <TableCell>
                       <div className="flex gap-2">
                         <CopyButton
-                          value={clientSubUrl(c.name)}
+                          value={clientSubUrl(c.subToken ?? "")}
                           label={t("copySubLink")}
                           copiedLabel={t("subLinkCopied")}
                         />
                         <QrButton
-                          url={clientSubUrl(c.name)}
+                          url={clientSubUrl(c.subToken ?? "")}
                           label={t("showQr")}
                           dialogTitle={t("qrDialogTitle")}
                           dialogHint={t("qrDialogHint")}
@@ -620,4 +620,3 @@ export default function UsersPage() {
     </div>
   );
 }
-

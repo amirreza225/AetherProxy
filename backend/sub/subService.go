@@ -45,6 +45,7 @@ func (s *SubService) GetSubs(subId string) (*string, []string, error) {
 
 	linksArray := s.GetLinks(&client.Links, "all", clientInfo)
 	linksArray = filterOfflineNodes(linksArray)
+	linksArray = preferEvasionProtocol(linksArray, service.GetEvasionPreferredProtocol())
 	result := strings.Join(linksArray, "\n")
 
 	headers := s.getClientHeaders(client)
@@ -55,6 +56,25 @@ func (s *SubService) GetSubs(subId string) (*string, []string, error) {
 	}
 
 	return &result, headers, nil
+}
+
+// preferEvasionProtocol moves the currently preferred protocol to the front
+// without dropping other endpoints, allowing clients to fall back normally.
+func preferEvasionProtocol(links []string, preferred string) []string {
+	if preferred == "" {
+		return links
+	}
+	prefix := strings.ToLower(preferred) + "://"
+	preferredLinks := make([]string, 0, len(links))
+	otherLinks := make([]string, 0, len(links))
+	for _, link := range links {
+		if strings.HasPrefix(strings.ToLower(link), prefix) {
+			preferredLinks = append(preferredLinks, link)
+		} else {
+			otherLinks = append(otherLinks, link)
+		}
+	}
+	return append(preferredLinks, otherLinks...)
 }
 
 // filterOfflineNodes removes any proxy URI whose host matches a node that is
@@ -131,7 +151,7 @@ func getOfflineNodeHosts() map[string]struct{} {
 func (j *SubService) getClientBySubId(subId string) (*model.Client, error) {
 	db := database.GetDB()
 	client := &model.Client{}
-	err := db.Model(model.Client{}).Where("enable = true and name = ?", subId).First(client).Error
+	err := db.Model(model.Client{}).Where("enable = true and sub_token = ?", subId).First(client).Error
 	if err != nil {
 		return nil, err
 	}

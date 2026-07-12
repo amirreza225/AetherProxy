@@ -85,12 +85,15 @@ func (c *StatsTracker) RoutedPacketConnection(ctx context.Context, conn network.
 
 func (c *StatsTracker) GetStats() *[]model.Stats {
 	c.access.Lock()
-	defer c.access.Unlock()
+	inbounds := cloneCounters(c.inbounds)
+	outbounds := cloneCounters(c.outbounds)
+	users := cloneCounters(c.users)
+	c.access.Unlock()
 
 	dt := time.Now().Unix()
 
 	s := []model.Stats{}
-	for inbound, counter := range c.inbounds {
+	for inbound, counter := range inbounds {
 		down := counter.write.Swap(0)
 		up := counter.read.Swap(0)
 		if down > 0 || up > 0 {
@@ -110,7 +113,7 @@ func (c *StatsTracker) GetStats() *[]model.Stats {
 		}
 	}
 
-	for outbound, counter := range c.outbounds {
+	for outbound, counter := range outbounds {
 		down := counter.write.Swap(0)
 		up := counter.read.Swap(0)
 		if down > 0 || up > 0 {
@@ -130,7 +133,7 @@ func (c *StatsTracker) GetStats() *[]model.Stats {
 		}
 	}
 
-	for user, counter := range c.users {
+	for user, counter := range users {
 		down := counter.write.Swap(0)
 		up := counter.read.Swap(0)
 		if down > 0 || up > 0 {
@@ -150,4 +153,12 @@ func (c *StatsTracker) GetStats() *[]model.Stats {
 		}
 	}
 	return &s
+}
+
+func cloneCounters(src map[string]Counter) map[string]Counter {
+	clone := make(map[string]Counter, len(src))
+	for name, counter := range src {
+		clone[name] = counter
+	}
+	return clone
 }

@@ -74,13 +74,18 @@ func SetLoginUser(c *gin.Context, userName string, maxAge int) error {
 		Path:     "/",
 		HttpOnly: true,
 		SameSite: http.SameSiteLaxMode,
+		Secure:   requestIsHTTPS(c),
 	})
 	return nil
 }
 
+func requestIsHTTPS(c *gin.Context) bool {
+	return c.Request.TLS != nil || strings.EqualFold(c.GetHeader("X-Forwarded-Proto"), "https")
+}
+
 // GetLoginUser extracts the authenticated username from the JWT.
 // It checks the Authorization: Bearer header first, then the aether_token cookie,
-// then a token query param, and finally a value set by the APIv2 token middleware.
+// then a value set by the APIv2 token middleware.
 func GetLoginUser(c *gin.Context) string {
 	// Check username set by APIv2 token middleware first.
 	if v, ok := c.Get(v2UsernameKey); ok {
@@ -96,9 +101,6 @@ func GetLoginUser(c *gin.Context) string {
 		if cookie, err := c.Cookie("aether_token"); err == nil {
 			tokenStr = cookie
 		}
-	}
-	if tokenStr == "" {
-		tokenStr = c.Query("token")
 	}
 	if tokenStr == "" {
 		return ""
@@ -122,6 +124,7 @@ func ClearSession(c *gin.Context) {
 		MaxAge:   -1,
 		Path:     "/",
 		HttpOnly: true,
+		Secure:   requestIsHTTPS(c),
 	})
 }
 

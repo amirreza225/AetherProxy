@@ -1,7 +1,6 @@
 /**
  * Typed fetch wrapper for the AetherProxy API.
- * All requests include the JWT from either the Authorization header or the
- * aether_token cookie (the backend accepts both).
+ * Authentication is handled only by the backend-issued HttpOnly cookie.
  */
 
 function resolveDefaultApiBase(): string {
@@ -22,33 +21,17 @@ const BASE_URL =
   (configuredApiBase ? configuredApiBase.replace(/\/$/, "") : "") ||
   resolveDefaultApiBase();
 
-const AUTH_COOKIE_MAX_AGE_SECONDS = 60 * 60 * 24;
-
 export function getClientAuthToken(): string {
-  if (typeof window === "undefined") {
-    return "";
-  }
-  return sessionStorage.getItem("aether_token") ?? "";
+  return "";
 }
 
+// Kept as no-ops for callers compiled against earlier frontend versions. The
+// token is deliberately never exposed to JavaScript.
 export function setClientAuthToken(token: string): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  sessionStorage.setItem("aether_token", token);
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `aether_token=${encodeURIComponent(token)}; Path=/; Max-Age=${AUTH_COOKIE_MAX_AGE_SECONDS}; SameSite=Lax${secure}`;
+  void token;
 }
 
 export function clearClientAuthToken(): void {
-  if (typeof window === "undefined") {
-    return;
-  }
-
-  sessionStorage.removeItem("aether_token");
-  const secure = window.location.protocol === "https:" ? "; Secure" : "";
-  document.cookie = `aether_token=; Path=/; Max-Age=0; SameSite=Lax${secure}`;
 }
 
 interface ApiResponse<T = unknown> {
@@ -69,11 +52,6 @@ async function apiFetch<T>(
     headers.set("X-Requested-With", "XMLHttpRequest");
   }
 
-  const token = getClientAuthToken();
-  if (token && !headers.has("Authorization")) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
   const res = await fetch(`${BASE_URL}${path}`, {
     ...options,
     credentials: "include", // send aether_token cookie
@@ -85,25 +63,26 @@ async function apiFetch<T>(
   }
 
   // The rate-limit response uses a different shape: { "error": "..." }.
-  // Normalise it into the standard ApiResponse so callers don't need to
-  // handle the raw 429 body themselves.
   if (res.status === 429) {
     let errorMsg = "Too many requests";
     try {
       const body = (await res.json()) as { error?: string };
       if (body.error) errorMsg = body.error;
     } catch { /* ignore – keep default message */ }
-    return { success: false, msg: errorMsg, obj: undefined as T };
+    throw new Error(errorMsg);
   }
 
   const data: ApiResponse<T> = await res.json();
+  if (!data.success) {
+    throw new Error(data.msg || "Request failed");
+  }
   return data;
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
 
 export async function login(user: string, pass: string) {
-  return apiFetch<{ token: string }>("/api/login", {
+  return apiFetch<{ token: string; passwordChangeRequired?: boolean }>("/api/login", {
     method: "POST",
     body: new URLSearchParams({ user, pass }),
   });
@@ -140,6 +119,7 @@ export interface Client {
   id: number;
   enable: boolean;
   name: string;
+  subToken?: string;
   volume: number;       // bytes; 0 = unlimited
   expiry: number;       // unix seconds; 0 = never
   down: number;
@@ -358,12 +338,12 @@ export async function deleteInbound(tag: string) {
   });
 }
 
-/** Build the subscription URL for a client by name. */
-export function clientSubUrl(clientName: string): string {
+/** Build the subscription URL using the client's opaque subscription token. */
+export function clientSubUrl(subToken: string): string {
   const configuredSubBase = process.env.NEXT_PUBLIC_SUB_URL?.trim();
   const subBase = (configuredSubBase ? configuredSubBase.replace(/\/$/, "") : "")
     || (BASE_URL.includes(":2095") ? BASE_URL.replace(":2095", ":2096") : BASE_URL);
-  return `${subBase}/sub/${encodeURIComponent(clientName)}`;
+  return `${subBase}/sub/${encodeURIComponent(subToken)}`;
 }
 
 // ── Full config (inbounds, outbounds, clients, …) ────────────────────────────
@@ -718,9 +698,8 @@ export async function getTelemetryStats(headers?: HeadersInit) {
 
 /** Returns the URL to download the offline bundle ZIP for all clients. */
 export function getOfflineBundleUrl(): string {
-  const token = getClientAuthToken();
   const base = BASE_URL;
-  return `${base}/api/offlineBundle${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  return `${base}/api/offlineBundle`;
 }
 
 // ── Outbounds ─────────────────────────────────────────────────────────────────
@@ -842,6 +821,5 @@ export async function restartSb() {
 
 /** Returns the URL to download the sing-box config JSON. */
 export function getSingboxConfigUrl(): string {
-  const token = getClientAuthToken();
-  return `${BASE_URL}/api/singbox-config${token ? `?token=${encodeURIComponent(token)}` : ""}`;
+  return `${BASE_URL}/api/singbox-config`;
 }

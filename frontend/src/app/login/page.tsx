@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { login, setClientAuthToken } from "@/lib/api";
+import { login } from "@/lib/api";
 import { useTranslations } from "next-intl";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,21 +25,14 @@ export default function LoginPage() {
     setError("");
     try {
       const res = await login(user, pass);
-      if (res.success) {
-        if (!res.obj?.token) {
-          setError(t("connectionFailed"));
-          return;
-        }
-        setClientAuthToken(res.obj.token);
-        const from = searchParams.get("from");
-        const destination = from && from.startsWith("/") ? from : "/dashboard";
-        router.replace(destination);
-        router.refresh();
-      } else {
-        setError(res.msg || t("invalidCredentials"));
-      }
-    } catch {
-      setError(t("connectionFailed"));
+      const from = searchParams.get("from");
+      const destination = res.obj?.passwordChangeRequired
+        ? "/users"
+        : from && from.startsWith("/") ? from : "/dashboard";
+      router.replace(destination);
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error && err.message ? err.message : t("connectionFailed"));
     } finally {
       setLoading(false);
     }

@@ -1,38 +1,93 @@
 package util
 
 import (
-	"crypto/tls"
+	"context"
 	"encoding/json"
+	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"net/netip"
+	"net/url"
 	"strings"
+	"time"
 
 	"github.com/aetherproxy/backend/logger"
 	"github.com/aetherproxy/backend/util/common"
 )
 
-func GetExternalLink(url string) string {
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+const maxExternalSubBytes = 4 << 20
+
+func GetExternalLink(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil || u.Scheme != "https" || u.Hostname() == "" || u.User != nil {
+		logger.Warning("sub: external URL must be an absolute HTTPS URL")
+		return ""
 	}
 
-	client := &http.Client{Transport: tr}
+	dialer := &net.Dialer{Timeout: 5 * time.Second}
+	tr := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, address string) (net.Conn, error) {
+			host, port, err := net.SplitHostPort(address)
+			if err != nil {
+				return nil, err
+			}
+			ips, err := net.DefaultResolver.LookupNetIP(ctx, "ip", host)
+			if err != nil {
+				return nil, err
+			}
+			for _, ip := range ips {
+				if !isPublicIP(ip) {
+					return nil, fmt.Errorf("blocked non-public address %s", ip)
+				}
+			}
+			return dialer.DialContext(ctx, network, net.JoinHostPort(host, port))
+		},
+		TLSHandshakeTimeout: 5 * time.Second,
+	}
+	client := &http.Client{Transport: tr, Timeout: 15 * time.Second, CheckRedirect: func(req *http.Request, via []*http.Request) error {
+		if req.URL.Scheme != "https" || len(via) >= 3 {
+			return fmt.Errorf("blocked redirect")
+		}
+		return nil
+	}}
 
-	response, err := client.Get(url)
+	response, err := client.Get(rawURL)
 	if err != nil {
 		logger.Warning("sub: Error making HTTP request:", err)
 		return ""
 	}
 	defer func() { _ = response.Body.Close() }()
 
-	body, err := io.ReadAll(response.Body)
+	if response.StatusCode < http.StatusOK || response.StatusCode >= http.StatusMultipleChoices {
+		logger.Warning("sub: external request returned status:", response.Status)
+		return ""
+	}
+	body, err := io.ReadAll(io.LimitReader(response.Body, maxExternalSubBytes+1))
 	if err != nil {
 		logger.Warning("sub: Error reading response body:", err)
+		return ""
+	}
+	if len(body) > maxExternalSubBytes {
+		logger.Warning("sub: external response exceeded size limit")
 		return ""
 	}
 
 	data := StrOrBase64Encoded(string(body))
 	return data
+}
+
+func isPublicIP(ip netip.Addr) bool {
+	if !ip.IsValid() || ip.IsUnspecified() || ip.IsLoopback() || ip.IsPrivate() || ip.IsLinkLocalUnicast() || ip.IsLinkLocalMulticast() || ip.IsMulticast() {
+		return false
+	}
+	// IPv4 documentation/reserved ranges and IPv6 unique-local are not public destinations.
+	if ip.Is4() {
+		v := ip.As4()
+		return !(v[0] == 0 || v[0] >= 224 || (v[0] == 100 && v[1]&0xc0 == 0x40) || (v[0] == 198 && (v[1] == 18 || v[1] == 19)))
+	}
+	return !ip.IsPrivate()
 }
 
 func GetExternalSub(url string) ([]map[string]interface{}, error) {

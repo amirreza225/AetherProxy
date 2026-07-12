@@ -1,7 +1,10 @@
 package database
 
 import (
+	"crypto/rand"
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path"
 	"strings"
@@ -9,11 +12,13 @@ import (
 
 	"github.com/aetherproxy/backend/config"
 	"github.com/aetherproxy/backend/database/model"
+	"github.com/aetherproxy/backend/logger"
+	"golang.org/x/crypto/bcrypt"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
-	"gorm.io/gorm/logger"
+	gormlogger "gorm.io/gorm/logger"
 )
 
 var db *gorm.DB
@@ -25,11 +30,49 @@ func initUser() error {
 		return err
 	}
 	if count == 0 {
-		user := &model.User{
-			Username: "admin",
-			Password: "admin",
+		password, err := randomCredential()
+		if err != nil {
+			return err
 		}
-		return db.Create(user).Error
+		hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+		if err != nil {
+			return err
+		}
+		user := &model.User{
+			Username:           "admin",
+			Password:           string(hash),
+			MustChangePassword: true,
+		}
+		if err := db.Create(user).Error; err != nil {
+			return err
+		}
+		logger.Warning("AetherProxy created the initial admin account. Set a new password immediately after first login.")
+		logger.Warning("Initial admin credentials: username=admin password=", password)
+	}
+	return nil
+}
+
+func randomCredential() (string, error) {
+	b := make([]byte, 24)
+	if _, err := rand.Read(b); err != nil {
+		return "", fmt.Errorf("generate initial admin password: %w", err)
+	}
+	return base64.RawURLEncoding.EncodeToString(b), nil
+}
+
+func ensureClientSubTokens() error {
+	var clients []model.Client
+	if err := db.Where("sub_token = '' OR sub_token IS NULL").Find(&clients).Error; err != nil {
+		return err
+	}
+	for i := range clients {
+		token, err := randomCredential()
+		if err != nil {
+			return err
+		}
+		if err := db.Model(&clients[i]).Update("sub_token", token).Error; err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -60,11 +103,11 @@ func openPostgres(dsn string, gormCfg *gorm.Config) error {
 // starting with "postgres://" or "host=").
 // For backward-compat the legacy dbPath argument is used when AETHER_DB_DSN is empty.
 func OpenDB(dbPath string) error {
-	var gormLogger logger.Interface
+	var gormLogger gormlogger.Interface
 	if config.IsDebug() {
-		gormLogger = logger.Default
+		gormLogger = gormlogger.Default
 	} else {
-		gormLogger = logger.Discard
+		gormLogger = gormlogger.Discard
 	}
 	gormCfg := &gorm.Config{Logger: gormLogger}
 
@@ -118,6 +161,9 @@ func InitDB(dbPath string) error {
 	}
 	err = initUser()
 	if err != nil {
+		return err
+	}
+	if err = ensureClientSubTokens(); err != nil {
 		return err
 	}
 

@@ -25,7 +25,6 @@ func hashPassword(plain string) (string, error) {
 	return string(b), nil
 }
 
-
 func (s *UserService) GetFirstUser() (*model.User, error) {
 	db := database.GetDB()
 
@@ -47,6 +46,14 @@ func (s *UserService) GetUserByUsername(username string) (*model.User, error) {
 		return nil, err
 	}
 	return user, nil
+}
+
+func (s *UserService) PasswordChangeRequired(username string) bool {
+	var user model.User
+	if err := database.GetDB().Select("must_change_password").Where("username = ?", username).First(&user).Error; err != nil {
+		return false
+	}
+	return user.MustChangePassword
 }
 
 func (s *UserService) UpdateFirstUser(username string, password string) error {
@@ -155,6 +162,7 @@ func (s *UserService) ChangePass(id string, oldPass string, newUser string, newP
 	}
 	user.Username = newUser
 	user.Password = hashed
+	user.MustChangePassword = false
 	return db.Save(user).Error
 }
 

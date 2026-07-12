@@ -281,7 +281,7 @@ func (a *ApiService) Login(c *gin.Context) {
 		return
 	}
 
-	jsonObj(c, gin.H{"token": GetIssuedToken(c)}, nil)
+	jsonObj(c, gin.H{"token": GetIssuedToken(c), "passwordChangeRequired": a.PasswordChangeRequired(loginUser)}, nil)
 }
 
 func (a *ApiService) ChangePass(c *gin.Context) {
@@ -636,6 +636,13 @@ func (a *ApiService) SetPluginEnabled(c *gin.Context) {
 		return
 	}
 	info.Plugin.SetEnabled(enabled)
+	if enabled && plugin.IsTransportPlugin(name) {
+		for _, disabled := range plugin.DisableOtherTransportPlugins(name) {
+			if err := a.SavePluginEnabled(disabled, false); err != nil {
+				logger.Warning("failed to persist disabled transport plugin state:", err)
+			}
+		}
+	}
 	if err := a.SavePluginEnabled(name, enabled); err != nil {
 		logger.Warning("failed to persist plugin enabled state:", err)
 	}

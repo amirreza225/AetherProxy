@@ -3,6 +3,7 @@ package service
 import (
 	"sort"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aetherproxy/backend/database"
@@ -17,6 +18,7 @@ type onlines struct {
 }
 
 var onlineResources = &onlines{}
+var onlineResourcesMu sync.RWMutex
 
 type StatsService struct {
 }
@@ -35,14 +37,7 @@ func (s *StatsService) SaveStats(enableTraffic bool) error {
 	}
 	stats := st.GetStats()
 
-	// Reset onlines
-	onlineResources.Inbound = nil
-	onlineResources.Outbound = nil
-	onlineResources.User = nil
-
-	if len(*stats) == 0 {
-		return nil
-	}
+	updatedOnlines := &onlines{}
 
 	// Accumulate per-user up/down deltas to perform two bulk UPDATEs
 	// instead of one UPDATE per stat row (eliminates the N+1 write pattern).
@@ -60,13 +55,20 @@ func (s *StatsService) SaveStats(enableTraffic bool) error {
 		if stat.Direction {
 			switch stat.Resource {
 			case "inbound":
-				onlineResources.Inbound = append(onlineResources.Inbound, stat.Tag)
+				updatedOnlines.Inbound = append(updatedOnlines.Inbound, stat.Tag)
 			case "outbound":
-				onlineResources.Outbound = append(onlineResources.Outbound, stat.Tag)
+				updatedOnlines.Outbound = append(updatedOnlines.Outbound, stat.Tag)
 			case "user":
-				onlineResources.User = append(onlineResources.User, stat.Tag)
+				updatedOnlines.User = append(updatedOnlines.User, stat.Tag)
 			}
 		}
+	}
+	onlineResourcesMu.Lock()
+	onlineResources = updatedOnlines
+	onlineResourcesMu.Unlock()
+
+	if len(*stats) == 0 {
+		return nil
 	}
 
 	var err error
@@ -222,7 +224,14 @@ func (s *StatsService) downsampleStats(stats []model.Stats, maxRows int) []model
 }
 
 func (s *StatsService) GetOnlines() (onlines, error) {
-	return *onlineResources, nil
+	onlineResourcesMu.RLock()
+	defer onlineResourcesMu.RUnlock()
+	// Return copied slices so callers cannot mutate the shared snapshot.
+	return onlines{
+		Inbound:  append([]string(nil), onlineResources.Inbound...),
+		User:     append([]string(nil), onlineResources.User...),
+		Outbound: append([]string(nil), onlineResources.Outbound...),
+	}, nil
 }
 func (s *StatsService) DelOldStats(days int) error {
 	oldTime := time.Now().AddDate(0, 0, -(days)).Unix()

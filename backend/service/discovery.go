@@ -25,7 +25,7 @@ const maxManifestBodyBytes = 1 << 16 // 64 KB
 // bootstrapManifest is the signed JSON format for the bootstrap node list.
 type bootstrapManifest struct {
 	Version   int      `json:"version"`
-	Nodes     []string `json:"nodes"` // host:port pairs
+	Nodes     []string `json:"nodes"`               // host:port pairs
 	Signature string   `json:"signature,omitempty"` // base64 Ed25519 sig over the canonical JSON (omit sig field)
 }
 
@@ -79,6 +79,15 @@ func (d *DiscoveryService) Start() error {
 	cfg.AdvertisePort = config.GetGossipPort()
 	cfg.Name = buildNodeName()
 	cfg.LogOutput = io.Discard // suppress memberlist internal logs (we use our own logger)
+	if key := os.Getenv("AETHER_GOSSIP_SECRET_KEY"); key != "" {
+		decoded, err := base64.StdEncoding.DecodeString(key)
+		if err != nil || len(decoded) != 32 {
+			return fmt.Errorf("AETHER_GOSSIP_SECRET_KEY must be a base64-encoded 32-byte key")
+		}
+		cfg.SecretKey = decoded
+	} else if len(config.GetGossipBootstrap()) > 0 || config.GetGossipManifestURL() != "" {
+		return fmt.Errorf("AETHER_GOSSIP_SECRET_KEY is required when gossip discovery is enabled")
+	}
 
 	// Attach metadata delegate so other nodes can learn about this node.
 	meta := aetherNodeMeta{
@@ -240,11 +249,12 @@ func (d *DiscoveryService) fetchSignedManifest(url string) ([]string, error) {
 		return nil, fmt.Errorf("manifest parse: %w", err)
 	}
 
-	// Verify signature when a public key is configured.
-	if pubKeyB64 := config.GetGossipManifestPubKey(); pubKeyB64 != "" {
-		if err := verifyManifest(body, manifest.Signature, pubKeyB64); err != nil {
-			return nil, fmt.Errorf("manifest signature invalid: %w", err)
-		}
+	pubKeyB64 := config.GetGossipManifestPubKey()
+	if pubKeyB64 == "" {
+		return nil, fmt.Errorf("manifest public key is required when a manifest URL is configured")
+	}
+	if err := verifyManifest(body, manifest.Signature, pubKeyB64); err != nil {
+		return nil, fmt.Errorf("manifest signature invalid: %w", err)
 	}
 
 	return manifest.Nodes, nil

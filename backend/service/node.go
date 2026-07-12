@@ -266,9 +266,11 @@ func (s *NodeService) buildHostKeyCallback(node *model.Node) ssh.HostKeyCallback
 
 		// Subsequent connections: verify the stored key.
 		parts := strings.SplitN(node.SshKnownKey, " ", 2)
-		if len(parts) != 2 {
-			// Stored key is malformed – fall through and trust.
-			return nil
+		if len(parts) != 2 || parts[0] == "" || parts[1] == "" {
+			return fmt.Errorf("stored SSH host key for %s is malformed; clear and re-enroll this node", hostname)
+		}
+		if parts[0] != key.Type() {
+			return fmt.Errorf("SSH host key type mismatch for %s: expected %s, got %s", hostname, parts[0], key.Type())
 		}
 		storedFP := parts[1]
 		if storedFP != fp {
